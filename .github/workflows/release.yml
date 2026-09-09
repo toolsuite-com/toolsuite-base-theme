@@ -17,24 +17,55 @@ jobs:
         uses: shopify/theme-check-action@v1
         with:
           version: latest
-        continue-on-error: true   # advisory: don't block a release on style offenses
+        continue-on-error: true
 
       - name: Package theme
         id: pkg
         run: bash scripts/package.sh
 
-      # One release per theme_version. Re-pushing the same version refreshes the
-      # asset in place; bumping theme_version cuts a new release. The stable
-      # asset name keeps releases/latest/download/toolsuite-base-theme.zip valid.
-      - name: Publish release
+      # Pull the current version's section out of CHANGELOG.md for the release
+      # notes (everything under "## <version>" up to the next "## ").
+      - name: Extract changelog
+        id: notes
+        run: |
+          VER="${{ steps.pkg.outputs.version }}"
+          python3 - "$VER" > notes.md <<'PY'
+          import re, sys
+          ver = sys.argv[1]
+          txt = open("CHANGELOG.md").read()
+          m = re.search(rf"^##\s+{re.escape(ver)}\b.*?(?=^##\s|\Z)", txt, re.S | re.M)
+          body = (m.group(0) if m else f"## {ver}").strip()
+          # drop the heading line itself; keep the bullet points
+          lines = body.splitlines()
+          print("\n".join(lines[1:]).strip() or "Theme update.")
+          print("\n\nDownload the zip and add it in your store under Online Store → Themes → Add theme → Upload zip.")
+          PY
+          echo "has_notes=1" >> "$GITHUB_OUTPUT"
+
+      - name: Publish / refresh release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v${{ steps.pkg.outputs.version }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${{ steps.pkg.outputs.zip }}" --clobber
+            gh release edit "$TAG" --notes-file notes.md
+            echo "new_release=0" >> "$GITHUB_OUTPUT"
           else
             gh release create "$TAG" "${{ steps.pkg.outputs.zip }}" \
-              --title "ToolSuite Base Theme $TAG" \
-              --notes "Packaged base theme — download and upload to your Shopify store (Online Store → Themes → Add theme)."
+              --title "ToolSuite Base Theme $TAG" --notes-file notes.md
+            echo "new_release=1" >> "$GITHUB_OUTPUT"
           fi
+        id: rel
+
+      # Optional: announce a brand-new version to Discord. No-op unless the
+      # DISCORD_RELEASE_WEBHOOK repo secret is set.
+      - name: Announce on Discord
+        if: steps.rel.outputs.new_release == '1' && env.HOOK != ''
+        env:
+          HOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: |
+          VER="${{ steps.pkg.outputs.version }}"
+          curl -s -H "Content-Type: application/json" \
+            -d "{\"content\":\"🎨 ToolSuite Base Theme **v${VER}** released — members can download the update from Dashboard → Resources.\"}" \
+            "$HOOK" >/dev/null || true
