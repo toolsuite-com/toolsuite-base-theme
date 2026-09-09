@@ -1,0 +1,54 @@
+{%- comment -%}
+  Static page (About, FAQ, Track Your Order, the legal pages …). Display-L title
+  over one narrow prose column — the legal + trust layer is the only long-form
+  reading in this store, so nothing competes with it.
+
+  NOT the shop policies: /policies/* is rendered by Shopify's own markup
+  (.shopify-policy__container > .rte) and ignores any theme template for that
+  route — those are styled in theme.css instead, otherwise they ship as an
+  unstyled wall of text. The `policy` fallback below costs nothing and keeps
+  this section correct if that route is ever templatable.
+{%- endcomment -%}
+{%- liquid
+  assign doc = page
+  if policy != blank
+    assign doc = policy
+  endif
+
+  comment
+    Duplicate-title strip: a page like /pages/about-us can open its own body
+    with "About us" again, so the page prints the same words twice — once as
+    this template's h1, once as the content's first heading. If the FIRST
+    element of the body is an h1/h2/h3 whose text equals the page title, it
+    is dropped. Anything else is left exactly as the merchant wrote it;
+    editing the page copy stays a merchant job, this only removes a provable
+    repeat.
+  endcomment
+  assign body = doc.content
+  assign heading_tags = 'h1,h2,h3' | split: ','
+-%}
+{%- for tag in heading_tags -%}
+  {%- assign close = '</' | append: tag | append: '>' -%}
+  {%- assign chunks = body | split: close -%}
+  {%- if chunks.size > 1 -%}
+    {%- assign lead = chunks[0] -%}
+    {%- assign lead_open = lead | strip | slice: 0, 3 -%}
+    {%- assign lead_txt = lead | strip_html | strip -%}
+    {%- assign want_open = '<' | append: tag -%}
+    {%- if lead_open == want_open and lead_txt == doc.title -%}
+      {%- assign body = body | remove_first: lead | remove_first: close -%}
+    {%- endif -%}
+  {%- endif -%}
+{%- endfor -%}
+<section class="sec--tight">
+  <div class="wrap wrap--narrow page-head">
+    <h1 class="dl">{{ doc.title | escape }}</h1>
+  </div>
+  <div class="wrap wrap--narrow page-body">
+    <div class="prose">{{ body }}</div>
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Page", "settings": [] }
+{% endschema %}

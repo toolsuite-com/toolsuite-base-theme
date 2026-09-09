@@ -1,0 +1,22 @@
+{%- comment -%}
+  Article — one narrow prose column under a Display-L title, same reading
+  furniture as a page. Minimal by intent (see main-blog.liquid).
+{%- endcomment -%}
+<article class="sec--tight">
+  <div class="wrap wrap--narrow page-head">
+    <h1 class="dl">{{ article.title | escape }}</h1>
+    <p class="lbl-sm mute">{{ article.published_at | date: '%B %d, %Y' }}</p>
+  </div>
+  {%- if article.image -%}
+    <div class="wrap wrap--narrow article__art">
+      <img src="{{ article.image | image_url: width: 1400 }}" width="1400" height="933" alt="{{ article.image.alt | default: article.title | escape }}">
+    </div>
+  {%- endif -%}
+  <div class="wrap wrap--narrow page-body">
+    <div class="prose">{{ article.content }}</div>
+  </div>
+</article>
+
+{% schema %}
+{ "name": "Article", "settings": [] }
+{% endschema %}

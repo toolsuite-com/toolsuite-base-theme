@@ -1,0 +1,219 @@
+{%- comment -%}
+  Footer structure:
+
+    1. newsletter band            (sits ABOVE the main structure, not inside
+                                   it; feeds the welcome-discount automation)
+    2. the giant wordmark (.ftr__moment)
+    3. hairline
+    4. four columns: Shop · Help · Legal · Business information
+       — the business column is an <address> block: seller, VAT, company
+         address, warehouse address, returns warning, email, phone, response
+         note, service hours
+    5. copyright + Instagram · payment marks (FULL COLOUR) · back to top
+
+  Every value is a theme setting — nothing here is hardcoded.
+{%- endcomment -%}
+{%- assign tel = settings.biz_phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+<footer class="ftr">
+  <div class="wrap">
+    <div class="ftr__nl reveal">
+      <h2 class="dl ftr__nl-head">{{ 'footer.newsletter_heading' | t }}</h2>
+      <div>
+        {%- form 'customer' -%}
+          <input type="hidden" name="contact[tags]" value="newsletter">
+          {%- if form.posted_successfully? -%}
+            <p class="form-status">{{ section.settings.nl_success | escape }}</p>
+          {%- else -%}
+            {%- if form.errors -%}
+              <p class="form-status form-status--error">{{ form.errors | default_errors }}</p>
+            {%- endif -%}
+            <div class="ftr__row">
+              <label class="visually-hidden" for="ftr-email">{{ 'footer.newsletter.email_label' | t }}</label>
+              <input id="ftr-email" type="email" name="contact[email]" placeholder="{{ 'footer.newsletter_placeholder' | t }}" autocomplete="email" required>
+              <button type="submit" onclick="document.dispatchEvent(new CustomEvent('theme:newsletter'))">{{ 'footer.newsletter_button' | t }}</button>
+            </div>
+            <p class="ftr__note lbl-sm mute" style="margin-top: 12px;">{{ 'footer.newsletter_note' | t }}</p>
+          {%- endif -%}
+        {%- endform -%}
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} The giant wordmark (.ftr__moment). Full page width, ink on
+  cream, decorative only — the accessible name lives on the header logo link. {%- endcomment -%}
+  <div class="ftr__moment" aria-hidden="true">
+    <span class="ftr__wordmark">{%- render 'logo-lockup' -%}</span>
+  </div>
+
+  <div class="wrap">
+    <hr class="rule">
+
+    {%- comment -%} Optional one-line right-of-withdrawal link above the columns.
+    Some jurisdictions require this link to be more prominent than a buried
+    legal-menu entry; it renders only when a page is picked in the section
+    settings. {%- endcomment -%}
+    {%- if section.settings.withdrawal_page != blank -%}
+    <p class="lbl-sm ftr__retractation">
+      {{ 'footer.retractation_prompt' | t }}
+      <a href="{{ pages[section.settings.withdrawal_page].url }}">{{ 'retractation.trigger' | t }}</a>
+    </p>
+    {%- endif -%}
+
+    <div class="ftr__cols">
+      {%- assign shop_menu = section.settings.menu_shop | default: linklists['footer-shop'] -%}
+      {%- if shop_menu != blank -%}
+        <div class="lbl">
+          <h2 class="lbl ftr__col-h">{{ 'footer.shop_heading' | t }}</h2>
+          <ul>
+            {%- for link in shop_menu.links -%}
+              <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endif -%}
+      {%- assign help_menu = section.settings.menu_help | default: linklists['footer-help'] -%}
+      {%- if help_menu != blank -%}
+        <div class="lbl">
+          <h2 class="lbl ftr__col-h">{{ 'footer.help_heading' | t }}</h2>
+          <ul>
+            {%- for link in help_menu.links -%}
+              <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endif -%}
+      {%- assign legal_menu = section.settings.menu_legal | default: linklists['footer-legal'] -%}
+      {%- if legal_menu != blank -%}
+        <div class="lbl ftr__col--legal">
+          <h2 class="lbl ftr__col-h">{{ 'footer.legal_heading' | t }}</h2>
+          <ul>
+            {%- for link in legal_menu.links -%}
+              <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
+            {%- endfor -%}
+            {%- comment -%} Cookie handling is covered in the Privacy Policy
+            (browser settings) — no separate cookie-settings link needed here. {%- endcomment -%}
+          </ul>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Business information — the fourth column. A GMC reviewer
+      and a first-time shopper both look for the registered seller and both
+      addresses in the footer; the Legal Notice page must not be the only
+      place they exist. {%- endcomment -%}
+      <div class="lbl">
+        <h2 class="lbl ftr__col-h">{{ 'footer.business.heading' | t }}</h2>
+        <address class="ftr__biz lbl-sm">
+          {%- comment %} Every line renders only when its setting is filled. {% endcomment -%}
+          {%- if settings.biz_name != blank -%}
+            <p>
+              <span class="ftr__biz-k">{{ 'footer.business.store_label' | t }}</span> {{ settings.biz_name | escape }}
+              {%- if settings.biz_vat != blank -%}<br><span class="ftr__biz-k">{{ 'footer.business.vat_label' | t }}</span> {{ settings.biz_vat | escape }}{%- endif -%}
+            </p>
+          {%- endif -%}
+          {%- if settings.biz_address1 != blank -%}
+            <p>
+              <span class="ftr__biz-k">{{ 'footer.business.company_address_label' | t }}</span><br>
+              {{ settings.biz_address1 | escape }}<br>
+              {{ settings.biz_city | escape }}, {{ settings.biz_country | escape }}
+            </p>
+          {%- endif -%}
+          {%- if settings.biz_wh_line1 != blank -%}
+            <p>
+              <span class="ftr__biz-k">{{ 'footer.business.warehouse_address_label' | t }}</span><br>
+              {{ settings.biz_wh_line1 | escape }}<br>
+              {{ settings.biz_wh_line2 | escape }}<br>
+              {{ settings.biz_wh_country | escape }}
+            </p>
+          {%- endif -%}
+          {%- if settings.biz_returns_note != blank -%}
+            <p><span class="ftr__biz-k">{{ 'footer.business.returns_label' | t }}</span> {{ settings.biz_returns_note | escape }}</p>
+          {%- endif -%}
+          {%- if settings.biz_email != blank or settings.biz_phone != blank -%}
+            <p>
+              {%- if settings.biz_email != blank -%}
+                <span class="ftr__biz-k">{{ 'footer.business.email_label' | t }}</span> <a href="mailto:{{ settings.biz_email }}">{{ settings.biz_email | escape }}</a>
+              {%- endif -%}
+              {%- if settings.biz_phone != blank -%}
+                {%- if settings.biz_email != blank -%}<br>{%- endif -%}
+                <span class="ftr__biz-k">{{ 'footer.business.phone_label' | t }}</span> <a href="tel:{{ tel }}">{{ settings.biz_phone | escape }}</a>
+              {%- endif -%}
+            </p>
+          {%- endif -%}
+          {%- if section.settings.response_note != blank -%}
+            <p>{{ section.settings.response_note | escape }}</p>
+          {%- endif -%}
+          {%- if settings.biz_hours != blank -%}
+            <p>
+              <span class="ftr__biz-k">{{ 'footer.business.hours_label' | t }}</span><br>
+              {{ settings.biz_hours | escape }}<br>
+              {{ settings.biz_hours_weekend | escape }}
+            </p>
+          {%- endif -%}
+        </address>
+      </div>
+    </div>
+
+    {%- comment -%} Country/market selector: gives shoppers a way to switch
+    market manually when the storefront redirects by default. Styled
+    <details> panel, never a native <select> (theme rule). Renders only when
+    more than one country is actually available. {%- endcomment -%}
+    {%- if localization.available_countries.size > 1 -%}
+      <div class="ftr__loc">
+        {%- form 'localization' -%}
+          <details class="ftr-loc">
+            <summary class="ftr-loc__current lbl-sm">
+              {{ localization.country.name }} ({{ localization.country.currency.iso_code }})
+              <span class="acc__sign" aria-hidden="true"></span>
+            </summary>
+            <div class="ftr-loc__panel">
+              {%- for country in localization.available_countries -%}
+                <button
+                  type="submit"
+                  class="ftr-loc__option lbl-sm"
+                  name="country_code"
+                  value="{{ country.iso_code }}"
+                  {% if country.iso_code == localization.country.iso_code %}aria-current="true"{% endif %}
+                >{{ country.name }} ({{ country.currency.iso_code }})</button>
+              {%- endfor -%}
+            </div>
+          </details>
+        {%- endform -%}
+      </div>
+    {%- endif -%}
+
+    <div class="ftr__bottom lbl-sm mute bt">
+      <span class="ftr__copy">
+        &copy; {{ 'now' | date: '%Y' }} {{ shop.name }}. {{ 'footer.copyright.rights' | t }}
+        {%- if section.settings.social_instagram != blank -%}
+          <a class="ftr__social" href="{{ section.settings.social_instagram }}" target="_blank" rel="noopener" aria-label="{{ shop.name | escape }} on Instagram">
+            {% render 'icon', name: 'instagram', size: 18 %}
+          </a>
+        {%- endif -%}
+      </span>
+      <div class="ftr__pay" role="img" aria-label="{{ 'general.accepted_payment_methods' | t }}">
+        {%- for type in shop.enabled_payment_types -%}
+          {{ type | payment_type_svg_tag }}
+        {%- endfor -%}
+      </div>
+      <a class="ftr__top tlink" href="#main">{{ 'footer.back_to_top' | t }}</a>
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Footer",
+  "settings": [
+    { "type": "header", "content": "Newsletter" },
+    { "type": "text", "id": "nl_success", "label": "Success message", "default": "You're on the list. New pieces land in your inbox first." },
+    { "type": "header", "content": "Link lists" },
+    { "type": "link_list", "id": "menu_shop", "label": "Shop menu" },
+    { "type": "link_list", "id": "menu_help", "label": "Help menu" },
+    { "type": "link_list", "id": "menu_legal", "label": "Legal menu" },
+    { "type": "header", "content": "Business information" },
+    { "type": "text", "id": "response_note", "label": "Response-time note", "default": "We aim to respond within 24–48 hours.", "info": "Everything else in this column comes from Theme settings → Business." },
+    { "type": "text", "id": "social_instagram", "label": "Instagram URL (empty = hidden)" },
+    { "type": "page", "id": "withdrawal_page", "label": "Right-of-withdrawal page (optional)", "info": "When set, a one-line withdrawal link renders above the footer columns." }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,28 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "type": "footer",
+  "name": "Footer group",
+  "sections": {
+    "footer": {
+      "type": "footer",
+      "settings": {
+        "menu_shop": "footer-shop",
+        "menu_help": "footer-help",
+        "menu_legal": "footer-legal",
+        "response_note": "We aim to reply within 24-48 hours.",
+        "nl_success": "You're on the list. New styles land in your inbox first."
+      }
+    }
+  },
+  "order": [
+    "footer"
+  ]
+}

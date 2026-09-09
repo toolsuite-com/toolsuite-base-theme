@@ -1,0 +1,54 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "current": {
+    "buy_color": "ink",
+    "biz_vat": "",
+    "biz_country": "",
+    "biz_wh_line1": "",
+    "biz_wh_line2": "",
+    "biz_wh_country": "",
+    "biz_phone": "",
+    "biz_hours": "",
+    "biz_hours_weekend": "",
+    "biz_returns_note": "Please do not send items back without prior approval. Contact support first to receive an RMA number and the return address.",
+    "ship_free_line": "Free shipping on all orders",
+    "ship_processing": "Ships within 1-3 business days",
+    "ga4_id": "",
+    "ads_id": "",
+    "upsell_1_handle": "",
+    "upsell_2_handle": "",
+    "upsell_preselect": false,
+    "cart_countdown_min": 0,
+    "rating_value": "4.7",
+    "rating_count": "1,284",
+    "low_stock_line": "",
+    "trust_returns_line": "Easy 30-day returns",
+    "guarantee_line": "30-day money-back guarantee",
+    "fit_scale_enabled": true,
+    "scarcity_enabled": false,
+    "viewers_enabled": false,
+    "rating_enabled": false,
+    "cart_express_enabled": false,
+    "qty_tiers_enabled": false,
+    "qty_tiers": "2:10,3:15,4:20,5:25",
+    "sections": {
+      "cart-drawer-content": {
+        "type": "cart-drawer-content",
+        "settings": {
+          "cross_heading": "You may also like",
+          "empty_collection": "",
+          "empty_line": "Your bag is empty — the edit is waiting."
+        }
+      }
+    },
+    "content_for_index": []
+  }
+}

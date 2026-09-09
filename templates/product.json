@@ -1,0 +1,123 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "settings": {
+        "benefit_fallback": "",
+        "complete_look_collections": "womens-dresses,womens-knitwear,womens-coats-jackets,womens-tops-blouses",
+        "enable_size_recommendation": true,
+        "size_unit_note": "All measurements are garment measurements in cm, measured flat. Variations of 1-2 cm may occur.",
+        "care_default": "<p>Machine wash cold on a gentle cycle, inside out. Do not bleach. Line dry or dry flat. Cool iron if needed.</p>",
+        "size_chart_default": "<table>\n<thead><tr>\n<th>Size (US)</th>\n<th>Size (UK)</th>\n<th>Bust</th>\n<th>Waist</th>\n<th>Hip</th>\n</tr></thead>\n<tbody>\n<tr>\n<td>2</td>\n<td>6</td>\n<td>80</td>\n<td>64</td>\n<td>90</td>\n</tr>\n<tr>\n<td>4</td>\n<td>8</td>\n<td>85</td>\n<td>68</td>\n<td>90</td>\n</tr>\n<tr>\n<td>6</td>\n<td>10</td>\n<td>90</td>\n<td>72</td>\n<td>90</td>\n</tr>\n<tr>\n<td>8</td>\n<td>12</td>\n<td>95</td>\n<td>76</td>\n<td>90</td>\n</tr>\n<tr>\n<td>10</td>\n<td>14</td>\n<td>100</td>\n<td>80</td>\n<td>109</td>\n</tr>\n</tbody>\n</table>"
+      }
+    },
+    "reviews": {
+      "type": "customer-reviews",
+      "blocks": {},
+      "block_order": [],
+      "settings": {
+        "heading": "What our customers say",
+        "source_note": ""
+      },
+      "disabled": true
+    },
+    "related": {
+      "type": "pdp-related",
+      "settings": {
+        "heading": "You may also like",
+        "offer_heading": "Add another piece and save up to [pct]%"
+      }
+    },
+    "story": {
+      "type": "brand-story",
+      "settings": {
+        "image": "",
+        "image_product": "",
+        "asset_image": "",
+        "eyebrow": "Our approach",
+        "heading": "The label, considered.",
+        "text": "<p>BRAND is an edit, not a catalogue. A piece earns its place when you put it on without thinking and it still looks intentional at the end of a long day: colours that live well together, shapes that layer, nothing waiting for an occasion.</p><p>We would rather carry fewer pieces and stand behind each one: honest photos, sizes you can check before you buy, and prices we can explain. If something is not right, write to us and a real person answers.</p>",
+        "link_label": "About us",
+        "page": "",
+        "link": "/pages/about-us"
+      }
+    },
+    "pdpproof": {
+      "type": "proof-home",
+      "settings": {
+        "asset_image": "",
+        "voice": "Chosen with care. Worn on repeat.",
+        "usp_1": "Free shipping",
+        "usp_2": "Ships within 1-3 business days",
+        "usp_3": "Secure checkout"
+      }
+    },
+    "pdpfaq": {
+      "type": "faq-home",
+      "blocks": {
+        "q1": {
+          "type": "qa",
+          "settings": {
+            "question": "How long does delivery take?",
+            "answer": "<p>Your order is prepared within 1-3 business days (Mon-Fri) and ships with free shipping. Once shipped, delivery takes 8-12 days.</p>"
+          }
+        },
+        "q2": {
+          "type": "qa",
+          "settings": {
+            "question": "What is your return policy?",
+            "answer": "<p>You have 30 days from delivery to return an unworn item in its original condition. Write to <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> first to receive a return authorization. There are no restocking fees.</p>"
+          }
+        },
+        "q3": {
+          "type": "qa",
+          "settings": {
+            "question": "How do I find my size?",
+            "answer": "<p>Every product page has a size guide with the measurements for that exact style, since fit can vary between pieces. Check the guide before ordering, and write to <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> if you are between sizes and would like help choosing.</p>"
+          }
+        },
+        "q4": {
+          "type": "qa",
+          "settings": {
+            "question": "Where does my order ship from?",
+            "answer": "<p>We work with a small selection of international logistics partners, and your order ships directly from their warehouses. That is how we keep prices fair without extra handling markups. Your order still arrives within the processing and delivery window above.</p>"
+          }
+        },
+        "q5": {
+          "type": "qa",
+          "settings": {
+            "question": "How do I track my order?",
+            "answer": "<p>As soon as your order ships, we email you a tracking number and a link so you can follow it the whole way. You can also write to <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> with your order number at any time for a status update.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "q5"
+      ],
+      "settings": {
+        "heading": "Good to know"
+      }
+    }
+  },
+  "order": [
+    "main",
+    "reviews",
+    "related",
+    "story",
+    "pdpproof",
+    "pdpfaq"
+  ]
+}

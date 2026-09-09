@@ -1,0 +1,102 @@
+{%- comment -%}
+  Highlight piece.
+
+  This section shows the REAL product's own lifestyle photograph, big and
+  dominant, with one tidy text block beside it: the full product title, pipe
+  included (Prata), price, a short line, and the link to the PDP — never a
+  bare name/price over an atmosphere image with no visible garment.
+
+  The product is a section setting and stays merchant-editable. The shipped
+  default is empty — the merchant picks a product per store, like the hero
+  caption.
+
+  Image: the product's own featured image by default (so a re-shoot lands here
+  without a re-upload); the image_picker is the override.
+{%- endcomment -%}
+{%- liquid
+  assign p = section.settings.product
+  assign img = section.settings.image
+  if p != blank and p.featured_image != blank and section.settings.use_product_image
+    assign img = p.featured_image
+  endif
+  assign name = p.title
+  if name == blank
+    assign name = section.settings.fallback_name
+    unless request.locale.primary
+      assign name = 'home.highlight.fallback_name' | t
+    endunless
+  endif
+  assign descriptor = ''
+  assign url = p.url | default: section.settings.link
+-%}
+<section class="sec--cream home-hl reveal">
+  <div class="wrap home-hl__in">
+    {%- if url != blank -%}<a class="home-hl__art" href="{{ url }}" aria-label="{{ name | escape }}">{%- else -%}<div class="home-hl__art">{%- endif -%}
+      {%- if img != blank -%}
+        <img
+          src="{{ img | image_url: width: 760 }}"
+          srcset="{{ img | image_url: width: 480 }} 480w, {{ img | image_url: width: 760 }} 760w, {{ img | image_url: width: 1100 }} 1100w"
+          sizes="(max-width: 899px) 100vw, 56vw"
+          width="{{ img.width }}" height="{{ img.height }}"
+          alt="{{ img.alt | default: name | escape }}" loading="lazy" decoding="async">
+      {%- else -%}
+        {{ 'product-1' | placeholder_svg_tag }}
+      {%- endif -%}
+    {%- if url != blank -%}</a>{%- else -%}</div>{%- endif -%}
+
+    <div class="home-hl__body">
+      {%- liquid
+        assign hl_eyebrow = section.settings.eyebrow
+        assign hl_blurb = section.settings.blurb
+        assign hl_cta = section.settings.cta_label
+        unless request.locale.primary
+          assign hl_eyebrow = 'home.highlight.eyebrow' | t
+          assign hl_blurb = 'home.highlight.blurb' | t
+          assign hl_cta = 'home.highlight.cta_label' | t
+        endunless
+      -%}
+      {%- if hl_eyebrow != blank -%}
+        <p class="lbl-sm mute">{{ hl_eyebrow | escape }}</p>
+      {%- endif -%}
+      <h2 class="dl">{{ name | escape }}</h2>
+      <div class="home-hl__meta lbl">
+        {%- if descriptor != blank -%}<span class="mute">{{ descriptor | escape }}</span>{%- endif -%}
+        {%- if p != blank -%}<span>{{ p.price | money_without_trailing_zeros }}</span>{%- endif -%}
+      </div>
+      {%- if hl_blurb != blank -%}
+        <p class="prose home-hl__say">{{ hl_blurb | escape }}</p>
+      {%- endif -%}
+      {%- if url != blank -%}
+        <a class="tlink" href="{{ url }}">{{ hl_cta | escape }}</a>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Highlight piece",
+  "settings": [
+    { "type": "product", "id": "product", "label": "Product", "info": "Name, descriptor, price, image and link all come from it. Provisional until the merchant confirms." },
+    { "type": "checkbox", "id": "use_product_image", "label": "Use the product's own image", "default": true, "info": "On: the product's first (lifestyle) photograph. Off: the image below." },
+    { "type": "image_picker", "id": "image", "label": "Image override" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "New this week" },
+    { "type": "text", "id": "blurb", "label": "Short line", "info": "Two sentences at most. No fibre claims, no model measurements." },
+    { "type": "text", "id": "fallback_name", "label": "Name fallback", "default": "The piece that carries the week", "info": "Shown only when no product is set." },
+    { "type": "url", "id": "link", "label": "Link fallback", "info": "Used only when no product is set." },
+    { "type": "text", "id": "cta_label", "label": "Link label", "default": "Shop the piece", "info": "Names the action. Not \"See the price\" — the price is printed right next to it." }
+  ],
+  "presets": [
+    {
+      "name": "Highlight piece",
+      "settings": {
+        "product": "",
+        "use_product_image": true,
+        "eyebrow": "New this week",
+        "blurb": "One piece worth leading with this week — set it here.",
+        "cta_label": "Shop the piece"
+      }
+    }
+  ]
+}
+{% endschema %}

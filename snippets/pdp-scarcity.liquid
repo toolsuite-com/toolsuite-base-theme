@@ -1,0 +1,30 @@
+{%- comment -%}
+  Scarcity line, VARIED PER PRODUCT: the same red line on every product reads
+  as fake urgency — a trust and misrepresentation risk.
+
+  Deterministic split on product.id % 10, so a product always shows the same
+  state and roughly:
+    0–2  (~30%)  red    settings.low_stock_line ("Almost sold out …")
+    3–5  (~30%)  amber  "Selling fast — stock is limited"
+    6–9  (~40%)  green  "In stock and ready to ship"
+
+  theme.js mirrors EXACTLY this bucket rule in S.scarcityFor() for the quick
+  view and the drawer mini-page — change one, change both. settings.
+  low_stock_line stays the global off-switch: empty = no line anywhere.
+{%- endcomment -%}
+{%- comment %} id-modulo pseudo-scarcity can read as fake urgency if enabled without
+real inventory backing it, which is a trust and compliance risk in some jurisdictions.
+settings.scarcity_enabled ships OFF with a warning label so each store can configure
+it deliberately. The rule stands: enable only with real inventory gating. {% endcomment -%}
+{%- if settings.scarcity_enabled -%}
+{%- if settings.low_stock_line != blank -%}
+  {%- assign sc_bucket = product.id | modulo: 10 -%}
+  {%- if sc_bucket <= 2 -%}
+    <p class="pdp-low-stock stmt-sm"><span class="pdp-low-stock__pulse" aria-hidden="true"></span>{{ settings.low_stock_line | escape }}</p>
+  {%- elsif sc_bucket <= 5 -%}
+    <p class="pdp-low-stock pdp-low-stock--fast stmt-sm"><span class="pdp-low-stock__pulse" aria-hidden="true"></span>{{ 'product.scarcity.fast' | t }}</p>
+  {%- else -%}
+    <p class="pdp-low-stock pdp-low-stock--stock stmt-sm"><span class="pdp-low-stock__pulse" aria-hidden="true"></span>{{ 'product.scarcity.stock' | t }}</p>
+  {%- endif -%}
+{%- endif -%}
+{%- endif -%}

@@ -1,0 +1,11 @@
+{%- comment -%}
+  Brand lockup — image wordmark. A generated, transparent-background PNG per
+  store, uploaded as the theme asset `brand-logo.png`. An ink-dark PNG works
+  on every render site (header, password, footer) — the footer band is cream,
+  not dark, so no invert filter is needed anywhere.
+  Sizing rides --logo-size via a .82em factor so every caller keeps a
+  consistent visual scale for the wordmark.
+{%- endcomment -%}
+<span class="brand__row">
+  <img class="brand__mark brand__mark--img" src="{{ 'brand-logo.png' | asset_url }}" alt="{{ shop.name | escape }}" onerror="var s=document.createElement('span');s.className='brand__mark brand__mark--text';s.textContent=this.alt;s.style.cssText='font:500 22px/1 var(--font-d,serif);letter-spacing:.02em;height:auto';this.replaceWith(s)" style="display:block; height: calc(var(--logo-size, 28px) * .82); width: auto;" width="1221" height="513" loading="eager" decoding="async">
+</span>

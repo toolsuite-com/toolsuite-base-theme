@@ -1,0 +1,9 @@
+{%- comment -%}
+  Display shell only. The deadline lives in sessionStorage because the drawer
+  inner is replaced after every mutation; cart-extras.js rehydrates this node.
+{%- endcomment -%}
+{%- if settings.cart_countdown_min > 0 and cart.item_count > 0 -%}
+  <p class="cart-countdown lbl" data-cart-countdown data-cart-countdown-min="{{ settings.cart_countdown_min }}" role="timer">
+    {{ 'cart.countdown.reserved' | t }} <strong data-cart-countdown-time>--:--</strong>
+  </p>
+{%- endif -%}

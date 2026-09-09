@@ -1,0 +1,190 @@
+{%- comment -%}
+  Cart page fallback. It shares the drawer's line controls, price arithmetic,
+  add-on toggles, trust facts and secure checkout wording. theme.js replaces
+  [data-cart-page] after every queued mutation.
+{%- endcomment -%}
+<section class="sec--tight">
+  <div class="wrap" data-cart-page data-cart-section="{{ section.id }}">
+    <div class="page-head">
+      <h1 class="dl">{{ 'cart.title' | t }}{% if cart.item_count > 0 %} ({{ cart.item_count }}){% endif %}</h1>
+    </div>
+
+    {% render 'qty-tier-bar' %}
+
+    {%- if cart.item_count > 0 -%}
+      <div class="cart-page">
+        <form id="CartPageForm" action="{{ routes.cart_url }}" method="post" novalidate>
+          {%- comment -%} TWO PASSES, same as the drawer: garments first,
+          add-ons after them. Cart order alone put the add-ons between
+          products bought before and after them. {%- endcomment -%}
+          {%- for pass in (1..2) -%}
+          {%- for item in cart.items -%}
+            {%- assign is_addon = false -%}
+            {%- if item.product.handle == settings.upsell_1_handle or item.product.handle == settings.upsell_2_handle -%}
+              {%- assign is_addon = true -%}
+            {%- endif -%}
+            {%- if pass == 1 and is_addon -%}{%- continue -%}{%- endif -%}
+            {%- unless pass == 1 or is_addon -%}{%- continue -%}{%- endunless -%}
+            {%- assign has_variant_control = false -%}
+            {%- for option in item.product.options_with_values -%}
+              {%- if option.values.size > 1 -%}{%- assign has_variant_control = true -%}{%- endif -%}
+            {%- endfor -%}
+            <article
+              class="cart-line lbl{% if is_addon %} cart-line--addon{% endif %}"
+              data-cart-line
+              data-product-handle="{{ item.product.handle | escape }}"
+              data-current-options="{{ item.variant.options | json | escape }}"
+            >
+              {%- if item.image -%}
+                <a class="cart-line__media" href="{{ item.url }}" tabindex="-1" aria-hidden="true"><img src="{{ item.image | image_url: width: 240 }}" width="76" height="101" alt="" loading="lazy"></a>
+              {%- else -%}
+                <div class="cart-line__ph" aria-hidden="true"></div>
+              {%- endif -%}
+              <div class="cart-line__body">
+                <a class="cart-line__title" href="{{ item.url }}">{{ item.product.title | escape }}</a>
+                {%- if is_addon -%}<span class="cart-line__kind lbl-sm mute">{{ 'cart.line.addon_badge' | t }}</span>{%- endif -%}
+                {%- unless has_variant_control or item.variant.title contains 'Default' -%}<div class="cart-line__variant">{{ item.variant.title | escape }}</div>{%- endunless -%}
+                <div class="cart-line__control">
+                  {%- for option in item.product.options_with_values -%}
+                    {%- if option.values.size > 1 -%}
+                      {%- assign item_option_index = forloop.index0 -%}
+                      {%- comment -%} option NAMES are English base data — same
+                      locale mapping as the PDP {%- endcomment -%}
+                      {%- assign optname_l = option.name | downcase -%}
+                      {%- if optname_l == 'color' or optname_l == 'colour' -%}
+                        {%- assign opt_label = 'product.option_color' | t -%}
+                      {%- elsif optname_l contains 'size' -%}
+                        {%- assign opt_label = 'product.option_size' | t -%}
+                      {%- else -%}
+                        {%- assign opt_label = option.name -%}
+                      {%- endif -%}
+                      <label class="cart-line__option">
+                        <span class="visually-hidden">{{ opt_label | escape }}</span>
+                        <select data-cart-variant-option data-option-index="{{ forloop.index0 }}" data-old-variant-id="{{ item.variant_id }}" data-old-quantity="{{ item.quantity }}" aria-label="{{ 'cart.line.change_option_aria' | t: option: opt_label, title: item.product.title }}">
+                          {%- for value in option.values -%}<option value="{{ value | escape }}"{% if item.variant.options[item_option_index] == value %} selected{% endif %}>{{ value | escape }}</option>{%- endfor -%}
+                        </select>
+                      </label>
+                    {%- endif -%}
+                  {%- endfor -%}
+                  <div class="cart-line__qty" aria-label="{{ 'cart.line.quantity_aria' | t }}">
+                    <button type="button" class="cart-line__trash" data-qty-change="0" data-variant-id="{{ item.variant_id }}" {% if is_addon %}data-addon-decline="{{ item.variant_id }}"{% endif %} aria-label="{{ 'cart.line.remove_aria' | t: title: item.product.title }}"><svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M6.5 5V3.8h7V5M4 5.5h12M6 7.5l.6 9h6.8l.6-9M8.5 8.5v6M11.5 8.5v6"/></svg></button>
+                    <button type="button" data-qty-change="{{ item.quantity | minus: 1 }}" data-variant-id="{{ item.variant_id }}" {% if is_addon and item.quantity == 1 %}data-addon-decline="{{ item.variant_id }}"{% endif %} aria-label="{{ 'cart.line.decrease_aria' | t }}">&minus;</button>
+                    <span aria-label="{{ 'cart.line.qty_value_aria' | t: qty: item.quantity }}">{{ item.quantity }}</span>
+                    <button type="button" data-qty-change="{{ item.quantity | plus: 1 }}" data-variant-id="{{ item.variant_id }}" aria-label="{{ 'cart.line.increase_aria' | t }}">+</button>
+                  </div>
+                </div>
+              </div>
+              <div class="cart-line__right">
+                {%- if item.variant.compare_at_price > item.variant.price -%}{%- assign line_compare_price = item.variant.compare_at_price | times: item.quantity -%}{%- else -%}{%- assign line_compare_price = item.original_line_price -%}{%- endif -%}
+                {%- assign line_saving = line_compare_price | minus: item.final_line_price -%}
+                <div class="cart-line__price">{% if line_saving > 0 %}<s class="cart-compare">{{ line_compare_price | money_without_trailing_zeros }}</s>{% endif %}{{ item.final_line_price | money_without_trailing_zeros }}</div>
+                {%- if line_saving > 0 -%}{%- assign _save_fmt = line_saving | money_without_trailing_zeros -%}<span class="cart-line__saving lbl-sm">{{ 'cart.line.saving' | t: amount: _save_fmt }}</span>{%- endif -%}
+              </div>
+            </article>
+          {%- endfor -%}
+          {%- endfor -%}
+        </form>
+
+        <aside class="cart-page__summary lbl" aria-label="{{ 'cart.summary.order_summary_aria' | t }}">
+          {%- assign compare_total = 0 -%}
+          {%- for item in cart.items -%}
+            {%- if item.variant.compare_at_price > item.variant.price -%}{%- assign line_compare = item.variant.compare_at_price | times: item.quantity -%}{%- else -%}{%- assign line_compare = item.original_line_price -%}{%- endif -%}
+            {%- assign compare_total = compare_total | plus: line_compare -%}
+          {%- endfor -%}
+          {%- assign cart_savings = compare_total | minus: cart.total_price -%}
+          {%- assign anchor_savings = compare_total | minus: cart.items_subtotal_price -%}
+          <div class="cart-price-summary" aria-label="{{ 'cart.summary.price_summary_aria' | t }}">
+            {%- comment -%} The three-line form only says anything when there IS a
+            saving. On a bag of full-price pieces it would print "Original $196.80 /
+            You save $0 / Total $196.80" — three rows restating one number, with a $0
+            sitting where the good news belongs. Below the threshold it collapses to
+            the total alone. {%- endcomment -%}
+            {%- if cart_savings > 0 -%}
+              <div class="cart-sum"><span>{{ 'cart.summary.original' | t }}</span><span><s class="cart-compare">{{ compare_total | money_without_trailing_zeros }}</s></span></div>
+              <div class="cart-sum cart-sum--saving"><span>{{ 'cart.summary.you_save' | t }}</span><span>{{ cart_savings | money_without_trailing_zeros }}</span></div>
+            {%- endif -%}
+            <div class="cart-sum cart-sum--total"><span>{{ 'cart.page.estimated_total' | t }}</span><span>{{ cart.total_price | money_without_trailing_zeros }}</span></div>
+          </div>
+          {%- if cart_savings > 0 -%}
+            <details class="cart-breakdown">
+              <summary><span>{{ 'cart.summary.see_savings' | t }}</span><span aria-hidden="true">+</span></summary>
+              <div class="cart-breakdown__body">
+                <div class="cart-sum cart-sum--soft"><span>{{ 'cart.summary.original_price' | t }}</span><span>{{ compare_total | money_without_trailing_zeros }}</span></div>
+                {%- if anchor_savings > 0 -%}<div class="cart-sum cart-sum--soft"><span>{{ 'cart.summary.markdowns' | t }}</span><span>&minus;{{ anchor_savings | money_without_trailing_zeros }}</span></div>{%- endif -%}
+                {%- for discount in cart.cart_level_discount_applications -%}<div class="cart-sum cart-sum--soft"><span>{{ discount.title | escape }}</span><span>&minus;{{ discount.total_allocated_amount | money_without_trailing_zeros }}</span></div>{%- endfor -%}
+              </div>
+            </details>
+          {%- endif -%}
+          {% render 'cart-upsells' %}
+          <button type="submit" form="CartPageForm" name="checkout" data-no-instant class="bar cart-checkout" onclick="document.dispatchEvent(new CustomEvent('theme:begin_checkout'))">{{ 'cart.checkout.secure' | t }}</button>
+          {%- if settings.trust_returns_line != blank or settings.ship_free_line != blank or settings.guarantee_line != blank -%}
+            <p class="cart-trust-line lbl-sm">
+              {%- if settings.trust_returns_line != blank -%}<span>{{ settings.trust_returns_line | escape }}</span>{%- endif -%}
+              {%- if settings.ship_free_line != blank -%}<span>{{ settings.ship_free_line | escape }}</span>{%- endif -%}
+              {%- if settings.guarantee_line != blank -%}<span>{{ settings.guarantee_line | escape }}</span>{%- endif -%}
+            </p>
+          {%- endif -%}
+          <div class="cart-payment-icons" aria-label="{{ 'general.accepted_payment_methods' | t }}">{%- for type in shop.enabled_payment_types -%}{{ type | payment_type_svg_tag }}{%- endfor -%}</div>
+          {%- comment %} disabled: unverified social proof {% endcomment -%}
+          {%- if false and settings.rating_value != blank and settings.rating_count != blank -%}<p class="cart-rating lbl-sm" aria-label="Rated {{ settings.rating_value }} out of 5 from {{ settings.rating_count }} reviews">{%- render 'stars', value: settings.rating_value, size: 13 -%} {{ settings.rating_value }} / 5 &middot; {{ settings.rating_count }} reviews</p>{%- endif -%}
+          {%- if additional_checkout_buttons -%}<div class="additional-checkout-buttons">{{ content_for_additional_checkout_buttons }}</div>{%- endif -%}
+          <p class="cart-tax lbl-sm mute">{{ 'cart.page.tax_note' | t }}</p>
+        </aside>
+      </div>
+    {%- else -%}
+      {%- comment -%} Same call as the drawer: the six category tiles pointed
+      at /collections/women, /collections/sale, /pages/track-order and
+      friends — handles a store may not have, so some could 404. One button
+      to a real collection; the products themselves come from the cross-sell
+      row below, which renders on an empty cart too. {%- endcomment -%}
+      {%- assign empty_collection = section.settings.empty_collection -%}
+      {%- if empty_collection == blank or empty_collection.products_count == 0 -%}
+        {%- assign empty_collection = collections['new-in'] -%}
+      {%- endif -%}
+      <div class="cart-empty">
+        <h2 class="dl">{{ 'cart.empty.heading' | t }}</h2>
+        {%- assign _empty_line = section.settings.empty_line -%}{%- if _empty_line == blank -%}{%- assign _empty_line = 'cart.empty.subtext_fallback' | t -%}{%- endif -%}<p class="prose mute">{{ _empty_line }}</p>
+        {%- if empty_collection != blank -%}
+          <a class="bar" href="{{ empty_collection.url }}">{{ 'cart.empty.shop_button' | t: title: empty_collection.title }}</a>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- liquid
+      assign cross = section.settings.cross_collection | default: settings.cart_cross_sell
+      assign in_cart = cart.items | map: 'product_id'
+    -%}
+    {%- if cross and cross.products.size > 0 -%}
+      {%- assign shown = 0 -%}
+      {%- capture cross_cards -%}
+        {%- for p in cross.products limit: 12 -%}
+          {%- unless in_cart contains p.id or p.available == false or shown >= 4 -%}
+            {%- assign shown = shown | plus: 1 -%}{% render 'product-card', product: p %}
+          {%- endunless -%}
+        {%- endfor -%}
+      {%- endcapture -%}
+      {%- if shown > 0 -%}
+        {%- comment -%} Same blank-default → locale-key fallback the drawer
+        already uses for this heading (snippets/cart-cross.liquid and this
+        section's own empty-bag branch below). A raw-English schema default
+        here never persists into settings_data.json for this template
+        section, so it stays invisible to the Translations API and always
+        renders EN on every storefront language. {%- endcomment -%}
+        {%- assign _cross_heading = section.settings.cross_heading -%}{%- if _cross_heading == blank -%}{%- assign _cross_heading = 'cart.cross.default_heading' | t -%}{%- endif -%}
+        <div class="cart-page__cross"><h2 class="dl">{{ _cross_heading | escape }}</h2><div class="grid-4">{{ cross_cards }}</div></div>
+      {%- endif -%}
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Cart page",
+  "settings": [
+    { "type": "collection", "id": "cross_collection", "label": "Cross-sell collection", "info": "Falls back to the store-wide cart cross-sell setting." },
+    { "type": "text", "id": "cross_heading", "label": "Cross-sell heading", "info": "Empty = theme default (translated per storefront language)." },
+    { "type": "collection", "id": "empty_collection", "label": "Empty bag: collection to send people to", "info": "Empty = New In." },
+    { "type": "text", "id": "empty_line", "label": "Empty bag: line under the headline", "info": "Empty = theme default (translated per storefront language)." }
+  ]
+}
+{% endschema %}

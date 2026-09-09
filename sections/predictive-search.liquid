@@ -1,0 +1,27 @@
+{%- comment -%}
+  Predictive results, fetched by theme.js (section_id=predictive-search) and
+  injected into .predictive__panel — theme.js copies the INNER HTML of
+  [data-predictive-results], so every row must stand on its own. Hairline list,
+  label system, no chrome.
+{%- endcomment -%}
+<div data-predictive-results>
+  {%- if predictive_search.performed -%}
+    {%- for product in predictive_search.resources.products -%}
+      <a href="{{ product.url }}">
+        {%- if product.featured_image -%}
+          <img src="{{ product.featured_image | image_url: width: 132 }}" width="44" height="59" alt="" loading="lazy">
+        {%- else -%}
+          <span></span>
+        {%- endif -%}
+        <span>
+          <span class="p-title">{{ product.title | escape }}</span><br>
+          <span class="p-price">{{ product.price | money_without_trailing_zeros }}</span>
+        </span>
+      </a>
+    {%- endfor -%}
+  {%- endif -%}
+</div>
+
+{% schema %}
+{ "name": "Predictive search", "settings": [] }
+{% endschema %}

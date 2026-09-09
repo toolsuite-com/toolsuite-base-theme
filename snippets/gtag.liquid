@@ -1,0 +1,50 @@
+{%- comment -%}
+  Native GA4 + Google Ads. Gated on settings.ga4_id — blank keeps the theme clean (no external request).
+  Purchase + Enhanced Conversions live in checkout Customer Events, not theme code.
+  Consent Mode v2 default-denied: pushed BEFORE gtag.js loads so Google's own tag respects the
+  visitor's choice from the first request. A consent-management app can call
+  gtag('consent','update', ...) on this same dataLayer when the visitor accepts/declines — this
+  default block has to run here because content_for_header (where such an app's own script tags
+  land) renders AFTER this snippet in layout/theme.liquid, too late to run before gtag.js. Global
+  default-denied (not region-scoped): when every configured market requires consent, a global
+  default is equivalent to a region-scoped one and simpler to maintain.
+{%- endcomment -%}
+{%- if settings.ga4_id != blank -%}
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied',
+    'wait_for_update': 500
+  });
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ settings.ads_id | default: settings.ga4_id }}"></script>
+<script>
+  gtag('js', new Date());
+  gtag('config', '{{ settings.ga4_id }}');
+  {% if settings.ads_id != blank %}gtag('config', '{{ settings.ads_id }}');{% endif %}
+  (function () {
+    var money = function (c) { return (c / 100).toFixed(2); };
+    document.addEventListener('theme:add_to_cart', function (e) {
+      var i = e.detail.item || {};
+      gtag('event', 'add_to_cart', { currency: '{{ cart.currency.iso_code }}', value: money(i.price || 0), items: [{ item_id: i.sku || i.id, item_name: i.product_title, item_variant: i.variant_title, price: money(i.price || 0), quantity: i.quantity || 1 }] });
+    });
+    document.addEventListener('theme:remove_from_cart', function () { gtag('event', 'remove_from_cart', {}); });
+    document.addEventListener('theme:view_item', function (e) {
+      var p = e.detail.product || {};
+      gtag('event', 'view_item', { currency: '{{ cart.currency.iso_code }}', value: money(p.price || 0), items: [{ item_id: p.id, item_name: p.title }] });
+    });
+    document.addEventListener('theme:view_item_list', function (e) { gtag('event', 'view_item_list', { item_list_name: (e.detail || {}).list || '' }); });
+    document.addEventListener('theme:search', function (e) { gtag('event', 'search', { search_term: (e.detail || {}).query || '' }); });
+    document.addEventListener('theme:variant_change', function () { gtag('event', 'select_item', {}); });
+    document.addEventListener('theme:404', function (e) { gtag('event', 'page_not_found', { page_path: (e.detail || {}).path || '' }); });
+    document.addEventListener('theme:begin_checkout', function () { gtag('event', 'begin_checkout', {}); });
+    document.addEventListener('theme:newsletter', function () { gtag('event', 'sign_up', { method: 'newsletter' }); });
+  })();
+</script>
+{%- else -%}
+<!-- GA4 / Google Ads: add the Measurement ID in Theme settings → Tracking to activate. -->
+{%- endif -%}

@@ -1,0 +1,115 @@
+{%- comment -%}
+  Quantity milestone display. The gate is deliberately load-bearing: this only
+  displays a milestone message and never applies a discount or mutates the
+  cart — a matching Shopify automatic discount must exist separately for the
+  offer to be real.
+{%- endcomment -%}
+{%- if settings.qty_tiers_enabled and settings.qty_tiers != blank -%}
+  {%- comment -%} THE ADD-ONS DO NOT COUNT: without correction, cart.item_count
+  counts every line, so one real garment plus two auto-selected add-ons would
+  read as three items and unlock a tier meant for real quantity purchases.
+  Same subtraction the upsell block already does for its own gate. NOTE this
+  corrects the DISPLAY only — a Shopify automatic discount with a minimum
+  quantity counts the add-ons too, and that has to be fixed in the discount
+  itself (scope it to a collection the add-ons are not in). {%- endcomment -%}
+  {%- assign qtb_count = cart.item_count -%}
+  {%- for qtb_line in cart.items -%}
+    {%- if qtb_line.product.handle == settings.upsell_1_handle or qtb_line.product.handle == settings.upsell_2_handle -%}
+      {%- assign qtb_count = qtb_count | minus: qtb_line.quantity -%}
+    {%- endif -%}
+  {%- endfor -%}
+  {%- assign qtb_tiers = settings.qty_tiers | remove: ' ' | split: ',' -%}
+  {%- assign qtb_current_pct = 0 -%}
+  {%- assign qtb_next_qty = 0 -%}
+  {%- assign qtb_next_pct = 0 -%}
+  {%- assign qtb_max_qty = 1 -%}
+  {%- assign qtb_max_pct = 0 -%}
+  {%- assign qtb_hit_count = 0 -%}
+  {%- for tier in qtb_tiers -%}
+    {%- assign qtb_parts = tier | split: ':' -%}
+    {%- assign qtb_qty = qtb_parts[0] | plus: 0 -%}
+    {%- assign qtb_pct = qtb_parts[1] | plus: 0 -%}
+    {%- if qtb_count >= qtb_qty -%}
+      {%- assign qtb_current_pct = qtb_pct -%}
+      {%- assign qtb_hit_count = qtb_hit_count | plus: 1 -%}
+    {%- endif -%}
+    {%- if qtb_next_qty == 0 and qtb_count < qtb_qty -%}
+      {%- assign qtb_next_qty = qtb_qty -%}
+      {%- assign qtb_next_pct = qtb_pct -%}
+    {%- endif -%}
+    {%- if qtb_qty > qtb_max_qty -%}
+      {%- assign qtb_max_qty = qtb_qty -%}
+      {%- assign qtb_max_pct = qtb_pct -%}
+    {%- endif -%}
+  {%- endfor -%}
+  {%- assign qtb_remaining = qtb_next_qty | minus: qtb_count -%}
+  {%- assign qtb_gap_count = qtb_tiers.size | minus: 1 -%}
+  {%- assign qtb_hit_gap = qtb_hit_count | minus: 1 -%}
+  {%- if qtb_hit_gap < 0 -%}{%- assign qtb_hit_gap = 0 -%}{%- endif -%}
+  {%- if qtb_gap_count > 0 -%}
+    {%- assign qtb_progress = qtb_hit_gap | times: 100 | divided_by: qtb_gap_count -%}
+  {%- else -%}
+    {%- assign qtb_progress = 100 -%}
+  {%- endif -%}
+
+  {%- comment -%} Every string below is routed through the theme's `| t`
+  translation (cart.qty_tier.* + the pre-existing promo.bundle_slide key,
+  which already had the exact "Buy N, get X% off" shape and is reused here
+  instead of adding a duplicate key), rather than hardcoded English, so it
+  renders correctly on any locale the storefront runs. {%- endcomment -%}
+  {%- if qtb_next_qty > 0 -%}
+    {%- assign qtb_offer_qty = qtb_next_qty -%}
+    {%- assign qtb_offer_pct = qtb_next_pct -%}
+  {%- else -%}
+    {%- assign qtb_offer_qty = qtb_max_qty -%}
+    {%- assign qtb_offer_pct = qtb_max_pct -%}
+  {%- endif -%}
+  {%- capture qtb_offer -%}{{ 'promo.bundle_slide' | t: qty: qtb_offer_qty, pct: qtb_offer_pct }}{%- endcapture -%}
+  {%- capture qtb_msg -%}
+    {%- if qtb_current_pct > 0 and qtb_next_qty > 0 -%}
+      {{ 'cart.qty_tier.more_unlocked' | t: count: qtb_remaining, pct: qtb_current_pct, next_pct: qtb_next_pct }}
+    {%- elsif qtb_current_pct > 0 -%}
+      {{ 'cart.qty_tier.top_unlocked' | t }}
+    {%- else -%}
+      {{ 'cart.qty_tier.unlock_first' | t: count: qtb_remaining }}
+    {%- endif -%}
+  {%- endcapture -%}
+
+  {%- comment -%} compact: the drawer's one-line form — the full rail ate too
+  much of the item region. Same data, no rail, no labels. /cart keeps the
+  full milestone display. {%- endcomment -%}
+  {%- if compact -%}
+  <div class="qty-tier-bar qty-tier-bar--compact" data-qty-tier-bar>
+    <p class="qty-tier-bar__line lbl-sm"><strong>{{ qtb_offer }}</strong><span class="mute">&nbsp;&middot;&nbsp;{{ qtb_msg }}</span></p>
+  </div>
+  {%- else -%}
+  {%- comment -%} NO text lines above the rail — only the progress bar. The
+  qtb_offer/qtb_msg captures above stay: the compact form still prints them, and
+  qtb_offer feeds the aria-label so the offer is still announced. {%- endcomment -%}
+  <div class="qty-tier-bar" data-qty-tier-bar role="img" aria-label="{{ qtb_offer | strip }} — {{ qtb_msg | strip }}" style="--qty-tier-columns: {{ qtb_tiers.size }}; --qty-tier-progress: {{ qtb_progress }}%;">
+    <div class="qty-tier-bar__labels qty-tier-bar__labels--above" aria-hidden="true">
+      {%- for tier in qtb_tiers -%}
+        {%- assign qtb_parts = tier | split: ':' -%}
+        {%- assign qtb_tier_qty = qtb_parts[0] | plus: 0 -%}
+        <span>{{ 'cart.qty_tier.items_count' | t: count: qtb_tier_qty }}</span>
+      {%- endfor -%}
+    </div>
+    <div class="qty-tier-bar__milestones" aria-hidden="true">
+      <div class="qty-tier-bar__rail"><span></span></div>
+      {%- for tier in qtb_tiers -%}
+        {%- assign qtb_parts = tier | split: ':' -%}
+        {%- assign qtb_qty = qtb_parts[0] | plus: 0 -%}
+        <span class="qty-tier-bar__marker{% if qtb_count >= qtb_qty %} is-hit{% endif %}">
+          <svg viewBox="0 0 16 16" focusable="false" aria-hidden="true"><path d="M2.5 7.2V3.5h3.7L13.5 10.8 8.3 16 1 8.7l1.5-1.5Zm2-1.7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/></svg>
+        </span>
+      {%- endfor -%}
+    </div>
+    <div class="qty-tier-bar__labels qty-tier-bar__labels--below" aria-hidden="true">
+      {%- for tier in qtb_tiers -%}
+        {%- assign qtb_parts = tier | split: ':' -%}
+        <span>{{ 'cart.qty_tier.pct_off' | t: pct: qtb_parts[1] }}</span>
+      {%- endfor -%}
+    </div>
+  </div>
+  {%- endif -%}
+{%- endif -%}

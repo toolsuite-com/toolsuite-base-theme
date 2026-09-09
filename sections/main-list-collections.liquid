@@ -1,0 +1,42 @@
+{%- comment -%}
+  Collection index (/collections): the category navigation IS the design
+  element, so this is a Display-L heading over giant Prata typo-links — the
+  same .typo-list vocabulary the homepage category block uses. No tiles, no
+  cards, no counts.
+
+  Empty collections are skipped (a shopper should never land on a dead PLP), and
+  handles listed in "Hidden handles" are dropped — useful when a collection is
+  deliberately out of scope for the current catalog (e.g. a category the store
+  doesn't sell) but still needs to exist store-wide for other reasons.
+{%- endcomment -%}
+{%- assign hidden = section.settings.exclude_handles | downcase | split: ',' -%}
+<section class="sec">
+  <div class="wrap center plp-head">
+    <h1 class="dl">{{ section.settings.heading | default: page_title | escape }}</h1>
+  </div>
+  <nav class="wrap typo-list" aria-label="{{ 'list_collections.aria' | t }}">
+    {%- for collection in collections -%}
+      {%- assign handle_test = collection.handle | prepend: ' ' | append: ' ' -%}
+      {%- assign skip = false -%}
+      {%- for h in hidden -%}
+        {%- assign needle = h | strip | prepend: ' ' | append: ' ' -%}
+        {%- if needle == handle_test -%}{%- assign skip = true -%}{%- endif -%}
+      {%- endfor -%}
+      {%- if skip == false and collection.products_count > 0 -%}
+        <a class="typo-list__link dxl" href="{{ collection.url }}">{{ collection.title | escape }}</a>
+      {%- endif -%}
+    {%- endfor -%}
+    <a class="typo-list__link dxl" href="{{ routes.all_products_collection_url }}">{{ section.settings.all_label | escape }}</a>
+  </nav>
+</section>
+
+{% schema %}
+{
+  "name": "Collections list",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Collections" },
+    { "type": "text", "id": "all_label", "label": "Shop-all link label", "default": "Shop all" },
+    { "type": "text", "id": "exclude_handles", "label": "Hidden handles", "info": "Comma-separated collection handles that never appear here." }
+  ]
+}
+{% endschema %}

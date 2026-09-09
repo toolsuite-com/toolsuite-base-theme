@@ -1,0 +1,45 @@
+{%- comment -%}
+  Bestsellers: section head in Prata, then THE card grid — 2 columns
+  on mobile, 4 on desktop, 2px gaps, edge to edge (.grid-4 in theme.css). Cards
+  come from snippets/product-card.liquid so the homepage and the PLP can never
+  drift apart.
+{%- endcomment -%}
+{%- assign col = section.settings.collection | default: collections.all -%}
+{%- if col.products.size > 0 -%}
+  <section class="sec--tight reveal">
+    <div class="wrap sec-head sec-head--center">
+      {%- liquid
+        assign bs_heading = section.settings.heading
+        assign bs_link = section.settings.link_label
+        unless request.locale.primary
+          assign bs_heading = 'home.bestsellers.heading' | t
+          assign bs_link = 'home.bestsellers.link_label' | t
+        endunless
+      -%}
+      <h2 class="dl">{{ bs_heading | escape }}</h2>
+      {%- if bs_link != blank -%}
+        <a class="tlink" href="{{ col.url | default: routes.all_products_collection_url }}">{{ bs_link | escape }}</a>
+      {%- endif -%}
+    </div>
+    <div class="grid-4">
+      {%- for product in col.products limit: section.settings.limit -%}
+        {% render 'product-card', product: product, card_index: forloop.index %}
+      {%- endfor -%}
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Bestsellers",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "New in the edit" },
+    { "type": "collection", "id": "collection", "label": "Collection", "info": "Empty = all products." },
+    { "type": "range", "id": "limit", "label": "Products", "min": 4, "max": 16, "step": 2, "default": 8 },
+    { "type": "text", "id": "link_label", "label": "Link label", "default": "View all" }
+  ],
+  "presets": [
+    { "name": "Bestsellers", "settings": { "heading": "New in the edit", "limit": 8, "link_label": "View all" } }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,120 @@
+{%- comment -%}
+  Hero. Full-bleed photograph, with ONE quiet voice caption and
+  ONE underlined link on it — bottom left, over the bright limestone-and-gravel
+  part of the frame, so the type is INK on the picture and no scrim is needed
+  (the thesis bans scrims; that is why the caption cannot move).
+
+  No product card sits on the hero: showing a product here would sell it
+  twice over (the highlight section already shows a product) and leaves the
+  hero with no voice of its own. The copy is a section setting, so the
+  merchant owns it; the shipped default is a PROPOSAL.
+
+  The image runs UNDER the transparent header: the homepage body gets no chrome
+  padding (theme.css) and theme.js only frosts the bar once the shopper scrolls.
+
+  Images live in Shopify Files, not in assets/ — they are wired as image_picker
+  settings and referenced from templates/index.json with an empty default.
+  Defaults are documented per setting so the merchant can re-pick them in
+  the theme editor if a file is ever replaced.
+{%- endcomment -%}
+{%- liquid
+  assign img_d = section.settings.image | default: section.settings.image_mobile
+  assign img_m = section.settings.image_mobile | default: section.settings.image
+  assign hero_url = section.settings.link
+  if hero_url == blank and section.settings.collection != blank
+    assign hero_url = section.settings.collection.url
+  endif
+-%}
+<section class="home-hero">
+  <div class="home-hero__art">
+    {%- if img_m != blank -%}
+      {%- comment -%} PERFORMANCE (measured via Lighthouse before/after):
+      this <img> is the homepage LCP element on both viewports. The current
+      masters run roughly twice the bytes per rendered pixel of a lighter
+      reference export (208 KB at 780w vs 120 KB), so the ladder is CAPPED rather than extended —
+      a phone can no longer be handed a 780w/208 KB or a desktop a 2400w frame.
+      The ceilings (640w mobile / 1600w desktop) put the hero at ~1.5× device
+      pixels, which is invisible on a soft-focus lifestyle photograph and cuts
+      the LCP resource roughly in half. `decoding="async"` was removed: on the
+      LCP element it lets the browser defer the paint it is being measured on.
+      Re-raise these ceilings only after the masters are re-exported lighter.
+      {%- endcomment -%}
+      <picture>
+        {%- if img_d != blank -%}
+          <source
+            media="(min-width: 721px)"
+            {%- comment -%} 16:9-ish CDN crop: the
+            desktop band shows ~1.78-1.86:1 of the 3:2 master via object-fit
+            cover, so requesting the full height shipped ~35% pixels nobody saw.
+            crop center matches what cover was showing — same picture, fewer
+            bytes. LCP phase Load Delay 728ms was mostly this file. {%- endcomment -%}
+            srcset="{{ img_d | image_url: width: 1000, height: 562, crop: 'center' }} 1000w, {{ img_d | image_url: width: 1300, height: 731, crop: 'center' }} 1300w, {{ img_d | image_url: width: 1600, height: 900, crop: 'center' }} 1600w"
+            sizes="100vw">
+        {%- endif -%}
+        <img
+          src="{{ img_m | image_url: width: 640 }}"
+          srcset="{{ img_m | image_url: width: 420 }} 420w, {{ img_m | image_url: width: 540 }} 540w, {{ img_m | image_url: width: 640 }} 640w"
+          sizes="100vw"
+          width="{{ img_m.width }}" height="{{ img_m.height }}"
+          alt="{{ img_m.alt | escape }}"
+          fetchpriority="high">
+      </picture>
+    {%- else -%}
+      {{ 'lifestyle-1' | placeholder_svg_tag: 'home-hero__ph' }}
+    {%- endif -%}
+  </div>
+
+  {%- liquid
+    assign h_line_1 = section.settings.line_1
+    assign h_line_2 = section.settings.line_2
+    assign h_cta = section.settings.cta_label
+    unless request.locale.primary
+      assign h_line_1 = 'home.hero.line_1' | t
+      assign h_line_2 = 'home.hero.line_2' | t
+      assign h_cta = 'home.hero.cta_label' | t
+    endunless
+  -%}
+  {%- if h_line_1 != blank or h_cta != blank -%}
+    <div class="home-hero__say">
+      {%- if h_line_1 != blank -%}
+        <p class="dl home-hero__line">
+          {{ h_line_1 | escape }}
+          {%- if h_line_2 != blank -%}<br>{{ h_line_2 | escape }}{%- endif -%}
+        </p>
+      {%- endif -%}
+      {%- if h_cta != blank and hero_url != blank -%}
+        <a class="tlink" href="{{ hero_url }}">{{ h_cta | escape }}</a>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+</section>
+
+{% schema %}
+{
+  "name": "Hero",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Desktop image", "info": "Shopify Files: brand-hero.webp (landscape 3:2)." },
+    { "type": "image_picker", "id": "image_mobile", "label": "Mobile image", "info": "Shopify Files: brand-hero-mobile.webp (portrait 2:3)." },
+    { "type": "header", "content": "Caption on the image" },
+    { "type": "text", "id": "line_1", "label": "Line 1", "default": "Dressed, not fussed.", "info": "Sits in ink on the bright part of the photograph, bottom left. Keep it short." },
+    { "type": "text", "id": "line_2", "label": "Line 2", "info": "Optional second line." },
+    { "type": "text", "id": "cta_label", "label": "Link label", "default": "Shop new in" },
+    { "type": "collection", "id": "collection", "label": "Link collection" },
+    { "type": "url", "id": "link", "label": "Link override", "info": "Leave empty to link to the collection above." }
+  ],
+  "presets": [
+    {
+      "name": "Hero",
+      "settings": {
+        "image": "",
+        "image_mobile": "",
+        "line_1": "Dressed, not fussed.",
+        "line_2": "New in for the season ahead.",
+        "cta_label": "Shop new in",
+        "collection": "new-in"
+      }
+    }
+  ],
+  "enabled_on": { "templates": ["index"] }
+}
+{% endschema %}

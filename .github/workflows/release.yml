@@ -1,0 +1,40 @@
+name: Theme CI + Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Theme check (Shopify linter)
+        uses: shopify/theme-check-action@v1
+        with:
+          version: latest
+        continue-on-error: true   # advisory: don't block a release on style offenses
+
+      - name: Package theme
+        id: pkg
+        run: bash scripts/package.sh
+
+      # One release per theme_version. Re-pushing the same version refreshes the
+      # asset in place; bumping theme_version cuts a new release. The stable
+      # asset name keeps releases/latest/download/toolsuite-base-theme.zip valid.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.pkg.outputs.version }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${{ steps.pkg.outputs.zip }}" --clobber
+          else
+            gh release create "$TAG" "${{ steps.pkg.outputs.zip }}" \
+              --title "ToolSuite Base Theme $TAG" \
+              --notes "Packaged base theme — download and upload to your Shopify store (Online Store → Themes → Add theme)."
+          fi

@@ -1,0 +1,4318 @@
+/* ============================================================================
+   Foundation layer.
+   Ink on paper. All color comes from photography. Zero border-radius, zero
+   shadows, hairlines only, one 10–11px uppercase label system for every UI
+   surface.
+
+   CLASS CONVENTIONS (later stages MUST follow these — do not invent parallels):
+     layout     .wrap (gutter container) · .bleed (edge-to-edge) · .sec (section
+                rhythm) · .grid-2 / .grid-4 (2px-gap edge grids)
+     type       .dxl / .dl / .dm (display steps) ·
+                .lbl (THE label system) · .lbl-sm · .mute ·
+                .prose (body copy — see --font-prose)
+     action     .bar (full-width black bar) · .tlink (underlined text link)
+     rules      .rule (1px hairline element) · .bt / .bb (hairline top/bottom)
+     motion     .reveal + .is-in (JS-added)
+     blocks     .hdr- (header) · .ann (announcement) · .menu (overlay)
+                .ftr- (footer) · .story (brand story)
+     cards      .card / .card__art / .card__name / .card__price (the one card)
+     pdp        .pdp- (product page) · .tp- (reviews) · .qv- (quick view)
+     plp        .plp- · .toolbar- · .filter-panel / .sort-panel · .pager
+     cart       .cart-drawer- · .cart-line- · .cart-sum · .cart-page- · .cart-toast
+     search     .search- · .predictive-
+     pages      .page-head · .contact- · .post-
+   Section-scoped styles live in the section's own <style> block; anything used
+   by two or more sections belongs in this file.
+   ========================================================================== */
+
+/* ---------- reset ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  min-height: 100svh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--body-size);
+  line-height: 1.65;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+/* NO overflow-x GUARD.
+   `overflow-x: clip` on <body> made body the sticky scrollport for every
+   descendant. Body is not what scrolls, so `position: sticky` silently did
+   nothing anywhere in this theme — which is why the PDP gallery refused to pin
+   no matter what top/bottom it was given. Moving it to <html> does the same
+   thing: a clipped root is a scroll container too.
+
+   It was a belt-and-braces guard, not a fix for a real overflow: a full sweep
+   (home · collection · PDP · cart · FAQ, 390px and 1440px) measured zero
+   horizontal overflow with it removed. Without it a future overflow shows up
+   as a visible sideways scrollbar — findable — instead of being clipped away
+   while quietly disabling sticky positioning site-wide. */
+img, svg, video { display: block; max-width: 100%; }
+img { height: auto; }
+button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; border-radius: 0; }
+a { color: inherit; text-decoration: none; }
+ul, ol { list-style: none; padding: 0; }
+h1, h2, h3, h4 { font-weight: 400; font-size: inherit; }
+dialog { border: 0; padding: 0; color: inherit; max-width: 100%; max-height: 100%; }
+dialog::backdrop { background: rgba(20, 19, 16, .38); }
+:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+::selection { background: var(--ink); color: var(--paper); }
+/* the design has no rounded anything — this is the guardrail, not a suggestion */
+input, select, textarea, button, img, dialog, fieldset { border-radius: 0; }
+/* WebKit paints its own blue-tinted clear glyph inside a search field — the one
+   piece of platform colour in an interface that owns no accent.
+   Removed rather than restyled: Escape still clears, and the form has a real
+   Search button next to it. */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+
+/* ---------- tokens ----------
+   Color tokens are injected from theme settings in layout/theme.liquid; the
+   fallbacks here keep this stylesheet readable standalone. */
+:root {
+  --paper: #FAF8F4;
+  --ink: #141310;
+  --cream: #F1EDE6;
+  --hairline: #E3DED5;
+  --mute: #8A857C;
+
+  /* Type scale, raised one full step: the 10–11px label system read fine on
+     phone screenshots of the references, but at 1440px it read as fine print
+     on every surface. The label system stays THE UI voice — it just starts
+     at 12/13px now, and mobile came up with it. */
+  /* RAISED A SECOND STEP: the target audience skews toward an older reader,
+     and the 12/11px label system was still fine print for that reader. This
+     is a legibility decision — larger type costs nothing for younger eyes
+     either. 12→14 · 11→13 · prose 16→18 · announcement 10→12. */
+  --body-size: 17px;
+  --lbl-size: 14px;
+  --lbl-track: .12em;
+  /* Prose uses a serif-look face, separated from UI chrome by one token
+     (--font-prose) so the family can be swapped in one place; UI labels,
+     buttons and nav stay --font-ui.
+     --font-prose is self-hosted Archivo (Google Font, OFL) rather than a
+     licensed commercial grotesque. Archivo runs wider than Georgia at the
+     same px, so prose/fact sizes came down a notch (17/18 → 16/17, facts
+     16/17 → 15/16) to hold the line-length.
+     Final state: --font-display is Prata (serif display headings);
+     --font-ui and --font-prose are both Archivo. --font-accent-italic
+     (Prata) is the one holdout, reserved for the short italic accent tags
+     under the product name — .pdp__color and .pdp__rb-sub only.
+     Bricolage is gone from this theme (files, @font-face, preloads). */
+  --font-prose: 'Archivo', 'Archivo-fallback', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --prose-size: 18px;
+
+  --gutter: 20px;
+  --max: 1440px;
+  --gap: 2px;                 /* THE grid gap: edge-to-edge, never gutters */
+
+  --ann-h: 32px;   /* +4px so the 12px announcement line still sits centred */
+  --hdr-h: 56px;
+  --chrome-h: calc(var(--ann-h) + var(--hdr-h));
+
+  --frost: rgba(250, 248, 244, .72);
+  --blur: 14px;
+
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --dur: 350ms;
+  --dur-fast: 200ms;
+}
+@media (min-width: 721px) {
+  :root { --gutter: 34px; --body-size: 17px; --lbl-size: 13px; --prose-size: 17px; --hdr-h: 68px; --ann-h: 30px; }
+}
+
+/* ---------- layout ---------- */
+.wrap { width: 100%; max-width: var(--max); margin-inline: auto; padding-inline: var(--gutter); }
+.wrap--narrow { max-width: 720px; }
+.bleed { width: 100%; }
+.sec { padding-block: clamp(48px, 11vw, 104px); }
+.sec--tight { padding-block: clamp(28px, 7vw, 56px); }
+.sec--cream { background: var(--cream); }
+.center { text-align: center; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.skip-link {
+  position: absolute; left: 50%; top: 0; translate: -50% -120%;
+  z-index: 200; background: var(--ink); color: var(--paper);
+  padding: 12px 20px; font-size: var(--lbl-size); text-transform: uppercase;
+  letter-spacing: var(--lbl-track);
+}
+.skip-link:focus { translate: -50% 0; }
+
+/* edge-to-edge grids: 2px gaps, no framing gutters */
+.grid-2, .grid-4 { display: grid; gap: var(--gap); }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-4 { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 900px) { .grid-4 { grid-template-columns: repeat(4, 1fr); } }
+
+/* ---------- type scale ----------
+   Display steps are Prata 400. The label system is the UI voice — if a piece
+   of chrome is not display type or prose, it is .lbl. */
+.dxl, .dl, .dm { font-family: var(--font-display); font-weight: 400; line-height: 1.04; letter-spacing: -.005em; }
+.dxl { font-size: clamp(44px, 13vw, 96px); line-height: .95; }
+.dl  { font-size: clamp(25px, 4.4vw, 40px); line-height: 1.14; text-wrap: balance; }
+.dm  { font-size: clamp(22px, 3.6vw, 28px); line-height: 1.2; }
+
+.lbl, .lbl-sm {
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: var(--lbl-track);
+}
+.lbl { font-size: var(--lbl-size); }
+.lbl-sm { font-size: 13px; letter-spacing: .14em; }   /* 11→13 legibility step */
+@media (min-width: 721px) { .lbl-sm { font-size: 14px; } }
+
+/* STATEMENTS. The theme only had two voices: .lbl for labels and .prose for
+   reading copy at 17px serif. Everything in between — "Almost sold out, only
+   a few left in stock", "Free shipping on every order", "Order today, ships
+   by Fri" — was therefore dressed as a LABEL, so the PDP buy column ended up
+   38 of 38 text elements in tracked uppercase with 31 of them at 12–13px. No
+   hierarchy: a field label shouted as loudly as a promise. This is the
+   missing third voice — same UI face, sentence case, normal tracking. Labels
+   stay .lbl; sentences take .stmt. */
+.stmt, .stmt-sm {
+  font-family: var(--font-ui);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  line-height: 1.45;
+}
+.stmt { font-size: 15px; }
+.stmt-sm { font-size: 14px; }
+@media (min-width: 721px) { .stmt { font-size: 16px; } .stmt-sm { font-size: 15px; } }
+.mute { color: var(--mute); }
+
+/* ---------- drawn star rating (snippets/stars.liquid) ----------
+   Two identical five-star rows stacked: the lower one is the empty track, the
+   upper one is clipped to --stars-fill so a 4.7 shows seven-tenths of the last
+   star instead of rounding up. Amber, not a third-party review widget's green
+   — the aggregate figures are the store's own, so borrowing an external
+   palette (or mark) would claim a verification that does not exist. */
+.stars {
+  position: relative;
+  display: inline-block;
+  /* MUST hug its own stars. As a stretched grid/flex child the box was 263px
+     wide while the five stars only reached 81px, so --stars-fill: 80% clipped at
+     210px — past the end of the row. Every partial rating therefore rendered as
+     five full stars, turning a 4-star average into a visual 5. The percentage
+     only means anything against the star row. */
+  width: fit-content;
+  max-width: 100%;
+  flex: none;
+  line-height: 0;
+  vertical-align: middle;
+}
+.stars__track,
+.stars__on { display: flex; gap: calc(var(--stars-size) * .1); }
+.stars__track { color: color-mix(in srgb, var(--mute) 34%, transparent); }
+.stars__on {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  width: var(--stars-fill, 100%);
+  color: #E0A32E;
+}
+.stars__ico {
+  flex: none;
+  width: var(--stars-size);
+  height: var(--stars-size);
+  fill: currentColor;
+}
+
+/* .rte rides along with .prose everywhere: Shopify renders /policies/* with its
+   OWN markup (.shopify-policy__container > .rte) and IGNORES any theme template
+   for that route, so the policies can only be styled, never templated. Nothing
+   else in this theme emits .rte (the PDP uses .pdp-rte). */
+.prose, .rte, .pdp-rte {
+  font-family: var(--font-prose);
+  font-size: var(--prose-size);
+  line-height: 1.7;
+}
+.prose, .rte { max-width: 62ch; }
+.prose p + p, .rte p + p { margin-top: .9em; }
+/* em stays IN the reading serif (inherits --font-prose) — it used to jump
+   to --font-display (Prata), mixing a display face into the middle of a sentence. */
+.prose em, .rte em { font-style: italic; }
+/* tables inside prose are DATA (size charts, fee tables) — numbers belong to the
+   UI voice, not the serif reading voice */
+.prose table, .rte table, .pdp-rte table { font-family: var(--font-ui); }
+
+/* ---------- actions ----------
+   Two shapes exist in this theme: the black bar and the underlined text link.
+   Ghost buttons, pills and icon buttons with borders are banned by the thesis. */
+.bar {
+  display: flex; align-items: center; justify-content: center; gap: .6em;
+  width: 100%; min-height: 52px; padding: 16px 20px;
+  background: var(--buy-fill, var(--ink)); color: var(--buy-text, var(--paper));
+  font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track);
+  font-weight: 500; text-align: center;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.bar:hover { opacity: .84; }
+.bar[disabled] { opacity: .38; cursor: not-allowed; }
+/* FULL BLACK, ALWAYS. It was dimmed to .55 while a size was still owed; that
+   made the single most important control on the page look switched off. The
+   button now looks identical in both states — it stays clickable either way,
+   and a tap without a size opens the size sheet instead of adding anything.
+
+   .bar--nudged is a short press-in, fired by theme.js on a tap that could not
+   add yet, so the button still visibly responds to the tap. */
+.bar--awaiting { opacity: 1; }
+.bar--nudged { animation: bar-nudge .34s var(--ease); }
+@keyframes bar-nudge {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(.972); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar--nudged { animation: none; }
+}
+.bar--quiet { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+@media (min-width: 721px) { .bar { min-height: 56px; } }
+
+.tlink {
+  display: inline-block;
+  font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track);
+  font-weight: 500;
+  border-bottom: 1px solid currentColor; padding-bottom: 2px;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.tlink:hover { opacity: .6; }
+.tlink--serif {
+  font-family: var(--font-display); font-size: inherit;
+  text-transform: none; letter-spacing: 0;
+}
+
+/* ---------- hairlines ---------- */
+.rule { height: 1px; background: var(--hairline); border: 0; width: 100%; }
+.bt { border-top: 1px solid var(--hairline); }
+.bb { border-bottom: 1px solid var(--hairline); }
+
+/* ---------- motion ----------
+   Quiet only: fade plus <=12px travel, 350ms. Nothing scales, nothing slides
+   sideways, nothing staggers by more than a beat.
+   Scoped to html.js (set in layout/theme.liquid's head script): without
+   JavaScript nothing ever adds .is-in, so an unscoped opacity:0 would serve a
+   blank page to no-JS clients and crawlers. */
+.js .reveal { opacity: 0; translate: 0 12px; transition: opacity var(--dur) var(--ease), translate var(--dur) var(--ease); }
+.js .reveal.is-in { opacity: 1; translate: 0 0; }
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal, .js .reveal.is-in { opacity: 1; translate: 0 0; transition: none; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- announcement + header ----------
+   PERMANENTLY FROSTED on every template and every viewport, and NOTHING runs
+   under it. The transparent-over-hero state is gone: the trust links top
+   right and the hero caption were unreadable over photography, and the PDP
+   gallery hung inside the bar. Every body gets chrome padding, so the header
+   is a lid, not an overlay — no JS layout math, no scroll-position
+   dependency, no per-template exception. */
+.hdr-wrap {
+  position: fixed; inset: 0 0 auto; z-index: 60;
+  background: var(--frost);
+  -webkit-backdrop-filter: blur(var(--blur));
+  backdrop-filter: blur(var(--blur));
+  transition: translate .28s var(--ease);
+}
+/* hide-on-scroll-down, return-on-scroll-up —
+   theme.js#initHeaderHide toggles this from scroll direction */
+.hdr-wrap.is-hidden { translate: 0 -100%; }
+@media (prefers-reduced-motion: reduce) { .hdr-wrap { transition: none; } }
+body:not(.template-password) { padding-top: var(--chrome-h); }
+
+/* CONTRAST BAND: the announcement used to inherit the frosted .hdr-wrap
+   surface, so the three shipping promises melted into the header and read
+   as one pale strip. Ink on paper-text separates the two bands and makes
+   the free-shipping line the first thing that registers above the fold. */
+.ann {
+  height: var(--ann-h);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; letter-spacing: .1em; text-transform: uppercase; font-weight: 500;
+  background: var(--ink);
+  color: var(--paper);
+}
+/* desktop only: at 10px the three shipping facts read as a decoration
+   rather than a promise. 390px keeps 10px — the line already fills the
+   width there. */
+@media (min-width: 900px) { .ann { font-size: 14px; letter-spacing: .1em; } }
+.ann__dot { opacity: .45; padding-inline: .45em; }
+/* Keep the 12px legibility floor and require one line. --ann-h feeds --chrome-h,
+   so wrapping would also break the page offset. Since the bar rotates one fact
+   at a time, the widest slide is ~150px, so the tracking no longer has to be
+   given up on phones — only the wrap ban stays. */
+@media (max-width: 720px) {
+  .ann { font-size: 12px; white-space: nowrap; }
+  .ann__dot { padding-inline: .25em; }
+}
+
+/* ---------- rotating announcement ----------
+   One fact visible at a time, sliding upward. CSS-only: the track is N+1 slides
+   tall (the first fact is repeated at the end) and one keyframe steps it through
+   them, so the wrap-around continues in the same direction instead of snapping
+   back. --ann-slides and --ann-cycle come from the section, which derives them
+   from the store's own `·`-separated setting and the seconds-per-slide range.
+
+   Each slide holds still for most of its share and moves during the last ~18%
+   — a brief hold followed by a swipe, rather than a constant crawl. */
+.ann--rotating {
+  display: block;
+  overflow: hidden;
+  padding: 0;
+}
+.ann__track {
+  display: grid;
+  grid-auto-rows: var(--ann-h);
+  /* the keyframes themselves are emitted by sections/header.liquid — one hold +
+     one slide step per fact, and the number of facts is only known there */
+  animation: ann-rotate var(--ann-cycle, 15s) infinite;
+}
+.ann__slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--ann-h);
+  margin: 0;
+  padding-inline: var(--gutter);
+  text-align: center;
+}
+/* Motion is decoration here — the facts are all in the DOM either way. */
+@media (prefers-reduced-motion: reduce) {
+  .ann__track { animation: none; }
+}
+
+/* EDGE TO EDGE: the header is chrome, not page content — it stretches the
+   full viewport width with only the gutter as padding. The 1440px .wrap cap
+   is gone from the markup; nothing else in the theme changes, because the
+   bar is the only element that was ever centred inside a container it did
+   not visually own. */
+.hdr {
+  height: var(--hdr-h);
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  width: 100%; padding-inline: var(--gutter);
+}
+.hdr__side { display: flex; align-items: center; gap: 14px; }
+.hdr__side--end { justify-content: flex-end; }
+.hdr__icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; margin-inline: -6px;
+  color: var(--ink);
+}
+.hdr__icon svg { stroke-width: 1.1; }        /* thin strokes, filigree */
+/* wordmark stepped up 26/34 → 32/44: the calligraphy is the only brand mark
+   in the bar and it was reading as a caption. Mark height = 1.12em of
+   --logo-size, so 44px draws ~49px inside the 68px bar. */
+.hdr__logo { display: block; --logo-size: 32px; color: var(--ink); justify-self: center; }
+@media (min-width: 721px) { .hdr__logo { --logo-size: 44px; } }
+/* brand lockup (snippets/logo-lockup.liquid, a calligraphy wordmark as one
+   inline SVG so it inherits currentColor). --logo-size is the only knob; width
+   runs off the SVG's own ~2.59:1 viewBox and is never stretched. */
+.brand__row { display: flex; align-items: center; font-size: var(--logo-size, 28px); line-height: 1; }
+.brand__mark { height: 1.12em; width: auto; flex: none; }
+
+.hdr__nav { display: none; gap: 22px; margin-left: 10px; }
+.hdr__nav a { white-space: nowrap; }
+/* full nav only when every label fits on ONE line beside the wordmark —
+   below 1260px the links started wrapping to two lines, so the burger stays
+   on duty until there is real room */
+@media (min-width: 1260px) {
+  .hdr__nav { display: flex; }
+  .hdr__burger { display: none; }
+}
+/* trust links right of the centred wordmark: same 11px label row as the
+   category nav on the left, so the bar stays symmetrical and the bag icon
+   keeps the outer right edge. */
+.hdr__nav--end { margin-left: 0; margin-right: 20px; gap: 20px; }
+.hdr__nav a { padding-block: 4px; text-underline-offset: 5px; }
+.hdr__nav a[aria-current="page"], .hdr__nav a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+.hdr__cart { position: relative; }
+.cart-count {
+  /* snug at the bag GLYPH's top-right corner. The anchor is a 44px tap
+     target with the 20px icon centred in it, so the offsets are measured
+     from the glyph (12px inset), not the box edge. */
+  position: absolute; top: 5px; right: 6px; left: auto;
+  font-size: 11px; letter-spacing: 0; line-height: 1;
+}
+/* desktop: two ticks more air off the glyph corner */
+@media (min-width: 900px) { .cart-count { top: 1px; right: 2px; } }
+.cart-count[hidden] { display: none; }
+.cart-count.bump { animation: bump 320ms var(--ease); }
+@keyframes bump { 50% { translate: 0 -2px; } }
+
+/* ---------- menu overlay (open state) ---------- */
+.menu { width: 100%; height: 100%; max-width: none; max-height: none; background: var(--paper); }
+.menu::backdrop { background: var(--paper); }
+.menu[open] { animation: menu-in var(--dur) var(--ease); }
+@keyframes menu-in { from { opacity: 0; } }
+.menu__inner {
+  display: flex; flex-direction: column; min-height: 100%;
+  padding: 0 var(--gutter) calc(40px + env(safe-area-inset-bottom));
+}
+.menu__head { height: var(--hdr-h); display: flex; align-items: center; justify-content: space-between; margin-inline: -6px; }
+.menu__list { margin-top: clamp(24px, 8vw, 48px); display: grid; gap: clamp(10px, 2.6vw, 16px); }
+.menu__link { font-family: var(--font-display); font-size: clamp(28px, 8vw, 40px); line-height: 1.06; }
+.menu__sub { margin-top: auto; padding-top: 40px; display: grid; gap: 12px; justify-items: start; }
+.menu__sub a { color: var(--mute); }
+.menu__sub a:hover { color: var(--ink); }
+
+/* The floating search pill (.spill) was REMOVED entirely. Markup, JS and
+   styles are gone — the header keeps a search icon and /search carries the
+   real predictive input. Do not reinstate. */
+
+/* ---------- footer ---------- */
+.ftr { background: var(--cream); padding-top: clamp(44px, 10vw, 76px); }
+.ftr__nl { display: grid; gap: 18px; padding-bottom: clamp(36px, 8vw, 56px); }
+/* 18ch breaks the headline into two on a phone (right there); from 721px the
+   newsletter block is half the footer and the line belongs on ONE line. */
+.ftr__nl-head { max-width: 18ch; }
+@media (min-width: 721px) { .ftr__nl-head { max-width: none; } }
+.ftr__row { display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--ink); padding-bottom: 10px; }
+.ftr__row input {
+  flex: 1 1 auto; min-width: 0; border: 0; background: none; padding: 4px 0;
+  font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track);
+}
+.ftr__row input::placeholder { color: var(--mute); text-transform: uppercase; }
+.ftr__row button { flex: none; font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track); font-weight: 500; }
+.ftr__row button:hover { opacity: .6; }
+.ftr__note { color: var(--mute); }
+/* the giant wordmark (back from the live theme's .footer__moment). Decorative:
+   aria-hidden in the markup, so it adds no second accessible copy of the
+   brand name next to the header logo. Width-driven, never taller than the
+   line it draws. */
+.ftr__moment { display: flex; justify-content: center; padding: clamp(26px, 6vw, 48px) var(--gutter) clamp(16px, 3vw, 28px); }
+.ftr__wordmark { display: block; color: var(--ink); --logo-size: clamp(52px, 15vw, 168px); }
+
+/* four columns, live order: Shop · Help · Legal · Business information */
+.ftr__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 20px; padding-block: clamp(30px, 7vw, 48px); }
+.ftr__col-h { margin-bottom: 14px; }
+.ftr__cols li + li { margin-top: 10px; }
+.ftr__cols a { color: var(--mute); }
+.ftr__cols a:hover { color: var(--ink); }
+/* the business column is prose-shaped facts, not label-system chrome: sentence
+   case, only the keys keep the uppercase label voice (live footer, restyled) */
+.ftr__biz {
+  font-style: normal; font-family: var(--font-ui); font-size: 12.5px;
+  text-transform: none; letter-spacing: .005em; line-height: 1.8;
+  color: var(--mute); display: grid; gap: 12px;
+}
+.ftr__biz-k { color: var(--ink); text-transform: uppercase; letter-spacing: .1em; font-size: 13px; font-weight: 500; }
+.ftr__biz a { border-bottom: 1px solid var(--hairline); padding-bottom: 1px; }
+.ftr__biz a:hover { color: var(--ink); border-bottom-color: var(--ink); }
+.ftr__bottom {
+  display: grid; gap: 20px; justify-items: center; text-align: center;
+  padding-block: 26px calc(30px + env(safe-area-inset-bottom));
+}
+.ftr__social { display: inline-block; vertical-align: -5px; margin-left: 12px; color: inherit; }
+.ftr__social:hover { color: var(--ink); }
+.ftr__pay { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+/* FULL COLOUR payment marks: the grayscale filter is gone — Visa blue,
+   Mastercard red/orange, the live theme's treatment. Shoppers read these as
+   a trust signal, and a washed-out one reads as broken. */
+.ftr__pay svg { height: 22px; width: auto; }
+@media (max-width: 720px) {
+  /* the fact block needs the full row on a phone */
+  .ftr__cols > :last-child { grid-column: 1 / -1; }
+  /* …and so does Legal: nine policy links in a half-width column wrapped a
+     long link label onto two lines while the other half of the row sat
+     empty. Full row, two link columns.
+
+     OVERFLOW FIX: the columns were `1fr 1fr`, and a bare `1fr` never shrinks
+     below its content's min-content width — so a single long compound label
+     blew the track out past a 350px row and the right column ran off the
+     screen. `minmax(0, 1fr)` lets the columns actually share the row; the
+     tighter tracking buys ~1 character per link, and hyphens/anywhere are
+     the safety net so no future label can push it out again. The document's
+     declared language drives the browser's hyphenation rules. */
+  .ftr__col--legal { grid-column: 1 / -1; }
+  .ftr__col--legal ul { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 20px; align-content: start; }
+  /* One line per label beats a hyphen in the middle of a compound: at 14px the
+     longest localized labels need ~197px against a 165px column, and the
+     browser's break can land mid-word. 12.5px with tighter tracking fits
+     them whole. The legal list is the one place in the footer where a
+     smaller size is normal. hyphens/anywhere stay as the net for anything
+     longer added later. */
+  .ftr__col--legal a { font-size: 12.5px; letter-spacing: .05em; hyphens: auto; overflow-wrap: break-word; }
+}
+@media (min-width: 721px) {
+  .ftr__nl { grid-template-columns: 1fr 1fr; align-items: end; gap: 40px; }
+  .ftr__cols { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.45fr); gap: 24px 40px; }
+  .ftr__bottom { grid-template-columns: 1fr auto 1fr; justify-items: start; text-align: left; }
+  .ftr__bottom .ftr__pay { justify-self: center; }
+  .ftr__bottom .ftr__top { justify-self: end; }
+}
+
+/* ---------- forms (shared shell) ---------- */
+.field {
+  width: 100%; padding: 13px 0; background: none;
+  border: 0; border-bottom: 1px solid var(--ink);
+  font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track);
+}
+.field::placeholder { color: var(--mute); }
+.form-status { font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track); }
+.form-status--error { color: #8C2F27; }
+
+/* ============================================================================
+   ===== HOME ===== (stage 2 — homepage + THE product card)
+   Everything below is owned by the homepage sections and snippets/product-card
+   .liquid. Prefixes: .home-* (sections) · .card__* (the card) · .acc* (the one
+   accordion this theme allows, the design spec). No section here invents a layout,
+   type or action class — .wrap/.bleed/.sec/.grid-4/.dxl/.dl/.dm/.lbl/.bar/
+   .tlink/.reveal above are the vocabulary.
+   ========================================================================== */
+
+/* ---------- hero ----------
+   The photograph starts BELOW the frosted header (body carries --chrome-h).
+   Mobile height is capped at 150vw so the 2:3 mobile master is shown at its
+   native ratio instead of being cropped; the svh cap keeps a sliver of the
+   next section visible on short viewports. */
+.home-hero { position: relative; }
+.home-hero__art { height: min(88svh, 150vw); }
+.home-hero__art img, .home-hero__art svg { width: 100%; height: 100%; object-fit: cover; }
+@media (min-width: 721px) { .home-hero__art { height: min(86svh, 58vw); } }
+
+/* The original product-card treatment here is gone: it duplicated the
+   highlight piece and sold one dress instead of the season. What sits on the
+   photograph now is a two-line voice caption plus one underlined link,
+   bottom left, where the hero is bright limestone — so it is INK on the
+   picture and still needs no scrim. Ink-on-photo is only safe in that
+   corner; if the hero image is ever swapped, re-check this. */
+.home-hero__say {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: grid; gap: 14px; justify-items: start;
+  padding: clamp(40px, 9vw, 90px) var(--gutter) clamp(26px, 6vw, 56px);
+  color: var(--ink);
+  /* A very quiet PAPER wash, bottom-up, behind the caption band only — not a
+     dimming scrim (the thesis bans those) but a lightening one, so ink type
+     stays legible even if the hero image is swapped for a darker frame later. */
+  background: linear-gradient(
+    to top,
+    rgba(250, 248, 244, .80) 0%,
+    rgba(250, 248, 244, .52) 45%,
+    rgba(250, 248, 244, 0) 100%);
+}
+.home-hero__line { max-width: 14ch; }
+@media (min-width: 721px) {
+  .home-hero__say { padding-left: var(--gutter); padding-bottom: clamp(40px, 6vw, 78px); }
+  /* wide enough that each authored line stays ONE line: a wrapped third line
+     drops off the pale stone and onto the dark planting, where ink dies */
+  .home-hero__line { max-width: 30ch; }
+}
+
+/* ---------- category tiles ----------
+   Full-bleed photographs, name centered ON the image. The category images
+   are bright end to end, so the label carries its own soft radial veil —
+   only the type's patch of photograph is darkened, never the whole tile —
+   and .home-cat--ink flips a tile to ink type where even that is not enough
+   (per-block setting). */
+.home-cats { display: grid; gap: var(--gap); }
+@media (min-width: 721px) { .home-cats { grid-template-columns: 1fr 1fr; } }
+/* One 4-across row on wide screens: as a 2×2 of 720×960 tiles the section
+   ate two full viewports before the first product. */
+@media (min-width: 1100px) { .home-cats { grid-template-columns: repeat(4, 1fr); } }
+.home-cat { position: relative; display: block; }
+.home-cat picture { display: block; }
+.home-cat img, .home-cat svg { width: 100%; height: 100%; object-fit: cover; aspect-ratio: 4 / 5; }
+@media (min-width: 721px) { .home-cat img, .home-cat svg { aspect-ratio: 3 / 4; } }
+.home-cat__label {
+  position: absolute; inset: 0;
+  display: grid; place-items: center; padding: 24px; text-align: center;
+  color: #FFF;
+  /* Two soft ink veils, not a dimmed tile: a horizontal band across the label's
+     own line plus a denser core behind the word itself. The single radial veil
+     shipped first was too weak on light-photograph tiles at 1440px. The
+     photograph above and below the label line stays untouched. */
+  background:
+    radial-gradient(52% 26% at 50% 50%, rgba(20, 19, 16, .5), rgba(20, 19, 16, 0) 100%),
+    linear-gradient(180deg, rgba(20, 19, 16, 0) 38%, rgba(20, 19, 16, .32) 50%, rgba(20, 19, 16, 0) 62%);
+}
+.home-cat__label .dl { text-transform: uppercase; letter-spacing: .01em; }
+.home-cat--ink .home-cat__label { color: var(--ink); background: none; }
+@media (hover: hover) {
+  .home-cat img { transition: opacity var(--dur) var(--ease); }
+  .home-cat:hover img { opacity: .88; }
+}
+
+/* ---------- category typo-block ----------
+   Shared with the collection index (sections/main-list-collections.liquid), which
+   is the same idea on a different route — hence the neutral name. */
+.typo-list { display: grid; justify-items: center; gap: clamp(4px, 1.6vw, 12px); text-align: center; }
+.typo-list__link { text-transform: uppercase; transition: opacity var(--dur-fast) var(--ease); }
+.typo-list__link:hover { opacity: .5; }
+
+/* ---------- editorial ----------
+   Landscape master; squared off on mobile so it still reads as a full-bleed
+   frame at 390px. Caption + link sit ON the image behind a paper wash. */
+.home-ed { padding-block: clamp(28px, 7vw, 56px); }
+.home-ed__frame { position: relative; }
+.home-ed__art { display: block; }
+.home-ed__art img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; object-position: 82% center; }
+/* 82%: the 1:1 phone crop of the 3:2 master must keep the seated figure on the
+   right fully in frame; desktop shows the full landscape so the shift only
+   applies while the square crop does */
+@media (min-width: 721px) { .home-ed__art img { aspect-ratio: 3 / 2; object-position: center; } }
+/* Caption and link sit ON the photograph at EVERY width: under it on a phone
+   and over it on a desktop was the same section wearing two different ideas,
+   and the desktop one is the decided one. The 1:1 mobile crop ends in sunlit
+   gravel, so ink survives on it with the same bottom-up paper wash the hero
+   already uses. */
+.home-ed__foot {
+  position: absolute; inset: auto 0 0 0; width: 100%;
+  display: grid; align-content: end; justify-items: start; gap: 14px;
+  padding: clamp(56px, 20vw, 130px) var(--gutter) clamp(22px, 5vw, 30px);
+  color: var(--ink);
+  background: linear-gradient(
+    to top,
+    rgba(250, 248, 244, .92) 0%,
+    rgba(250, 248, 244, .70) 38%,
+    rgba(250, 248, 244, .30) 70%,
+    rgba(250, 248, 244, 0) 100%);
+}
+/* Desktop: BOTTOM left, not middle left — the empty half of the editorial
+   shot is the sunlit gravel foreground; the vertical middle is the olive
+   treeline, where ink type disappears (measured 1440x900). */
+@media (min-width: 900px) {
+  .home-ed__foot {
+    gap: 20px;
+    padding: clamp(60px, 8vw, 130px) 0 clamp(34px, 4vw, 62px) clamp(34px, 5vw, 72px);
+    /* FULL IMAGE WIDTH. The wash used to be a 52%-wide box, so it ended in a
+       visible vertical edge down the middle of the photograph. It is now one
+       bottom-up gradient across the whole frame: no horizontal stop anywhere,
+       therefore no seam. The copy still sits bottom left — .home-ed__say caps
+       the measure, the grid keeps it start-aligned. */
+    background: linear-gradient(
+      to top,
+      rgba(250, 248, 244, .90) 0%,
+      rgba(250, 248, 244, .68) 38%,
+      rgba(250, 248, 244, .30) 70%,
+      rgba(250, 248, 244, 0) 100%);
+  }
+  .home-ed__say { max-width: 15ch; }
+}
+
+/* ---------- section head (bestsellers, search suggestions) ---------- */
+.sec-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding-bottom: clamp(18px, 4vw, 28px);
+}
+/* centred variant: bestsellers, the search suggestions row and the cross-sell
+   row — a left-flushed heading with the link hard right read as a toolbar,
+   not as a chapter opening */
+.sec-head--center {
+  flex-direction: column; align-items: center; text-align: center; gap: 14px;
+}
+
+/* ---------- THE card ----------
+   Full-bleed 2:3 image, second image crossfades in on pointer devices, name +
+   price + colour dots below it, quick-add bag glyph bottom-right ON the image.
+   Nothing is boxed: the grid's 2px gaps are the only framing. */
+.card { position: relative; }
+.card__media { position: relative; }
+.card__art { display: block; position: relative; background: var(--cream); }
+.card__art img, .card__art svg { width: 100%; aspect-ratio: 2 / 3; object-fit: contain; }
+.card__alt { position: absolute; inset: 0; opacity: 0; transition: opacity var(--dur) var(--ease); }
+@media (hover: hover) { .card:hover .card__alt { opacity: 1; } }
+/* touch devices can never trigger the crossfade, so the second image is pure
+   download. `display:none` removes its box, a lazy image with no box never
+   intersects, and the fetch never happens — this was the largest single byte
+   item on a 24-card mobile PLP. */
+@media (hover: none) { .card__alt { display: none; } }
+.card__qa {
+  position: absolute; right: 8px; bottom: 8px;
+  width: 34px; height: 34px; display: grid; place-items: center;
+  color: var(--ink);
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.card__qa svg { stroke-width: 1.1; }
+.card__qa:hover { opacity: .6; }
+.card__flag { position: absolute; left: 10px; top: 10px; padding: 4px 8px; background: var(--paper); color: var(--mute); }
+/* tight bottom: the swatch row sits directly under the price */
+.card__info { display: grid; gap: 5px; padding: 14px 12px 8px; }
+/* the card is the most-repeated surface in the store, so it gets its own step
+   above the label system rather than inheriting it — names and prices need
+   to read clearly at a glance */
+.card__name { font-size: 14px; letter-spacing: .1em; }
+/* 16px + ink: the price needs to read clearly at a glance, slightly larger
+   than the surrounding label-system type */
+.card__price { font-size: 16px; letter-spacing: .08em; color: var(--ink); }
+@media (min-width: 900px) { .card__name { font-size: 14px; } .card__price { font-size: 16px; } }
+.card__price s { color: var(--mute); }
+.card__now { color: var(--ink); }
+.card__swatches { display: flex; align-items: center; gap: 7px; margin-top: 8px; }
+/* dots, not chips — the one round shape in the theme, and it is a swatch, not
+   a UI box (the zero-radius rule owns buttons, inputs and media) */
+.card__swatch { width: 12px; height: 12px; border-radius: 50%; background: var(--cream); box-shadow: inset 0 0 0 1px rgba(20, 19, 16, .16); }
+.card__more { font-size: 14px; letter-spacing: .08em; color: var(--mute); }
+
+/* ---------- highlight piece ----------
+   The old version printed a name and a price top-left over a brand-atmosphere
+   image and never showed the garment, so it read as an unsorted heap. Now it
+   is the real product's own lifestyle photograph, big and dominant, with ONE
+   tidy text block beside it: name (Prata), descriptor, price, a short line,
+   and the link to the PDP. */
+.home-hl { padding-block: clamp(36px, 7vw, 72px); }
+.home-hl__in { display: grid; gap: clamp(22px, 5vw, 40px); align-items: center; }
+.home-hl__art { display: block; }
+.home-hl__art img, .home-hl__art svg { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; background: var(--cream); }
+.home-hl__body { display: grid; gap: 18px; justify-items: start; align-content: center; }
+.home-hl__meta { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; }
+.home-hl__say { max-width: 30ch; color: var(--mute); }
+.home-hl__body .tlink { margin-top: 8px; font-size: 14px; }
+@media (min-width: 900px) {
+  .home-hl__in { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: clamp(40px, 6vw, 88px); }
+  .home-hl__art img, .home-hl__art svg { aspect-ratio: 4 / 5; }
+  .home-hl__say { font-size: 19px; max-width: 34ch; }
+  .home-hl__meta { font-size: 15px; }
+  .home-hl__body .eyebrow, .home-hl__body .lbl-sm { font-size: 14px; }
+  .home-hl__body .tlink { font-size: 14px; }
+}
+
+/* ---------- proof band ----------
+   USP trio stays 3 across at 390px: the three lines are short. */
+.home-proof { padding-top: clamp(28px, 7vw, 56px); }
+.home-proof__art { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+@media (min-width: 721px) { .home-proof__art { aspect-ratio: 3 / 2; } }
+.home-proof__body {
+  display: grid; gap: clamp(22px, 5vw, 32px); justify-items: center; text-align: center;
+  padding-block: clamp(30px, 7vw, 52px) clamp(28px, 6vw, 48px);
+}
+/* 20ch keeps the line broken in two at 390px, where that is the right shape.
+   From 721px up the voice line is ONE line — it is a sentence pair, not a
+   headline stack. */
+.home-proof__voice { max-width: 20ch; }
+@media (min-width: 721px) { .home-proof__voice { max-width: none; } }
+/* ---------- USP trio (snippets/usp-trio.liquid) ----------
+   One component, three homes (homepage proof band, PDP under the info list, PDP
+   buy column). Thin line icon over the line on desktop, icon beside it on
+   mobile: at 390px a 3-across stack of icon-over-text is taller than the whole
+   promise is worth. */
+.usp {
+  display: grid; width: 100%;
+  border-top: 1px solid var(--hairline); padding-top: clamp(20px, 4vw, 30px);
+}
+/* Centred icon-over-text on EVERY viewport: the desktop look is the look.
+   On phones the trio stacks vertically instead of 3-across. */
+.usp--trio { grid-template-columns: 1fr; gap: 18px; }
+.usp li { display: grid; grid-template-columns: 1fr; justify-items: center; text-align: center; gap: 10px; }
+.usp .lbl { font-size: 13px; letter-spacing: .12em; }
+.usp__ico { display: grid; place-items: center; color: var(--ink); }
+.usp__ico svg { stroke-width: 1; }
+.usp--col { grid-template-columns: 1fr; gap: 18px; }
+@media (min-width: 900px) {
+  .usp--trio { grid-template-columns: repeat(3, 1fr); gap: 24px; padding-top: 34px; }
+  .usp--trio li { gap: 14px; }
+  .usp--trio .lbl { font-size: 14px; letter-spacing: .14em; }
+  .usp--trio .usp__ico svg { width: 26px; height: 26px; }
+  .usp--col .lbl { font-size: 14px; }
+}
+
+/* ---------- FAQ ----------
+   The ONLY accordion in this theme (the PDP swaps its info sections inline).
+   Browsers with interpolate-size animate ::details-content in CSS; WebKit/iOS
+   falls back to the WAAPI path in theme.js, which needs .acc + .acc__body. */
+/* centred — the answers below stay left */
+.home-faq__head { margin-bottom: clamp(20px, 5vw, 32px); text-align: center; }
+/* the question outranks the answer: it shipped at 11px against a 16px answer,
+   so an OPEN item read upside down. Question up, answer down — on desktop
+   only, 390px keeps the answer at full body size. */
+.acc__q {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-block: 18px; cursor: pointer; list-style: none;
+  font-size: 14px; font-weight: 600;
+}
+@media (min-width: 900px) {
+  .acc__q { font-size: 15px; padding-block: 24px; }
+}
+.acc__q::-webkit-details-marker { display: none; }
+.acc__sign { position: relative; width: 11px; height: 11px; flex: none; }
+.acc__sign::before, .acc__sign::after { content: ''; position: absolute; background: var(--ink); }
+.acc__sign::before { left: 0; right: 0; top: 5px; height: 1px; }
+.acc__sign::after { top: 0; bottom: 0; left: 5px; width: 1px; transition: opacity var(--dur-fast) var(--ease); }
+details.acc[open] .acc__sign::after { opacity: 0; }
+.acc__body { padding-bottom: 22px; }
+.acc__body a { text-decoration: underline; text-underline-offset: 3px; }
+@supports (interpolate-size: allow-keywords) {
+  :root { interpolate-size: allow-keywords; }
+  details.acc::details-content {
+    height: 0; overflow: clip;
+    transition: height var(--dur) var(--ease), content-visibility var(--dur) allow-discrete;
+  }
+  details.acc[open]::details-content { height: auto; }
+}
+
+/* ============================================================================
+   ===== PDP ===== (stage 3 — product page, reviews, cross-sell, quick view)
+   Owned by sections/main-product.liquid, customer-reviews.liquid,
+   pdp-related.liquid and snippets/quick-view.liquid. Prefixes: .pdp- / .pdp__*
+   (page) · .tp__* (reviews) · .qv__* (quick view). The variant-picker class
+   names (.opt / .sizes / .size-btn / .swatches / .swatch) are a JS contract —
+   theme.js reads them on the PDP AND injects the same markup into the quick
+   view, so they are styled once here and shared by both surfaces.
+   ========================================================================== */
+
+/* the buy bar is fixed for the whole product template — reserve its height so the
+   footer's last line is never trapped underneath it */
+.template-product { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+@media (min-width: 900px) { .template-product { padding-bottom: 88px; } } /* the rich bar is taller */
+
+/* ---------- layout ---------- */
+.pdp__top { display: grid; }
+@media (min-width: 900px) {
+  .pdp__top {
+    /* first column sized to rail + capped image (66+12+510), buy takes the rest */
+    grid-template-columns: minmax(0, 588px) minmax(380px, 1fr);
+    gap: clamp(40px, 5vw, 80px);
+    align-items: start;
+    max-width: var(--max); margin-inline: auto;
+    /* the header is a frosted lid now and <body> carries --chrome-h, so the
+       columns need air, not offset math */
+    /* 24px, was up to 72px — together with .pdp__info's old 88px this was the
+       ~130px hole between complete-the-look and the description */
+    padding: clamp(18px, 2.6vw, 30px) var(--gutter) 24px;
+  }
+  /* THE GALLERY STAYS, THE BUY COLUMN TRAVELS: the buy column scrolls past
+     the sticky gallery, then lets go once .pdp__top ends, so the rest of the
+     page only appears once the full photograph has been seen.
+
+     This looked broken for a while and was not a sticky-positioning bug:
+     `overflow-x: clip` on <body> (removed above) had made body the sticky
+     scrollport for the whole site, so NOTHING could stick anywhere, and every
+     offset variant measured as plain 1:1 scrolling. Capping the image to the
+     free height below the header keeps the column FITTING the window (a
+     sticky box taller than the viewport can never pin), and the bottom edge
+     of the picture is where the buy column comes to rest.
+
+     `.pdp__top > ` is load-bearing — the plain `.pdp__stage { position:
+     relative }` further down this file is later in source order and wins at
+     equal specificity. align-self:start is too: a stretched grid item is as
+     tall as its row and has nothing to travel through. */
+  .pdp__top > .pdp__stage {
+    position: sticky;
+    top: calc(var(--chrome-h) + 24px);
+    align-self: start;
+  }
+}
+
+/* ---------- gallery ----------
+   ONE image, edge to edge, running under the transparent header. The masters are
+   1024x1536 (2:3), so the frame is RATIO-driven — 150vw is exactly 2:3 at any
+   phone width and the svh cap only bites in landscape. Cover therefore never
+   crops a garment on mobile; a fixed 82-88vh box would have cut ~13% off both
+   sides of every photo. Swipe is native scroll-snap (no JS gesture handling);
+   the 350ms crossfade is the colour/thumb swap (.g-fade). */
+.pdp__stage { position: relative; min-width: 0; }
+.pdp__frame { position: relative; min-width: 0; max-width: 100%; }
+/* min-width 0: with 78vw peek slides the gallery's min-content is ~6x the
+   viewport; without this the whole grid chain (stage/frame) stretches the page
+   sideways instead of letting the gallery scroll internally. */
+.pdp__gallery {
+  display: flex;
+  align-items: flex-start;
+  overflow-x: auto;
+  overflow-y: clip;           /* peeking neighbours may be taller — clip, don't stretch the track */
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  /* NO HEIGHT TRANSITION. The track height is synced to the slide under the
+     snap point by initGalleryHeightSync() in pdp-extras.js. Animating that
+     height means that for ~220ms after every swipe the track sits at an
+     INTERMEDIATE height — measured 313px against a 304px photograph — so the
+     incoming image is either clipped by overflow-y or framed by a band of
+     dead space. Read as "the next photo is laid over the old one instead of
+     replacing it". The sync already runs per animation frame while the
+     finger drags, so the height follows the scroll smoothly without a
+     transition; the transition only ever added a wrong in-between state. */
+}
+.pdp__gallery::-webkit-scrollbar { display: none; }
+.gallery-item {
+  /* PEEK carousel on the phone, reversing the earlier one-image rule: 78vw
+     slides with the neighbours peeking in on both sides, like the live theme
+     — the shorter gallery (117vw vs 150vw) pulls price and buy zone ~120px
+     closer to the fold. Desktop (≥900px) is untouched. */
+  flex: 0 0 78vw;
+  scroll-snap-align: center;
+  /* NO FRAME: the slide is exactly as tall as its own photograph. The fixed
+     117vw box letterboxed every non-2:3 image — and only 23% of the
+     catalogue IS 2:3. align-items:flex-start on the track keeps the shorter
+     neighbours top-aligned instead of stretching them back to the tallest. */
+  height: auto;
+  align-self: flex-start;
+  display: block;
+  cursor: zoom-in;
+}
+.pdp__gallery { padding-inline: 11vw; gap: 8px; scroll-padding-inline: 11vw; }
+.gallery-item img, .gallery-item svg { width: 100%; height: auto; display: block; }
+.gallery-item[hidden] { display: none; }
+.g-fade { animation: g-fade var(--dur) var(--ease); }
+@keyframes g-fade { from { opacity: 0; } }
+
+.pdp__zoom {
+  position: absolute; right: 12px; bottom: 12px;
+  width: 34px; height: 34px; display: grid; place-items: center;
+  background: var(--frost);
+  -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+  color: var(--ink);
+}
+.pdp__rail { display: none; }
+
+@media (min-width: 900px) {
+  /* desktop: thin thumbnail rail left of ONE visible image */
+  /* image capped at 510px (up from 480) */
+  .pdp__stage { display: grid; grid-template-columns: 66px minmax(0, 510px); gap: 12px; }
+
+  /* RAIL CAPPED TO THE IMAGE. Measured before: 26 thumbs made .pdp__stage
+     2774px tall against a 1166px buy column — 1608px of dead white to the right,
+     and one product carries 46. Each thumb is 66px wide at 2/3, so the rail grows
+     107px per image forever while the photograph stays 765px.
+     Taking the rail OUT OF FLOW is what fixes it: absolute means it no longer
+     feeds the grid row height, so the row is sized by the photograph alone and the
+     rail scrolls inside that height. Works identically at 6 or 46 images, needs no
+     JS layout math, and every thumb stays reachable (a "+40 more" overlay would
+     hide them behind a click).
+     The 66px column stays declared above, so the track is still reserved even
+     though nothing is in flow there — but the photograph must then be pinned to
+     column 2 explicitly, otherwise auto-placement drops it into the empty column 1.
+     The grid child is .pdp__frame, NOT .pdp__gallery (which sits one level deeper);
+     pinning the wrong one collapses the photograph to the 66px rail width and the
+     whole stage to 99px — measured on the first attempt.
+     Revert = drop this block. */
+  .pdp__rail {
+    position: absolute; inset: 0 auto 0 0; width: 66px;
+    overflow-y: auto; scrollbar-width: thin;
+    /* the only affordance macOS leaves us: overlay scrollbars stay invisible until
+       the wheel moves, so the bottom edge fades to say "there is more below" */
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
+  }
+  /* armed = a click inside handed the wheel to the rail (theme.js);
+     outline, not border — the rail is out of flow, a border would shift the thumbs.
+     --hairline is a COLOR: always `1px solid var(--hairline)`. */
+  .pdp__rail.is-armed { outline: 1px solid var(--hairline); outline-offset: 3px; }
+  .pdp__frame { grid-column: 2; }
+
+  .pdp__rail { display: grid; gap: 8px; align-content: start; }
+  .pdp__thumb { display: block; opacity: .5; transition: opacity var(--dur-fast) var(--ease); }
+  .pdp__thumb img { width: 100%; height: auto; aspect-ratio: auto; display: block; }
+  .pdp__thumb[aria-current="true"], .pdp__thumb:hover { opacity: 1; }
+  .pdp__thumb[hidden] { display: none; }
+  .pdp__gallery { overflow: visible; display: block; padding-inline: 0; gap: 0; height: auto !important; }
+  .gallery-item { display: none; height: auto; flex-basis: auto; }
+  .gallery-item.is-current { display: block; }
+  .gallery-item img, .gallery-item svg { aspect-ratio: auto; height: auto; }
+}
+
+/* ---------- title block ---------- */
+.pdp__buy { padding: clamp(18px, 4vw, 22px) var(--gutter) 0; display: grid; gap: 0; }
+@media (min-width: 900px) { .pdp__buy { padding-inline: 0; } }
+/* name + descriptor share ONE line: "CORDELIA  Wool-Feel Overcoat". The
+   price used to sit hard right on that same row — it now owns the row below
+   the title. */
+.pdp__titles { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
+/* Title case, not upper case: the .lbl uppercase treatment is opted out here
+   the same way .pdp__descriptor opts out below, because the h1 is the one
+   line that has to sit above the surrounding tracked-caps noise rather than
+   join it. Source casing comes from the stored Shopify title, so this is
+   CSS-only; Liquid never upcases pdp_name. .pdp__rb-name (sticky bar, below)
+   is a separate selector and keeps uppercase. To go back to uppercase:
+   delete the two overrides on the next line. */
+.pdp__name { font-weight: 600; font-size: 17px; letter-spacing: .1em; }
+.pdp__name { text-transform: none; letter-spacing: .01em; font-size: 20px; }
+@media (min-width: 721px) { .pdp__name { font-size: 24px; } }
+/* .pdp__descriptor sits BESIDE .pdp__name (same row) and its content is the
+   same descriptor text .pdp__rb-sub falls back to in the rich bar — one
+   accent-tag family, one voice. It shares --font-ui (Archivo) with
+   .pdp__name so the descriptor matches the title font, while keeping an
+   italic/muted treatment. .pdp__color and .pdp__rb-sub keep
+   --font-accent-italic (Prata); this is the one selector that moved. */
+.pdp__descriptor {
+  font-family: var(--font-ui); font-style: italic;
+  text-transform: none; letter-spacing: 0; font-weight: 400;
+  color: var(--mute);
+}
+/* 17px/400: price SMALLER than the bold title, regular weight, plain UI sans.
+   Bold title / quiet price is the contrast.
+   26px top gives the price air from the title and again from the USP lines
+   — breathing room is what keeps the quiet price visible. */
+.pdp__price { white-space: nowrap; font-size: 17px; font-weight: 400; margin-top: 15px; }
+.pdp__price s { color: var(--mute); margin-right: .35em; }
+/* the selected colour rides on the COLOR option label ("Color: Pink") —
+   muted label, ink value, source casing. Replaces the old .pdp__color Prata
+   line under the title. */
+.opt__value { color: var(--ink); text-transform: none; letter-spacing: .04em; }
+
+/* Desktop buy column: the whole block shipped at phone sizes inside a 560px
+   column and read as fine print next to a 900px photograph. One scale-up
+   pass — name, price, labels, prose, pickers. */
+@media (min-width: 900px) {
+  .pdp__name { font-size: 26px; letter-spacing: .06em; }
+  .pdp__descriptor { font-size: 14px; letter-spacing: .12em; }
+  .pdp__price { font-size: 20px; font-weight: 400; letter-spacing: .02em; margin-top: 15px; }
+  .pdp__buy .opt__label { font-size: 14px; letter-spacing: .12em; }
+  .pdp__buy .tlink { font-size: 14px; }
+  .pdp__facts li { font-size: 16px; }
+  .pdp__stock { font-size: 14px; letter-spacing: .12em; }
+}
+
+/* ---------- variant pickers (shared with the quick view) ---------- */
+.opt { margin-top: clamp(16px, 3vw, 18px); }
+.opt__head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.opt__label {
+  font-family: var(--font-ui); font-size: 13px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: .14em; color: var(--mute);
+}
+
+/* colours: the garment's own photograph, 2:3, hex only where no image exists */
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch {
+  width: 36px; height: 54px; flex: none;
+  background: var(--cream);
+  box-shadow: inset 0 0 0 1px rgba(20, 19, 16, .12);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.swatch img { width: 100%; height: 100%; object-fit: cover; }
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 1px var(--ink); }
+
+/* sizes: naked letter row, selected = underlined, sold out = struck */
+.sizes { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.size-btn {
+  font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track);
+  font-weight: 500; padding: 3px 0;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.size-btn[aria-pressed="true"] { border-bottom-color: var(--ink); }
+.size-btn[disabled] { color: var(--mute); text-decoration: line-through; cursor: not-allowed; }
+/* the bar taps here when no size is chosen (theme.js nudgeSize) */
+.sizes.opts-attn { animation: opts-attn 1.2s var(--ease); }
+@keyframes opts-attn { 0%, 100% { opacity: 1; } 25%, 75% { opacity: .35; } }
+/* desktop: bigger targets in the buy column — a 36x54 swatch and an 11px letter
+   are phone sizes. The sticky bar keeps the compact row. */
+@media (min-width: 900px) {
+  .pdp__buy .swatch { width: 46px; height: 69px; }
+  .pdp__buy .swatches { gap: 10px; }
+  .pdp__buy .sizes { gap: 6px 26px; }
+  .pdp__buy .size-btn { font-size: 14px; letter-spacing: .1em; padding: 5px 0; }
+}
+
+/* ---------- under the buy zone ---------- */
+.pdp__stock { margin-top: clamp(22px, 5vw, 28px); }
+/* the prose intro sits directly under the ATC — see sections/main-product.liquid.
+   Reading serif, same voice and size as the .prose used everywhere else, not
+   a smaller "detail" size. */
+.pdp__desc { margin-top: 20px; max-width: 62ch; }
+/* One fact per line, NO bullet character. Bullets use --font-prose (reading
+   serif) rather than --font-display so the italic fact line reads as the
+   SAME voice as the paragraph above it, not a display-type accent — and the
+   mobile/desktop size gap (15→18) is smoothed into the shared prose scale
+   instead of jumping past it. */
+.pdp__facts { margin-top: 16px; display: grid; gap: 6px; list-style: none; }
+.pdp__facts li {
+  font-family: var(--font-prose); font-style: italic;
+  font-size: 15px; line-height: 1.5;
+}
+/* ---------- the static ATC in the buy column (desktop) ----------
+   Desktop shoppers were handed "Buy with Shop Pay" and nothing else — the
+   black bar lived at the bottom edge of the window, away from the size they
+   had just picked. The column now owns the primary action; express drops
+   below it as the secondary. On mobile the fixed bar is still THE buy button
+   and this one never renders. */
+.pdp__atc {
+  display: flex; justify-content: center; text-align: center;
+  margin-top: clamp(16px, 3vw, 22px); min-height: 58px;
+  font-size: 14px;
+}
+
+/* ---------- size recommender (snippets/size-recommendation.liquid) ----------
+   Hairline box, label system, underline inputs. The widget hides itself
+   unless the product's real size chart parses with a Bust or Hip column —
+   it never guesses a size. */
+.size-rec { margin-top: 12px; }
+.size-rec[hidden] { display: none; }
+/* the widget lives INSIDE the size-guide dialog — the toggle is the visible
+   entry point again, a question in sentence case, tight glyph-hugging
+   underline. */
+.size-rec__toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 14px; text-transform: none; letter-spacing: 0; font-weight: 500;
+  color: var(--ink);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+}
+.size-rec__toggle:hover { opacity: .6; }
+.size-rec__toggle svg { stroke-width: 1.2; }
+.size-rec__toggle[aria-expanded="true"] svg { rotate: 45deg; }
+/* Optional USP stack in the buy column (no snippet ships for it; add your
+   own markup with these classes). 26px top gives air between the price and
+   the trust lines. */
+.pdp__buy .pdp-usp-stack {
+  display: grid;
+  gap: 8px;
+  margin: 15px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+/* ONE size link under the buttons */
+.pdp-guide-row { margin: 10px 0 0; }
+.pdp-guide-row .tlink {
+  font-size: 13px; color: var(--ink);
+  border-bottom: 0; padding-bottom: 0;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+  letter-spacing: .06em; margin-right: -.06em;
+}
+.size-rec__panel { display: none; }
+.size-rec__panel.is-open { display: block; }
+/* the open panel is a FULL-WIDTH bordered card sitting between the size-guide
+   link row and the size buttons — two equal input fields side by side, the
+   submit button spanning the row. */
+.size-rec__panel-inner { margin: 10px 0 12px; padding: 14px; display: grid; gap: 12px; border: 1px solid var(--hairline); background: var(--paper); }
+.size-rec__row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
+.size-rec__field, .size-rec__fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.size-rec__field-label { font-size: 13px; text-transform: uppercase; letter-spacing: .14em; color: var(--mute); padding: 0; }
+.size-rec__pair { display: flex; gap: 10px; }
+/* boxed inputs: the bare underline inputs read as stray rules; fields fill
+   their grid column instead of hugging the left */
+.size-rec__input-wrap { display: flex; align-items: center; gap: 4px; padding: 10px 12px; border: 1px solid var(--hairline); background: var(--paper); }
+.size-rec__input { flex: 1; width: 100%; min-width: 0; border: 0; background: none; padding: 0; font-size: 14px; }
+.size-rec__input::-webkit-outer-spin-button, .size-rec__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.size-rec__input { -moz-appearance: textfield; appearance: textfield; }
+.size-rec__unit { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--mute); }
+/* real button: the underlined text-link submit looked broken next to the
+   boxed inputs; spans the full card width */
+.size-rec__submit {
+  font-size: 13px; text-transform: uppercase; letter-spacing: var(--lbl-track); font-weight: 500;
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--ink); color: var(--paper);
+  border: 0;
+}
+.size-rec__submit:hover { opacity: .8; }
+.size-rec__result { font-family: var(--font-prose); font-style: italic; font-size: 15px; line-height: 1.5; }
+.size-rec__result[hidden] { display: none; }
+@media (min-width: 900px) {
+  .size-rec__toggle { font-size: 14px; }
+  .size-rec__result { font-size: 16px; }
+}
+/* CLS: the wallet button is hydrated by Shopify AFTER first paint, and the
+   description, fact lines and trust trio below it were pushed down when it
+   appeared. Reserving the button's own height inside its server-rendered
+   wrapper fixes the shift at the source and collapses to nothing when the
+   block is not rendered at all. */
+
+/* ---------- info sections (2-col layout, mobile too) ----------
+   Desktop measure is capped: inside the 1440px page the content column ran
+   to 1100px and the two columns drifted apart into an off-balance, cramped
+   pair. 220px link list + 640px content, the block sits in the same left
+   edge as the gallery above it. */
+.pdp__info {
+  display: grid; grid-template-columns: 122px minmax(0, 1fr);
+  gap: 0 20px;
+  padding-block: clamp(28px, 4vw, 44px) 0;
+}
+@media (min-width: 900px) {
+  /* full page width: the link list stays narrow, the content column takes
+     everything that is left. The 640px / 1000px cap made the block look
+     like a different, narrower page pasted under a 1440px layout. */
+  .pdp__info {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 0 64px;
+    padding-block: clamp(32px, 3vw, 44px) 0; /* was up to 88px — half of the hole */
+  }
+  .pdp__info-nav button { font-size: 14px; letter-spacing: .12em; }
+  .pdp__info-body .pdp-rte li { line-height: 1.75; }
+}
+.pdp__info-nav { display: grid; gap: 12px; align-content: start; justify-items: start; }
+@media (min-width: 900px) { .pdp__info-nav { gap: 16px; } }
+/* PHONE: the same 2-col layout ALSO on mobile: narrow link column left,
+   content right. Links may wrap to two lines inside their column; the base
+   122px grid above already applies. */
+.pdp__info-nav button { color: var(--mute); border-bottom: 1px solid transparent; padding-bottom: 2px; text-align: left; }
+.pdp__info-nav button[aria-current="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.pdp__info-body > [hidden] { display: none; }
+/* tab panel CONTENT (right side) goes italic — archivo-400i is already
+   loaded for --font-prose, so this is a pure font-style toggle, no new
+   font-family. Scoped to .pdp__info-body .pdp-rte only: the left
+   .pdp__info-nav link list, .pdp__desc intro (outside .pdp__info-body) and
+   .pdp__facts stay as they were. */
+.pdp__info-body .pdp-rte { font-style: italic; }
+/* Bullet marks restored in the tab panels: the fact lists show the shared
+   .pdp-rte middot again. */
+
+/* ---------- rich text (description, size table, care) ----------
+   family + size come from the shared serif prose rule at the top of this file */
+.pdp-rte p + p, .pdp-rte ul + p, .pdp-rte p + ul { margin-top: .9em; }
+.pdp-rte ul { display: grid; gap: 7px; }
+.pdp-rte li { padding-left: 14px; position: relative; }
+.pdp-rte ul li::before { content: '·'; position: absolute; left: 2px; }
+.pdp-rte a { text-decoration: underline; text-underline-offset: 3px; }
+.pdp-rte strong { font-weight: 600; }
+.pdp-rte table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pdp-rte th, .pdp-rte td { border-bottom: 1px solid var(--hairline); padding: 9px 8px 9px 0; text-align: left; }
+.pdp-rte th { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; font-weight: 500; color: var(--mute); }
+
+/* ---------- USP trio (the shared .usp component) ---------- */
+.pdp__trust { margin-top: clamp(26px, 5vw, 34px); }
+/* closing hairline under the trio, mirroring the .usp border-top above the truck */
+.pdp__trust .usp { border-bottom: 1px solid var(--hairline); padding-bottom: clamp(20px, 4vw, 30px); }
+/* BOTH trust trios show on phones: buy-column trio under the buy area plus
+   the full-width row below the info block, both centred like desktop. */
+/* full page width, three columns spread across it. .wrap in the markup
+   supplies the 1440px cap + gutters; nothing here narrows it further. */
+
+/* ---------- THE buy bar ----------
+   MOBILE: unchanged — ink, full width, present from page load, THE buy button.
+   DESKTOP: the buy column owns the primary ATC, so the bar is a follow-up, not
+   a duplicate. It stays hidden until the shopper has scrolled past the column
+   and then arrives as the RICH bar (.pdp__richbar): thumbnail + name + colour +
+   price left, the size row inline in the middle, ink ATC right. The bare
+   "SELECT A SIZE" slab that used to sit there on desktop carried no
+   information at all. */
+.pdp__barwrap.is-shown { translate: 0 0; visibility: visible; }
+.pdp__barwrap {
+  position: fixed; inset: auto 0 0; z-index: 55;
+  background: var(--buy-fill, var(--ink));
+  padding-bottom: env(safe-area-inset-bottom);
+  /* hidden until the in-flow ATC scrolls out of view — on EVERY viewport
+     (mobile gets the normal ATC back, the bar follows) */
+  translate: 0 100%; visibility: hidden;
+  transition: translate var(--dur) var(--ease), visibility var(--dur);
+}
+/* Label LEFT, price RIGHT, inside the black bar itself. The price span
+   stays in the DOM while empty ("Select a size" state) so the label never
+   shifts sideways when the price appears. */
+.pdp__bar {
+  min-height: 58px;
+  justify-content: center;
+  padding-inline: var(--gutter);
+  text-align: center;
+}
+
+
+/* Expansion panel: sits directly on top of the bar, paper on ink, and is
+   filled by MOVING the real size row into it (theme.js) — never a second
+   picker. */
+.pdp__sheet {
+  background: var(--paper); color: var(--ink);
+  border-top: 1px solid var(--hairline);
+  padding: 4px var(--gutter) 18px;
+  opacity: 0; translate: 0 8px;
+  transition: opacity var(--dur) var(--ease), translate var(--dur) var(--ease);
+}
+.pdp__sheet.open { opacity: 1; translate: 0 0; }
+.pdp__sheet[hidden] { display: none; }
+.pdp__sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; }
+/* the moved-in .opt keeps its own margin — cancel it so the panel stays compact */
+.pdp__sheet-slot .opt { margin-top: 0; }
+
+/* ---------- the rich desktop bar ---------- */
+.pdp__richbar { display: none; }
+@media (min-width: 900px) {
+  /* paper, not ink: on desktop the bar is a persistent tool strip under a
+     magazine page, and the ink block inside it is the action */
+  .pdp__barwrap {
+    background: var(--frost);
+    -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+    border-top: 1px solid var(--hairline);
+  }
+  .pdp__bar { display: none; }              /* the phone bar */
+  .pdp__sheet { display: none; }            /* its expansion sheet goes with it */
+  /* DOUBLED: strip height goes ~64px -> ~124px and every element inside scales
+     with it — thumbnail 40x60 -> 64x96, name 12 -> 15px, colour 13 -> 16px,
+     price 13 -> 17px, size row 12 -> 15px, add block 46 -> 64px tall. Still
+     label system, still ink on frosted paper, still radius 0. The MOBILE bar
+     is untouched. */
+  .pdp__richbar {
+    display: flex; align-items: center; gap: clamp(26px, 3.4vw, 52px);
+    max-width: var(--max); margin-inline: auto;
+    padding: 14px var(--gutter);
+    color: var(--ink);
+  }
+  .pdp__rb-id { display: flex; align-items: center; gap: 20px; min-width: 0; }
+  .pdp__rb-id img { width: 64px; height: 96px; object-fit: cover; background: var(--cream); flex: none; }
+  .pdp__rb-text { display: grid; gap: 6px; min-width: 0; }
+  .pdp__rb-name { font-size: 15px; font-weight: 600; letter-spacing: .1em; }
+  .pdp__rb-sub { font-family: var(--font-ui); font-style: italic; font-size: 16px; letter-spacing: 0; text-transform: none; color: var(--mute); }
+  .pdp__rb-price { font-size: 17px; letter-spacing: .08em; white-space: nowrap; }
+  .pdp__rb-price s { color: var(--mute); margin-right: .35em; }
+  /* the inline size row is a SECOND set of [data-opt-btn] buttons: theme.js
+     paints and reads every one of them, so it needs no state of its own */
+  .pdp__rb-sizes { margin-left: auto; }
+  .pdp__rb-sizes .sizes { gap: 6px 24px; }
+  .pdp__rb-sizes .size-btn { font-size: 15px; letter-spacing: .1em; padding: 4px 0; }
+  .pdp__rb-atc { width: auto; flex: none; min-height: 64px; padding: 16px 40px; gap: .8em; font-size: 15px; }
+}
+@media (min-width: 900px) and (prefers-reduced-motion: reduce) {
+  .pdp__barwrap { transition: none; }
+}
+
+/* The bottom breadcrumb (.pdp__crumbs) was DELETED: no breadcrumb on the PDP
+   at all. Markup and styles are gone. */
+
+/* ---------- size guide + zoom dialogs ----------
+   The display property MUST stay on [open]: an unscoped `display:flex` beats the
+   UA sheet's `dialog:not([open]) { display: none }`, which printed the whole size
+   guide into the page flow on every PDP (it landed on top of the reviews block)
+   and made the close button look dead — .close() ran, the box stayed. Every
+   dialog in this theme is styled the same way. */
+.pdp-sheet {
+  width: min(560px, calc(100vw - 32px)); max-height: 84svh;
+  margin: auto; background: var(--paper); color: var(--ink);
+}
+.pdp-sheet[open] { display: flex; flex-direction: column; }
+.pdp-sheet__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid var(--hairline); }
+.pdp-sheet__body { padding: 20px; overflow-y: auto; }
+
+.pdp-zoom { width: 100%; height: 100%; max-width: none; max-height: none; background: var(--paper); }
+.pdp-zoom__close {
+  position: fixed; top: 10px; right: 10px; z-index: 2;
+  /* white circle under the X: the bare glyph vanished over busy photos. Same
+     round chip family as the gallery zoom pill. */
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, .92);
+  border-radius: 50%;
+  box-shadow: 0 1px 6px rgba(20, 19, 16, .14);
+  color: var(--ink);
+}
+.pdp-zoom__nav { position: fixed; top: 50%; translate: 0 -50%; z-index: 2; background: var(--frost); }
+.pdp-zoom__nav--prev { left: 8px; rotate: 180deg; }
+.pdp-zoom__nav--next { right: 8px; }
+.pdp-zoom__nav[hidden] { display: none; }
+.zoom-dialog__inner { width: 100%; height: 100%; overflow: auto; touch-action: pinch-zoom; -webkit-overflow-scrolling: touch; }
+/* opens ALREADY magnified (160% of the viewport), then the shopper pinches + pans */
+.zoom-dialog__inner img { width: 160%; height: auto; max-width: none; }
+
+/* ---------- reviews  ---------- */
+.tp__head { margin-bottom: clamp(20px, 5vw, 32px); }
+.tp__item { padding-block: clamp(20px, 5vw, 28px); display: grid; gap: 10px; }
+.tp__stars { letter-spacing: .18em; font-size: 13px; }
+.tp__quote { max-width: 46ch; }
+.tp__by { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.tp__source { padding-top: 18px; }
+@media (min-width: 900px) { .tp__list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 clamp(32px, 5vw, 72px); } }
+
+/* ---------- brand story (sections/brand-story.liquid) ----------
+   A savoir-faire beat, added where the PDP's review block used to be. 50/50
+   on desktop — copy on paper left, photograph bleeding off the right edge;
+   stacked image-first below 900px. */
+.story { display: grid; margin-top: clamp(64px, 9vw, 140px); }
+.story__art img, .story__art svg { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: top; background: var(--cream); }
+/* top: a 2:3 portrait in a 4/5 box — the ~17% cover crop must come
+   off the bottom, not the model's head */
+.story__body {
+  display: grid; gap: 18px; justify-items: start; align-content: center;
+  padding: clamp(30px, 8vw, 48px) var(--gutter) clamp(36px, 9vw, 56px);
+}
+.story__text { max-width: 46ch; }
+@media (min-width: 900px) {
+  .story { grid-template-columns: 1fr 1fr; align-items: stretch; }
+  /* copy first in the DOM order the eye reads, image second — the markup keeps
+     the image first so the stacked mobile layout needs no order juggling */
+  .story__body { order: -1; padding: clamp(56px, 6vw, 96px) clamp(44px, 6vw, 92px); }
+  .story__art { min-height: 100%; }
+  .story__art img, .story__art svg { height: 100%; min-height: 520px; aspect-ratio: auto; }
+}
+
+/* ---------- quick view (dialog fed by theme.js) ----------
+   REBUILT to the drawer mini-page's anatomy — the drawer's quick-add panel
+   read better than the old two-column modal did. Right-hand full-height
+   sheet, quick-add head, one centred 66%-wide 2:3 image, scrolling buy
+   column, sticky add button — the values mirror .cart-miniview in
+   cart-extras.css. */
+.qv { width: min(430px, 100%); height: 100dvh; max-height: 100dvh; margin: 0 0 0 auto; padding: 0; background: var(--paper); color: var(--ink); }
+.qv__inner { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.qv__head { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; min-height: 52px; padding: 4px 12px 4px 18px; border-bottom: 1px solid var(--hairline); }
+.qv__head p { margin: 0; }
+.qv__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.qv__media { width: 66%; margin: 12px auto 0; }
+.qv__main img { width: 100%; aspect-ratio: 2 / 3; object-fit: contain; background: var(--cream); }
+.qv__thumbs { display: none; }
+.qv__buy { display: grid; gap: 0; align-content: start; padding: 14px clamp(14px, 4vw, 22px) 22px; }
+.qv__buy .opt { min-width: 0; margin: 14px 0 0; padding: 0; border: 0; }
+.qv__buy .opt__label { margin: 0; }
+.qv__atc { position: sticky; bottom: 0; z-index: 1; min-height: 52px; margin-top: 12px; box-shadow: 0 6px 0 6px var(--paper); }
+.qv__trust { display: grid; gap: 5px; margin-top: 10px; padding: 10px 0; border-block: 1px solid var(--hairline); }
+.qv__trust span::before { content: "\2713"; margin-inline-end: 7px; }
+.qv__buy .tlink { min-height: 40px; margin-top: 7px; justify-self: start; }
+.qv .price--sale { margin-left: .35em; }
+.qv s { color: var(--mute); }
+
+/* ============================================================================
+   ===== PLP ===== (stage 4 — collection, collection index, search results)
+   Owned by sections/main-collection.liquid, main-search.liquid and
+   main-list-collections.liquid. Prefixes: .plp-* (page furniture) · .toolbar*
+   (FILTER · count · SORT row) · .filter-panel / .sort-panel (class names are a
+   theme.js contract — it toggles .open on exactly these two) · .pager.
+   The grid itself is .grid-4 from the layout layer: 2 columns on mobile, 4 on
+   desktop, 2px gaps, edge to edge. Nothing here frames a card.
+   ========================================================================== */
+/* centred head */
+.plp-head {
+  display: grid; gap: 10px; justify-items: center; text-align: center;
+  padding-block: clamp(22px, 6vw, 40px) clamp(14px, 3vw, 22px);
+}
+.plp-head .prose { color: var(--mute); }
+
+/* the toolbar is a hairline row, not a bar. A 3-column grid rather than
+   space-between so the count is TRULY centred under the centred title,
+   whatever the two triggers measure. */
+.toolbar {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+  min-height: 50px;
+  border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline);
+}
+.toolbar__filter, .toolbar__sort { position: relative; }
+.toolbar__sort { justify-self: end; }
+/* the label system is stated, not inherited: the UA sheet sets text-transform:none
+   on <button>, which beats inheritance from .toolbar.lbl and shipped "Filter" /
+   "Sort: …" in sentence case next to an uppercase count */
+.toolbar__trigger {
+  display: inline-flex; align-items: center; gap: 6px; padding-block: 13px;
+  font-size: 14px; text-transform: uppercase; letter-spacing: var(--lbl-track); font-weight: 500;
+}
+.toolbar__trigger svg { stroke-width: 1.2; }
+.toolbar__trigger[aria-expanded="true"] svg { rotate: 180deg; }
+.toolbar__count { color: var(--mute); font-size: 14px; text-align: center; }
+.toolbar__sort-pre, .toolbar__sort-val { display: none; }
+.toolbar__sort-mob { display: inline; }
+@media (min-width: 721px) {
+  .toolbar__sort-pre, .toolbar__sort-val { display: inline; }
+  .toolbar__sort-pre { margin-right: .4em; }
+  .toolbar__sort-mob { display: none; }
+}
+@media (min-width: 900px) {
+  .toolbar__trigger { font-size: 14px; }
+  .toolbar__count { font-size: 15px; }
+}
+
+/* panels: plain paper on a hairline, dropped under the row. display:none is the
+   closed state on purpose — theme.js only toggles .open, and a visibility/opacity
+   pair would leave the checkboxes tabbable while hidden. */
+.filter-panel, .sort-panel {
+  display: none;
+  position: absolute; top: calc(100% + 1px); z-index: 40;
+  background: var(--paper); border: 1px solid var(--hairline);
+  padding: 20px;
+}
+.filter-panel.open, .sort-panel.open { display: grid; }
+.filter-panel { left: 0; width: min(320px, calc(100vw - 2 * var(--gutter))); max-height: 68svh; overflow-y: auto; gap: 24px; }
+.sort-panel { right: 0; min-width: 210px; gap: 13px; justify-items: start; }
+.sort-panel button { color: var(--mute); border-bottom: 1px solid transparent; padding-bottom: 2px; text-align: left; }
+.sort-panel button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.sort-panel button:hover { color: var(--ink); }
+
+.filter-group { display: grid; gap: 11px; justify-items: start; }
+.filter-group h2 { font-size: 13px; letter-spacing: .14em; color: var(--mute); }
+.filter-group a { color: var(--mute); border-bottom: 1px solid transparent; padding-bottom: 2px; }
+.filter-group a:hover { color: var(--ink); }
+.filter-group a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--ink); }
+.filter-group label { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+.filter-group input[type="checkbox"] { width: 12px; height: 12px; accent-color: var(--ink); flex: none; }
+.filter-group input[type="number"] { width: 100%; padding: 8px 0; background: none; border: 0; border-bottom: 1px solid var(--hairline); }
+.filter-group__range { display: flex; gap: 18px; width: 100%; }
+.filter-group__range label { flex: 1; display: grid; gap: 2px; color: var(--mute); }
+.filter-panel__foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.filter-panel__foot .bar { width: auto; min-height: 42px; padding: 12px 26px; }
+
+.active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding-block: 16px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; color: var(--mute); border-bottom: 1px solid var(--hairline); padding-bottom: 2px; }
+.chip:hover { color: var(--ink); border-bottom-color: var(--ink); }
+
+/* ---------- numbered pagination ----------
+   Replaces the load-more button with classic numbered pages, prev/next.
+   Server-rendered from {% paginate %}, so there is no JS, no scroll-position
+   loss and every page is its own crawlable URL. */
+.pager {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 6px 4px;
+  padding-block: clamp(32px, 7vw, 56px);
+}
+.pager a, .pager span {
+  display: inline-grid; place-items: center;
+  min-width: 40px; min-height: 40px; padding: 0 10px;
+  font-size: 14px; text-transform: uppercase; letter-spacing: var(--lbl-track); font-weight: 500;
+  border-bottom: 1px solid transparent;
+}
+@media (min-width: 900px) { .pager a, .pager span { font-size: 14px; min-width: 44px; min-height: 44px; } }
+.pager a:hover { border-bottom-color: var(--ink); }
+.pager .pager__now { border-bottom-color: var(--ink); }
+.pager .pager__gap, .pager .pager__off { color: var(--mute); }
+.pager .pager__edge { padding-inline: 14px; }
+
+.plp-empty { display: grid; justify-items: center; gap: 18px; text-align: center; padding-block: clamp(40px, 10vw, 88px); }
+.plp-empty .prose { margin-inline: auto; }
+.plp-empty .bar { width: auto; padding-inline: 34px; }
+
+/* ============================================================================
+   ===== CART ===== (stage 4 — drawer, /cart, toast)
+   One vocabulary for BOTH surfaces: sections/cart-drawer-content.liquid and
+   sections/main-cart.liquid render the same .cart-line / .cart-sum /
+   .cart-breakdown / .cart-empty markup, so a change lands on both at once (they
+   also refresh each other through theme.js). .cart-toast is built in JS and has
+   no Liquid — its styles live here or nowhere.
+   ========================================================================== */
+.cart-drawer {
+  width: min(430px, 100vw); max-width: none;
+  height: 100%; max-height: none;
+  margin: 0 0 0 auto;
+  background: var(--paper); color: var(--ink);
+}
+/* [open] guard is load-bearing: an unconditional display:flex would override the
+   UA's dialog:not([open]){display:none} and pin the drawer permanently visible */
+.cart-drawer[open] { display: flex; flex-direction: column; animation: cart-in var(--dur) var(--ease); }
+@keyframes cart-in { from { translate: 12px 0; opacity: 0; } }
+/* basis 0, not auto: with basis:auto the inner's huge content size wins the
+   shrink math and the express block below gets pushed past the viewport */
+.cart-drawer__inner { display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; }
+/* express wallets: server-rendered in the dialog shell, MOVED by theme.js into
+   the slot under the checkout bar. Shell position (pre-move fallback) pads
+   itself; inside the foot the grid's gap + padding already frame it. */
+.cart-drawer__express { flex: 0 0 auto; padding: 0 var(--gutter) calc(18px + env(safe-area-inset-bottom)); }
+.cart-drawer__foot .cart-drawer__express { padding: 0; }
+.cart-drawer__express[hidden] { display: none; }
+[data-cart-express-slot]:empty { display: none; }
+.cart-drawer__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px var(--gutter); border-bottom: 1px solid var(--hairline);
+}
+.cart-drawer__items { flex: 1 1 auto; overflow-y: auto; padding-inline: var(--gutter); }
+.cart-drawer__foot {
+  display: grid; gap: 12px;
+  padding: 18px var(--gutter) calc(18px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--hairline);
+}
+.cart-drawer__cross { padding-block: 22px 6px; display: grid; gap: 12px; }
+.cart-drawer__cross[hidden] { display: none; }
+/* The legacy 4-up link row. The rich drawer carousel (cart-extras.js) reuses the
+   same .cross-row class on [data-cart-cross-row] but renders ONE card at a time —
+   unscoped, this grid squeezed that card to a quarter of the drawer (71px on a
+   phone: 5px title, the Add button spilling out of its box). Scoped, not deleted:
+   the legacy markup may still come back from a cached section render. */
+.cross-row:not([data-cart-cross-row]) { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); }
+.cross-row:not([data-cart-cross-row]) a { display: grid; gap: 6px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+.cross-row:not([data-cart-cross-row]) img { width: 100%; height: auto; aspect-ratio: 2 / 3; object-fit: contain; background: var(--cream); }
+
+.cart-line {
+  display: grid; grid-template-columns: 76px minmax(0, 1fr) auto;
+  gap: 14px; padding-block: 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+.cart-line img { width: 76px; height: auto; aspect-ratio: 3 / 4; object-fit: cover; background: var(--cream); }
+.cart-line__ph { width: 76px; aspect-ratio: 3 / 4; background: var(--cream); }
+.cart-line__title { display: block; }
+.cart-line__variant { color: var(--mute); margin-top: 5px; }
+.cart-line__qty { display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; }
+.cart-line__qty button { width: 28px; height: 28px; display: grid; place-items: center; color: var(--mute); }
+.cart-line__qty button:hover:not([disabled]) { color: var(--ink); }
+.cart-line__qty button[disabled] { opacity: .35; cursor: wait; }
+.cart-line__qty span { min-width: 20px; text-align: center; }
+.cart-line__right { display: grid; gap: 10px; justify-items: end; align-content: start; }
+.cart-line__price { white-space: nowrap; }
+.cart-line__remove { color: var(--mute); border-bottom: 1px solid var(--hairline); padding-bottom: 1px; }
+.cart-line__remove:hover { color: var(--ink); border-bottom-color: var(--ink); }
+.cart-compare { color: var(--mute); margin-right: .35em; }
+
+.cart-sum { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.cart-sum--soft { color: var(--mute); margin-top: 8px; }
+.cart-breakdown summary { display: flex; justify-content: space-between; gap: 16px; cursor: pointer; list-style: none; padding-block: 4px; }
+.cart-breakdown summary::-webkit-details-marker { display: none; }
+.cart-breakdown__hint { color: var(--mute); border-bottom: 1px solid var(--hairline); padding-bottom: 1px; }
+.cart-breakdown__body { padding-block: 6px 4px; }
+/* centred on both surfaces: the trust line sits under the checkout bar on
+   the same centre line as the VIEW BAG link below it — left-flushed it read
+   as a stray caption. */
+.cart-badges { color: var(--mute); text-align: center; }
+.cart-empty { display: grid; justify-items: center; gap: 16px; text-align: center; padding-block: clamp(40px, 10vw, 80px); }
+.cart-empty .bar { width: auto; padding-inline: 34px; }
+
+/* /cart: the same lines, given a page's air. Summary sticks on desktop only —
+   on mobile it is simply the last block, which is where the thumb already is. */
+.cart-page { display: grid; gap: clamp(24px, 5vw, 48px); padding-top: clamp(8px, 2vw, 16px); }
+.cart-page__summary { display: grid; gap: 12px; align-content: start; border-top: 1px solid var(--hairline); padding-top: 20px; }
+/* full colour, same call as the footer marks */
+.cart-page__pay { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; justify-content: center; }
+.cart-page__pay svg { height: 22px; width: auto; }
+.cart-page__cross { padding-top: clamp(36px, 8vw, 64px); }
+.cart-page__cross h2 { margin-bottom: clamp(16px, 4vw, 24px); }
+.additional-checkout-buttons { display: grid; gap: 8px; }
+@media (min-width: 900px) {
+  .cart-page { grid-template-columns: minmax(0, 1.6fr) minmax(300px, .8fr); align-items: start; }
+  .cart-page__summary { position: sticky; top: calc(var(--chrome-h) + 28px); border-top: 0; padding-top: 0; }
+}
+
+/* the add-to-bag toast (built by theme.js showCartToast) */
+.cart-toast {
+  position: fixed; left: 50%; translate: -50% 0; z-index: 70;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 12px;
+  max-width: calc(100vw - 2 * var(--gutter));
+  padding: 13px 18px;
+  /* both halves are two short words: without this the flex box shrank to 195px
+     on a phone and broke "ADDED TO BAG" and "VIEW BAG" over two lines each.
+     It still cannot exceed the max-width above. */
+  white-space: nowrap;
+  background: var(--ink); color: var(--paper);
+  font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track); font-weight: 500;
+  opacity: 0; visibility: hidden; translate: -50% 8px;
+  transition: opacity var(--dur) var(--ease), translate var(--dur) var(--ease), visibility var(--dur);
+}
+.cart-toast.is-visible { opacity: 1; visibility: visible; translate: -50% 0; }
+.cart-toast--raised { bottom: calc(78px + env(safe-area-inset-bottom)); } /* clear Shopify's preview bar */
+.cart-toast__check { opacity: .7; }
+.cart-toast__link { border-bottom: 1px solid currentColor; padding-bottom: 1px; }
+.template-product .cart-toast { bottom: calc(76px + env(safe-area-inset-bottom)); } /* clear the buy bar */
+
+/* ============================================================================
+   ===== SEARCH ===== (stage 4 — /search + the predictive dropdown)
+   .predictive / .predictive__panel are a theme.js contract: it finds the panel
+   inside [data-predictive] and fills it with the innerHTML of
+   [data-predictive-results] from sections/predictive-search.liquid.
+   ========================================================================== */
+/* centred: title, the input and the result count sit on the page's centre
+   line, like the collection head */
+.search-head {
+  display: grid; gap: 18px; justify-items: center; text-align: center;
+  padding-block: clamp(22px, 6vw, 40px) clamp(14px, 3vw, 22px);
+}
+.predictive { position: relative; width: 100%; max-width: 560px; text-align: left; }
+.search-form { display: flex; align-items: center; gap: 16px; border-bottom: 1px solid var(--ink); }
+.search-form .field { border-bottom: 0; }
+.search-form button { flex: none; font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track); font-weight: 500; }
+.search-form button:hover { opacity: .6; }
+.predictive__panel {
+  position: absolute; left: 0; right: 0; top: calc(100% + 1px); z-index: 45;
+  background: var(--paper); border: 1px solid var(--hairline);
+  max-height: 60svh; overflow-y: auto;
+}
+.predictive__panel[hidden] { display: none; }
+.predictive__panel a { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 14px; }
+.predictive__panel a + a { border-top: 1px solid var(--hairline); }
+.predictive__panel a:hover { background: var(--cream); }
+.predictive__panel img { width: 44px; height: auto; aspect-ratio: 3 / 4; object-fit: cover; background: var(--cream); }
+.predictive__panel .p-title { font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track); font-weight: 500; }
+.predictive__panel .p-price { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); }
+/* non-product hits (pages, articles) keep the same row, minus the thumbnail */
+.search-other { display: grid; gap: 6px; padding: 14px 12px clamp(18px, 4vw, 24px); }
+
+/* ============================================================================
+   ===== PAGES ===== (stage 4 — page, contact, blog, article)
+   Prose templates. No section here owns more than a heading and a column.
+   ========================================================================== */
+.page-head { padding-block: clamp(28px, 7vw, 56px) clamp(18px, 4vw, 28px); display: grid; gap: 10px; }
+.page-body { padding-bottom: clamp(44px, 10vw, 88px); }
+/* long-form copy: :is(.prose, .rte) sets the rhythm, these add what an RTE
+   emits. THE SCALE: h4 was rendering at the 12/13px label size against
+   17/18px serif body copy — a heading SMALLER than the paragraph it
+   introduces. The rule now is mechanical and holds at every viewport width:
+
+       h1 > h2 > h3 > h4 > p,  every step, measured in px, no exceptions.
+
+   At 390px:  31 > 26 > 22 > 19 > 17.   At 1440px:  36 > 29 > 24 > 20 > 18.
+   h1-h3 are Prata display steps; h4-h6 keep the uppercase label LOOK but at
+   heading size with heavy tracking, so they still read as chrome-voice headings
+   while outranking the body. Never take h4-h6 back down to --lbl-size. */
+:is(.prose, .rte) h1, :is(.prose, .rte) h2, :is(.prose, .rte) h3 { font-family: var(--font-display); line-height: 1.2; margin-top: 1.6em; margin-bottom: .5em; }
+:is(.prose, .rte) h1 { font-size: clamp(31px, 6vw, 36px); margin-top: 0; }
+:is(.prose, .rte) h2 { font-size: clamp(26px, 4.8vw, 29px); }
+:is(.prose, .rte) h3 { font-size: clamp(22px, 3.8vw, 24px); }
+:is(.prose, .rte) h4, :is(.prose, .rte) h6 {
+  font-family: var(--font-ui); font-size: clamp(19px, 2.4vw, 20px);
+  text-transform: uppercase; letter-spacing: .1em; line-height: 1.3;
+  margin-top: 1.8em; margin-bottom: .55em;
+}
+:is(.prose, .rte) h4 { font-weight: 600; }
+:is(.prose, .rte) h6 { font-weight: 500; color: var(--mute); }
+/* h5 is where the FAQ page keeps its QUESTIONS — a question is a heading, so it
+   is sentence case and sits on the same step as h4, never below the answer. */
+:is(.prose, .rte) h5 {
+  font-family: var(--font-ui); font-size: clamp(19px, 2.4vw, 20px); font-weight: 600;
+  letter-spacing: 0; text-transform: none; line-height: 1.35;
+  margin-top: 1.7em; margin-bottom: .4em;
+}
+/* a page whose CONTENT repeats its own title as the first heading (About us) —
+   the template already printed it as the h1 above, so the copy is duplicated.
+   sections/main-page.liquid strips that leading heading in Liquid; this note is
+   here so nobody "fixes" it a second time in CSS. */
+:is(.prose, .rte) > :first-child { margin-top: 0; }
+/* size charts and fee tables live on these pages: a wide table must scroll in
+   its own box, never widen the page */
+:is(.prose, .rte) table { display: block; overflow-x: auto; }
+:is(.prose, .rte) ul, :is(.prose, .rte) ol { display: grid; gap: 7px; margin: 1em 0; }
+:is(.prose, .rte) ul li { padding-left: 15px; position: relative; }
+:is(.prose, .rte) ul li::before { content: '·'; position: absolute; left: 3px; }
+:is(.prose, .rte) ol { list-style: decimal; padding-left: 18px; }
+:is(.prose, .rte) a { text-decoration: underline; text-underline-offset: 3px; }
+:is(.prose, .rte) table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 1em 0; }
+:is(.prose, .rte) th, :is(.prose, .rte) td { border-bottom: 1px solid var(--hairline); padding: 9px 8px 9px 0; text-align: left; }
+:is(.prose, .rte) img { margin-block: 1em; }
+
+/* the policy route's own wrapper: give it the same narrow measure and title
+   treatment main-page.liquid gives a Page, since we cannot template it */
+.shopify-policy__container {
+  width: 100%; max-width: 720px; margin-inline: auto;
+  padding: clamp(28px, 7vw, 56px) var(--gutter) clamp(44px, 10vw, 88px);
+}
+.shopify-policy__title { padding-bottom: clamp(18px, 4vw, 28px); text-align: left; }
+.shopify-policy__title h1 {
+  font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(34px, 6.4vw, 40px); line-height: 1.14; letter-spacing: -.005em;
+}
+/* the policy body repeats its own title as an h3 in the first line — the page
+   already has one above it, so it is a duplicate, not a heading */
+.shopify-policy__body .rte > h3:first-child { display: none; }
+
+.contact { display: grid; gap: clamp(30px, 7vw, 56px); padding-bottom: clamp(44px, 10vw, 88px); }
+.contact__info { display: grid; gap: 14px; align-content: start; }
+.contact__facts { display: grid; gap: 20px; margin-top: 8px; }
+.contact__facts dt { color: var(--mute); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 5px; }
+.contact__facts dd a { border-bottom: 1px solid var(--hairline); padding-bottom: 1px; }
+.contact__note { color: var(--mute); font-size: 14px; margin-top: 4px; }
+.contact__form { display: grid; gap: 22px; }
+.contact__form label { display: block; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); margin-bottom: 4px; }
+/* a name, an email and a message are not label-system text — the underline stays,
+   the uppercasing does not */
+.contact__form .field { text-transform: none; letter-spacing: 0; font-size: var(--body-size); }
+.contact__form textarea { resize: vertical; min-height: 130px; }
+.contact__row { display: grid; gap: 22px; }
+@media (min-width: 721px) {
+  .contact { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); align-items: start; }
+  .contact__row { grid-template-columns: 1fr 1fr; }
+}
+
+.post-list { display: grid; gap: clamp(28px, 6vw, 44px); padding-bottom: clamp(44px, 10vw, 88px); }
+@media (min-width: 721px) { .post-list { grid-template-columns: repeat(3, 1fr); } }
+.post-card { display: grid; gap: 10px; }
+.post-card img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--cream); }
+.post-nav { display: flex; justify-content: space-between; gap: 16px; padding-bottom: clamp(40px, 8vw, 64px); }
+.article__art { margin-bottom: clamp(24px, 6vw, 44px); }
+.article__art img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--cream); }
+
+/* ============================================================================
+   ===== TOUCH TARGETS =====
+   One block, one rule: below 900px every control a thumb can hit is at least
+   40px in both directions. Two techniques, and the choice is never arbitrary —
+   PADDING where the control owns its space (icons, list links, qty steppers),
+   an invisible ::after EXTENSION where the drawn shape is the design and must
+   not grow (the underlined size letters, the underlined text links). Nothing
+   here changes a single visible pixel; it only enlarges what the finger sees.
+   Extensions are kept inside the neighbouring gap so two targets never overlap.
+   ========================================================================== */
+@media (max-width: 899px) {
+  /* header + overlay icons (burger, search, bag, menu close, zoom close/arrows).
+     The boxes TOUCH instead of overlapping — the old -6px bleed plus a 44px box
+     would have made the burger and the search icon share 20px of hit area. Only
+     the outermost box keeps a negative margin, so the glyphs still sit on the
+     gutter line they sat on at 34px. */
+  .hdr__icon { width: 44px; height: 44px; margin-inline: 0; }
+  .hdr__side { gap: 0; }
+  .hdr__side--start > :first-child { margin-left: -12px; }
+  .hdr__side--end > :last-child { margin-right: -12px; }
+  .menu__head { margin-inline: 0; }
+  .menu__head > :last-child { margin-right: -12px; }
+
+  /* menu overlay: serif list + the quiet secondary links under it */
+  .menu__list { gap: clamp(2px, 1vw, 6px); }
+  .menu__link { padding-block: 6px; }
+  .menu__sub { gap: 0; }
+  .menu__sub a { display: inline-block; padding-block: 12px; }
+
+  /* product card quick-add + gallery zoom glyph */
+  .card__qa { width: 44px; height: 44px; right: 4px; bottom: 4px; }
+  .pdp__zoom { width: 44px; height: 44px; right: 8px; bottom: 8px; }
+  .pdp-zoom__close { top: 6px; right: 6px; }
+  .pdp-zoom__nav--prev { left: 4px; }
+  .pdp-zoom__nav--next { right: 4px; }
+
+  /* variant pickers: the swatch grows, the size LETTER does not (the underline
+     hugs the glyph) — it gets an invisible 20x18px halo instead, exactly the
+     row gap, so neighbours never overlap */
+  .swatch { width: 40px; height: 60px; }
+  /* The size letter is THE most-tapped control on a phone and it was a 9px
+     glyph. The box goes to 40x41 — and the selected marker moves from the box's
+     border-bottom to text-decoration, which draws under the GLYPH, so a 40px
+     box still shows the underline hugging the letter. Desktop keeps the
+     border-bottom version untouched. */
+  .sizes { gap: 12px 8px; }
+  .size-btn { position: relative; min-width: 40px; text-align: center; text-underline-offset: 6px; text-decoration-thickness: 1px; }
+  .size-btn, .size-btn[aria-pressed="true"] { border-bottom-color: transparent; }
+  .size-btn[aria-pressed="true"] { text-decoration: underline; }
+  .size-btn::after { content: ''; position: absolute; inset: -7px -4px; }
+
+  /* PDP info tabs, size recommender, underlined text links */
+  .pdp__info-nav button { padding-block: 13px; }
+  .size-rec__toggle { padding-block: 10px; }
+  .size-rec__input { padding-block: 11px; }
+  .size-rec__submit { padding-block: 11px; }
+  .tlink { position: relative; }
+  .tlink::after { content: ''; position: absolute; left: -6px; right: -6px; top: -11px; bottom: -11px; }
+  /* the wordmark is a link too */
+  .hdr__logo { padding-block: 4px; }
+
+  /* PLP filter panel */
+  .filter-group { gap: 4px; }
+  .filter-group a { display: inline-block; padding-block: 11px; }
+  .filter-group label { padding-block: 10px; }
+  .filter-group input[type="checkbox"] { width: 18px; height: 18px; }
+  .filter-group input[type="number"] { padding-block: 12px; }
+
+  /* cart: qty steppers and the remove link on both surfaces */
+  .cart-line__qty { gap: 0; }
+  .cart-line__qty button { width: 40px; height: 40px; }
+  .cart-line__remove { display: inline-block; padding-block: 11px; }
+  .cart-line__title { position: relative; }
+  .cart-line__title::after { content: ''; position: absolute; inset: -5px -4px; }
+  .cart-breakdown summary { padding-block: 9px; }
+
+  /* footer: link lists, newsletter submit, the social glyph */
+  .ftr__cols a { display: inline-block; padding-block: 13px; }
+  .ftr__cols li + li { margin-top: 0; }
+  .ftr__row input, .ftr__row button { padding-block: 10px; }
+  .ftr__social { padding: 11px; margin-left: 2px; }
+  /* the mail + phone links inside the business address block: their halo may
+     reach into the lines above and below, which carry no other target */
+  .ftr__biz a { display: inline-block; position: relative; }
+  .ftr__biz a::after { content: ''; position: absolute; left: -4px; right: -4px; top: -9px; bottom: -9px; }
+}
+
+/* ============================================================================
+   ===== NEWSLETTER POPUP + REMINDER =====
+   Markup: snippets/newsletter-popup.liquid, behaviour: theme.js
+   initNewsletterPopup(). Uses this theme's own vocabulary (.bar CTA,
+   .hdr__icon, .lbl, .field) so it reads as part of the store, not as an app
+   widget. Two surfaces:
+     .nl-popup     the modal <dialog>, auto-opens once after 8s
+     .nl-teaser    the after-dismiss reminder pill, bottom-right
+   ========================================================================= */
+
+.nl-teaser-wrap {
+  position: fixed; right: var(--gutter); bottom: var(--gutter); z-index: 50;
+  transition: translate var(--dur) var(--ease);
+}
+.nl-teaser-wrap[hidden] { display: none; }
+/* the PDP buy bar is fixed at z-index 55 and appears on scroll — ride above it
+   instead of hiding underneath. --nl-lift is set by theme.js from the bar's
+   measured height, so it stays right when the bar grows a second line. */
+.nl-teaser-wrap.lift { translate: 0 var(--nl-lift, -66px); }
+
+.nl-teaser {
+  background: var(--paper); color: var(--ink);
+  padding: 13px 20px;
+  border: 1px solid var(--ink);
+  box-shadow: 0 8px 24px rgb(20 19 16 / .12);
+  cursor: pointer;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.nl-teaser:hover { opacity: .84; }
+.nl-teaser__x {
+  position: absolute; top: -9px; right: -9px;
+  display: grid; place-items: center; width: 24px; height: 24px;
+  padding: 0; background: var(--paper); color: var(--mute);
+  border: 1px solid var(--ink); cursor: pointer;
+  box-shadow: 0 3px 10px rgb(20 19 16 / .16);
+}
+.nl-teaser__x:hover { color: var(--ink); }
+
+.nl-popup {
+  position: relative;
+  border: 1px solid var(--ink); background: var(--paper); color: var(--ink);
+  padding: 40px var(--gutter) 26px;
+  width: min(92vw, 430px); text-align: center;
+  margin: auto;   /* re-assert dialog centring — the global reset zeroes it */
+}
+.nl-popup[open] { animation: nl-fade var(--dur) var(--ease); }
+@keyframes nl-fade { from { opacity: 0; } }
+.nl-popup form { background: none; padding: 0; }
+.nl-popup__close { position: absolute; top: 6px; right: 6px; }
+.nl-popup__kicker { color: var(--mute); }
+.nl-popup h2 {
+  font-family: var(--font-display);
+  font-size: 26px; line-height: 1.15; font-weight: 400;
+  margin-top: 10px;
+}
+.nl-popup p { margin: 10px 0 0; color: var(--mute); font-size: var(--prose-size); font-family: var(--font-prose); }
+.nl-popup__error { margin-top: 14px; }
+.nl-popup__label { display: block; text-align: left; margin: 26px 0 0; }
+/* .field is 12px uppercase by default — neither is right for an email address,
+   and anything under 16px makes iOS auto-zoom the whole page on focus. */
+.nl-popup__input {
+  font-size: 16px; text-transform: none; letter-spacing: 0;
+}
+.nl-popup__cta { margin-top: 22px; }
+.nl-popup__legal { font-size: 12px; margin-top: 16px; }
+.nl-popup__legal a { color: inherit; text-decoration: underline; }
+
+@media (min-width: 721px) {
+  .nl-popup { width: min(92vw, 520px); padding: 48px 44px 32px; }
+  .nl-popup h2 { font-size: 34px; }
+}
+/* mobile: top-anchored (dialog defaults to centred) so the software keyboard
+   can never cover the input and iOS's visual-viewport pan has nothing to hide */
+@media (max-width: 720px) { .nl-popup { margin: 7vh auto auto; } }
+
+/* ============================================================================
+   ===== BUNDLE & SAVE =====
+   Two surfaces off ONE settings pair (qty_tiers_enabled + qty_tiers):
+     .qty-tier-bar   cart drawer + cart page — progress toward the next tier
+     .pdp__bundle    the ladder on the product page, under the add button
+   Both are DISPLAY ONLY. The discount itself lives in Shopify automatic
+   discounts; if those do not exist, the switch must stay off.
+   Hairlines, ink on paper, zero radius, no accent colour — the filled
+   segment IS the emphasis.
+   ========================================================================= */
+
+.qty-tier-bar { padding: 16px var(--gutter) 18px; border-bottom: 1px solid var(--hairline); }
+.cart-page .qty-tier-bar,
+[data-cart-page] > .qty-tier-bar {
+  border: 1px solid var(--hairline); border-bottom-width: 1px;
+  padding: 16px 18px 18px; margin-bottom: 24px;
+}
+.qty-tier-bar__msg { margin: 0 0 12px; color: var(--ink); text-transform: none; letter-spacing: 0; }
+.qty-tier-bar__msg strong { font-weight: 600; }
+.qty-tier-bar__track { display: grid; gap: 3px; }
+.qty-tier-bar__seg { height: 4px; background: var(--hairline); overflow: hidden; }
+.qty-tier-bar__fill { height: 100%; background: var(--ink); transition: width var(--dur) var(--ease); }
+.qty-tier-bar__legend { display: grid; gap: 3px; margin-top: 8px; }
+.qty-tier-bar__legend span { color: var(--mute); text-align: center; white-space: nowrap; }
+.qty-tier-bar__legend span.is-hit { color: var(--ink); }
+
+/* The old "PDP ladder" tile block was DELETED: its markup is gone, but its
+   .pdp__bundle-tiers rule (hairline-grid with `background: var(--hairline)`)
+   survived and bled dark stripes through the 4px gaps of the NEW ladder list
+   in pdp-extras.css, which reuses the class name. Current ladder styles live
+   in pdp-extras.css. */
+
+/* ============================================================================
+   ===== CART ADD-ON UPSELLS =====
+   Toggle rows above the checkout bar on both cart surfaces. A hairline box that
+   fills with ink when on — the theme has no accent colour, so "selected" is
+   carried by fill, not hue. Whole row is the target (44px+ tall).
+   ========================================================================= */
+
+.cart-upsells { display: grid; gap: -1px; margin: 20px 0; }
+.cart-upsell {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+  gap: 12px; width: 100%; text-align: left;
+  padding: 14px 14px; min-height: 56px;
+  border: 1px solid var(--hairline); background: var(--paper);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.cart-upsell + .cart-upsell { margin-top: -1px; }   /* collapse the shared hairline */
+.cart-upsell:hover { border-color: var(--ink); }
+.cart-upsell.is-on { border-color: var(--ink); }
+.cart-upsell__box {
+  display: grid; place-items: center; width: 20px; height: 20px;
+  border: 1px solid var(--ink); background: var(--paper); color: var(--paper);
+  font-size: 12px; line-height: 1;
+}
+.cart-upsell.is-on .cart-upsell__box { background: var(--ink); }
+.cart-upsell__text { display: grid; gap: 3px; min-width: 0; }
+.cart-upsell__title { text-transform: none; letter-spacing: 0; }
+.cart-upsell__desc { text-transform: none; letter-spacing: 0; line-height: 1.35; }
+.cart-upsell__price { white-space: nowrap; }
+.cart-upsell[disabled] { opacity: .45; cursor: not-allowed; }
+
+
+/* ==== Header extras: two-tier header, mobile-nav drawer, drill-down menu ==== */
+
+/* header-extras.css
+   Loads after theme.css (layout/theme.liquid), so a plain selector of equal specificity
+   here already wins over the base file — used deliberately below instead of !important. */
+
+/* ---------- H1 two-tier: second row (categories/pages) ----------
+   theme.css's .hdr is the top row only (logo/search/bag/hamburger). This is a NEW
+   sibling row inside .hdr-wrap, so it inherits the frosted, fixed lid for free — see
+   header.liquid for why --hdr-h has to grow to match (drives --chrome-h, one place). */
+.hdr2 { height: 40px; border-top: 1px solid var(--hairline); }
+/* DESKTOP ONLY. This row was built as a sideways-scrolling touch line for
+   phones too — measured at 390px that meant 618px of links in a 390px
+   window: "Track Your Order" cut mid-word, "About us" and "Contact" off
+   screen entirely, for 40px of every phone viewport. It duplicates the
+   hamburger, which already carries all five entries, so nothing is lost by
+   hiding it. header.liquid drops --hdr-extra by the same 40px at this
+   breakpoint. */
+@media (max-width: 720px) { .hdr2 { display: none; } }
+.hdr2__scroll {
+  height: 100%; display: flex; align-items: stretch; gap: 20px;
+  padding-inline: var(--gutter); overflow-x: auto; white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+.hdr2__scroll a { display: flex; align-items: center; text-underline-offset: 5px; }
+/* NO ACTIVE-STATE UNDERLINE: Shopify marks a link active whenever the
+   current URL falls under it, so two entries pointing at the same
+   destination both light up and the line reads as a rendering fault rather
+   than as "you are here". Hover keeps the underline — that one is a
+   pointer, not a claim about the page. */
+.hdr2__scroll a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+/* mobile: a scrolling line (H1). Desktop: centred (H1) — content is short (5ish
+   links) so it rarely needs to scroll once centred; if the menu setting ever
+   holds many links it still scrolls, it just won't start centred-but-clipped
+   on load. Acceptable trade — revisit only if a real menu overflows at
+   desktop widths. */
+@media (min-width: 721px) { .hdr2__scroll { justify-content: center; } }
+
+/* ---------- H4 category quick-line ----------
+   Empty menu_quickline = this whole block doesn't render (header.liquid), so
+   leaving the setting empty costs nothing in --hdr-h. */
+.hdr-quick { height: 32px; border-top: 1px solid var(--hairline); }
+.hdr-quick__scroll {
+  height: 100%; display: flex; align-items: center; gap: 18px;
+  padding-inline: var(--gutter); overflow-x: auto; white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 721px) { .hdr-quick__scroll { justify-content: center; } }
+/* this row stays visually 32px on purpose (a flatter row) so the tap target
+   is grown invisibly instead of stretched, same technique theme.css already uses
+   for compact controls (.tlink, .filter-group a) — 32px + 6px each side = 44px. */
+.hdr-quick__scroll a { position: relative; display: inline-flex; align-items: center; height: 100%; }
+.hdr-quick__scroll a::after { content: ''; position: absolute; inset: -6px -4px; }
+
+/* ---------- H2 + H3 mobile-nav overlay: partial-width slide-in drawer ----------
+   The overlay covers roughly a THIRD of the screen, not the full surface, and the
+   rest of the page stays visible and dimmed. theme.css's .menu is still full-bleed
+   (100%/100%, opaque paper backdrop) because THAT version had to hide the whole
+   page — this overrides width/position/backdrop for the new partial drawer.
+   The <dialog> stays exactly as theme.js expects it (showModal from [data-open-nav],
+   .close() from [data-close-dialog] or a backdrop click that targets the dialog
+   element itself) — none of that JS plumbing changes, only how the box is drawn. */
+.menu {
+  position: fixed; inset: 0 auto 0 0; margin: 0;
+  width: min(78vw, 380px); height: 100%; max-width: none; max-height: none;
+  border-inline-end: 1px solid var(--hairline);   /* hairline seam, not a shadow box */
+  transform: translateX(-100%);
+}
+/* a true third on tablets/desktop (H2), capped so an ultra-wide monitor doesn't turn
+   a "third" into a de-facto mega menu — a standing decision this theme never had. */
+@media (min-width: 721px) { .menu { width: min(33.333vw, 460px); } }
+/* dimmed-but-visible rest of the page: the global dialog::backdrop default
+   (theme.css) is already the right rgba tint — .menu overrode it to opaque paper
+   only because the old overlay was full-bleed and had nothing to show through. */
+.menu::backdrop { background: rgba(20, 19, 16, .38); }
+/* slide, not fade: an ANIMATION (not a transition) survives the dialog's own
+   display:none → [open] flip, same technique theme.css already used for the old
+   fade (.menu[open]{animation:menu-in}) — this just replaces that keyframe. */
+@keyframes menu-slide-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+/* The OPEN STATE is a declared transform, not the residue of a finished animation.
+   With only `animation: menu-slide-in` here, the drawer played its 280ms
+   entrance and then snapped straight back to the base translateX(-100%)
+   above — measured sitting at left:-281px on a 360px viewport, i.e. the menu
+   opened completely off-screen. An animation without `forwards` does not
+   change the resting style, so the base rule won the moment it ended.
+   Declaring the end state on [open] fixes it independently of whether the
+   animation runs at all (reduced motion, older engine, interrupted paint) —
+   the keyframes are then only the nicety they were meant to be. */
+.menu[open] { transform: translateX(0); animation: menu-slide-in var(--dur) var(--ease); }
+/* the overlay's own head row used to match the full bar height on purpose (close
+   button lined up with the burger it replaced). --hdr-h can now be a two- or
+   three-row composite (H1/H4), which would stretch this into a mostly-empty strip
+   inside a narrow drawer — pin it to just the top row's height instead. */
+.menu__head { height: 56px; }
+/* narrower column (min 78vw/380px, or a third on desktop) than the full-bleed
+   design the theme.css clamp was tuned for — turn the display serif down a size so
+   two-word categories ("Blouses & Tops") don't wrap awkwardly at 40px. */
+.menu .menu__link { font-size: clamp(20px, 6.4vw, 26px); }
+/* theme.css only pads .menu__link below 900px (its own TOUCH TARGETS block); at
+   the smaller font this override needs and at any width above that, the bare
+   line box alone can fall under 40px, so top it up unconditionally rather than
+   re-deriving which breakpoints need it and which don't. */
+.menu .menu__link { position: relative; }
+/* -4px, not more: .menu__list's own gap floors at 10px (clamp(10px,2.6vw,16px)),
+   and theme.css's own rule for this ("Extensions are kept inside the neighbouring
+   gap so two targets never overlap") applies here too — 4px + 4px stays under it. */
+.menu .menu__link::after { content: ''; position: absolute; inset: -4px 0; }
+
+/* ---------- H3 multi-level drill-down, zero JS (<details>/<summary>) ----------
+   Shopify link lists go three levels deep; the overlay used to FLATTEN all of them
+   into one list (see the comment above <dialog id="mobile-nav"> in header.liquid)
+   because a "Shop" parent's children just repeated the top-level categories,
+   printing five links twice. The drill-down replaces flattening with native
+   disclosure, but keeps the same anti-duplication rule at every level: a parent
+   whose children are themselves nothing but its own siblings renders as a plain
+   link instead of an expander that opens onto a row you already saw a second ago. */
+.menu__item { border: 0; }
+.menu__item summary { list-style: none; cursor: pointer; }
+.menu__item summary::-webkit-details-marker { display: none; }
+.menu__link, .menu__sub-link {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%;
+}
+.menu__expand { flex: none; display: inline-flex; transition: rotate var(--dur-fast) var(--ease); }
+.menu__item[open] > summary .menu__expand { rotate: 45deg; }   /* + becomes a close × */
+.menu__sub-panel {
+  display: grid; gap: clamp(6px, 1.6vw, 10px);
+  padding-block: clamp(8px, 2vw, 12px) clamp(14px, 3vw, 18px);
+  padding-inline-start: clamp(12px, 3vw, 18px);
+}
+.menu__sub-link {
+  font-family: var(--font-ui); font-size: 16px; letter-spacing: 0; text-transform: none;
+  padding-block: 8px;   /* + the 40px tap-target rule below on touch screens */
+}
+.menu__sub-panel--deep { padding-inline-start: clamp(20px, 5vw, 30px); }
+@media (max-width: 899px) {
+  /* same "thumb, not cursor" rule theme.css already applies to every other header
+     control (TOUCH TARGETS block) — .menu__sub-link text stays small, the tap area
+     doesn't, via an invisible extension rather than growing the visible row. */
+  .menu__sub-link { position: relative; }
+  .menu__sub-link::after { content: ''; position: absolute; inset: -4px -8px; }
+}
+
+
+/* ==== Card extras: sale flags, price badge, swatch photos + overflow, hover preview ==== */
+
+/* card-extras.css
+   Loads AFTER theme.css (layout/theme.liquid) — plain selectors here already win
+   over theme.css at equal specificity, so nothing here needs !important. */
+
+/* ---------- red: the one accent colour this file is allowed to add ----------
+   House style: red for sale/discount, nowhere else. theme.css has no red token
+   (it didn't need one until now), so it is defined once here and
+   reused by every K1/K2 selector below instead of repeating the hex. */
+:root { --sale-red: #B3282D; }
+
+/* ---------- K1: on-image sale chrome ----------
+   Two independent corner flags, positioned relative to `.card__media` exactly
+   like the existing `.card__flag` "Sold out" tag (same left/top offsets) and
+   `.card__qa` quick-add glyph (bottom-right, untouched) — see the Liquid file
+   header for why each one is gated the way it is. */
+.card__sale-flag {
+  position: absolute; left: 10px; top: 10px;
+  padding: 4px 8px; background: var(--sale-red); color: var(--paper);
+}
+/* .card__pct-flag and .card__save were removed after a live check of the
+   source stores: the card was announcing the same discount three times
+   (flag, chip, text). See the comment in snippets/product-card.liquid for
+   why exactly two survive. */
+
+/* ---------- K2: shared price-badge component — `.pb--card` is styled HERE ONLY
+   (contract: `.pb--pdp` is styled in pdp-extras.css). The snippet
+   ships bare markup; this is what makes the strike-through, sale price and
+   badge actually look like a price line instead of three loose text nodes. */
+.pb--card { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pb--card s { color: var(--mute); }
+.pb--card .price--sale { color: var(--sale-red); }
+/* solid chip like the PDP badge */
+.pb--card .pb__badge { padding: 2px 5px; border-radius: 2px; background: var(--sale-red); color: #fff; font-size: 12px; font-weight: 700; }
+
+/* ---------- K4: muted category line above the name.
+   NOTE: a vendor-field-based version of this line tends to be inconsistently
+   filled across a catalog. Ours reads product.type and falls back to the
+   first collection, so it says something real and consistent on every
+   card. */
+.card__cat { margin-bottom: -1px; }
+
+/* ---------- K3: swatch "+N" overflow, CSS-only reveal ----------
+   4 dots ship visible, the rest ship in the DOM already (so paintSwatches()
+   still finds and colours them on first load) but hidden until a checkbox
+   toggles them — no JS, theme.js stays untouched. The row sits outside
+   `.card__info`'s anchor (see the Liquid file), so it needs its own
+   horizontal rhythm to line up under the name/price above it. */
+.card__swatches { padding: 0 12px 14px; flex-wrap: wrap; gap: 5px; }
+
+/* ---------- swatches are PHOTOGRAPHS ----------
+   theme.css styles .card__swatch as a 12px dot. It is now a small 3:4 crop of
+   the real garment in that colour (same alt-tag source the PDP picker uses), so
+   the dot geometry is overridden here rather than edited in the base file.
+   A colour with no tagged photograph still falls back to a dot — that is the
+   .card__swatch-dot child, which keeps the old look inside the new box. */
+/* 28×38 is deliberate: at 30×40 a ten-colour product expanded to FOUR rows of
+   photographs (146px inside a 194px card) and shoved the whole grid down. At
+   this size four fit on the collapsed row next to the "+N", and ten expand
+   to two. */
+.card__swatch {
+  display: block;
+  width: 28px;
+  height: 38px;
+  border-radius: 0;
+  overflow: hidden;
+  background: var(--cream);
+  box-shadow: inset 0 0 0 1px rgba(20, 19, 16, .16);
+}
+.card__swatch img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.card__swatch-dot { display: block; width: 100%; height: 100%; background: var(--cream); }
+.card__swatches:has(.card__more-toggle:checked) .card__swatch--extra { display: block; }
+/* the "+N" control sits on the same baseline as a 38px-tall photo now */
+.card__more { align-self: center; min-height: 38px; }
+/* The checkbox is WRAPPED BY its label (no id/for pair — see the Liquid comment: a
+   fixed id makes two cards of the same product on one page toggle each other), so it
+   is not a sibling of the dots any more and `~` cannot reach them. `:has()` on the row
+   can. Kept focusable rather than display:none so the control is still reachable by
+   keyboard; it is only visually collapsed. */
+.card__more-toggle {
+  position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0;
+}
+.card__swatch--extra { display: none; }
+.card__swatches:has(.card__more-toggle:checked) .card__swatch--extra { display: inline-block; }
+/* The label goes away once it has been used (no "−" after opening).
+   Superseded the earlier keep-it-for-collapse rule — what it revealed are
+   links, so keyboard focus still lands on real targets. */
+.card__swatches:has(.card__more-toggle:checked) .card__more { display: none; }
+.card__more {
+  position: relative; cursor: pointer; display: inline-flex; align-items: center;
+  -webkit-tap-highlight-color: transparent;
+}
+/* keyboard users must be able to see where they are — the input itself is 1px */
+.card__more:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* screen-reader-only text for the toggle's real name; the visible "+3" is aria-hidden
+   because "plus three" tells a blind shopper nothing on its own */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+/* invisible hit-area extension, not a visible box: the label text stays the
+   same small size as the dots beside it (12px floor rule) while the tap
+   target still clears 40px, via a transparent ::before rather than padding —
+   padding would shove the dots apart and break the row's rhythm. */
+.card__more::before {
+  content: ''; position: absolute; inset: -14px -10px;
+}
+
+/* ---------- swatch → card image preview ----------
+   Pressing a swatch should both preview the colour AND let a tap open that
+   variant. Both cannot live on the same click, so they split by device:
+   pointer devices PREVIEW on hover/focus (card-extras.js swaps the lead
+   image, no navigation, no reload), touch devices follow the link straight
+   to the colour, where that photograph is the first thing on screen anyway.
+
+   The card keeps its own hover image (.card__alt); while a swatch preview is
+   active that second image must stay hidden or it would cross-fade over the
+   colour the shopper asked to see. */
+.card__media.is-swatch-preview .card__alt { opacity: 0 !important; }
+/* a CLICKED swatch locks the card to that colour — the original's hover
+   second-shot must never come back over it */
+.card__media.is-swatch-locked .card__alt { display: none !important; }
+.card__art img { transition: opacity var(--dur-fast, .18s) var(--ease, ease); }
+
+/* HOVER SWAPS THE PHOTO, IT DOES NOT STACK IT. .card__alt fades in ON TOP of
+   the lead shot and nothing ever faded the lead OUT. While both images are
+   the same 2:3 the top one covers the bottom one exactly and nobody sees it;
+   the moment the second shot of a colour has a different ratio,
+   object-fit:contain letterboxes it inside the tile and the lead photograph
+   stays visible around it — which reads as the new image being laid OVER
+   the old one instead of replacing it.
+   opacity, not display: the lead image is the in-flow element that gives the
+   tile its height, so hiding it any harder would collapse the card.
+   :has(.card__alt) — a product with only one photograph has no hover image, and
+   without the guard hovering it would fade the card to nothing.
+   The swatch-preview states drive the lead image themselves (see above), so they
+   are excluded or a swatch preview under the cursor would go blank. */
+@media (hover: hover) {
+  .card:hover .card__media:not(.is-swatch-preview):not(.is-swatch-locked) .card__art:has(.card__alt) img:not(.card__alt) {
+    opacity: 0;
+  }
+}
+.card__swatch { transition: box-shadow var(--dur-fast, .18s) var(--ease, ease); }
+.card__swatch:hover,
+.card__swatch:focus-visible { box-shadow: inset 0 0 0 1px var(--ink); outline: none; }
+.card__swatch[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+
+
+/* ==== PDP extras: rating, guarantee line, price badge, delivery + trust ==== */
+
+/* PDP conversion layer — loaded after theme.css. Ink/paper stays dominant;
+   red is reserved for real sale math, green for guarantees and savings. */
+
+.pdp-rating {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.pdp-rating__stars {
+  letter-spacing: .08em;
+}
+
+/* the aggregate reads as a statement (no link) — a VISIBLE one: bigger
+   stars, semibold value */
+.pdp-rating__value { font-weight: 600; color: var(--ink, #141310); }
+
+/* guarantee line under the ATC — green is the theme's guarantee colour (see
+   the colour note at the top of this file), centered like the button */
+.pdp-guarantee {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 10px 0 0;
+  color: #26734d;
+}
+.pdp-guarantee svg { flex: none; }
+
+.pdp__price,
+.pdp__rb-price {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.price--sale,
+.pb--pdp .price--sale,
+.pb--pdp .pb__badge {
+  color: #b3261e;
+}
+
+.pb--pdp .price--sale,
+.pdp__price .price--sale {
+  font-weight: 600;
+}
+
+.pb--pdp {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.pb--pdp .pb__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 2px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* price-badge owns first paint but [data-price] remains theme.js's live price.
+   In badge-only siblings expose only the computed percentage to avoid repeating
+   compare and sale prices. Complete-the-look rows render the full component. */
+[data-price-badge] .pb > :not(.pb__badge) {
+  display: none;
+}
+
+[data-price-badge] .pb {
+  font-size: 0;
+}
+
+[data-price-badge] .pb__badge {
+  font-size: 12px;
+}
+
+/* THE badge styling has to sit on [data-price-badge] ITSELF, not on an inner
+   .pb__badge. initPDP()'s render() runs on load and writes the percentage in
+   as plain textContent, so the .pb__badge element from the Liquid first paint
+   is gone within a frame and every rule scoped to it stops matching. The
+   badge was rendering as bare 17px text in the price colour — neither red
+   nor boxed. Styling the element theme.js writes into survives every
+   repaint, because that element is the one thing that never gets replaced.
+   :not(:empty) keeps a product without an anchor from drawing an empty box. */
+/* SOLID chip, original size: filled sale-red, white percentage, no border. */
+[data-price-badge]:not(:empty) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 2px;
+  background: #b3261e;
+  color: #fff;
+  /* stays SANS since the price itself went Prata — a serif faux-bold chip
+     looks broken */
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.opt__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.opt__label {
+  min-width: 0;
+}
+
+.opt__value {
+  color: var(--ink, #111);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.opt__head [data-open-size-chart] {
+  flex: 0 0 auto;
+  min-height: 40px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+/* .qv__buy rides along on every picker rule below: the quick view used to
+   look like the old theme. this stylesheet's naked-letter sizes and 36x54 swatches ARE
+   the old theme — the rebuilt look only ever existed inside .pdp__buy, so
+   the dialog kept rendering the previous one. Adding the selector is the
+   whole change: same markup, same JS contract. */
+.pdp__buy .sizes,
+.pdp__rb-sizes .sizes,
+.qv__buy .sizes,
+.cart-miniview__buy .sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pdp__buy .size-btn,
+.pdp__rb-sizes .size-btn,
+.qv__buy .size-btn,
+.cart-miniview__buy .size-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--hairline, currentColor);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+}
+
+.pdp__buy .size-btn[aria-pressed="true"],
+.pdp__rb-sizes .size-btn[aria-pressed="true"],
+.qv__buy .size-btn[aria-pressed="true"],
+.cart-miniview__buy .size-btn[aria-pressed="true"] {
+  border-color: var(--ink, #111);
+  background: var(--ink, #111);
+  color: var(--paper, #fff);
+}
+
+.pdp__buy .swatches,
+.qv__buy .swatches,
+.cart-miniview__buy .swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 48px);
+  gap: 8px;
+  max-width: 100%;
+}
+
+.pdp__buy .swatch,
+.qv__buy .swatch,
+.cart-miniview__buy .swatch {
+  box-sizing: border-box;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.pdp__buy .swatch--img,
+.qv__buy .swatch--img,
+.cart-miniview__buy .swatch--img {
+  height: 72px;
+}
+
+.pdp__buy .swatch--img img,
+.qv__buy .swatch--img img,
+.cart-miniview__buy .swatch--img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The buy button on the PDP is full black even before a size is picked. The
+   dialog still greyed it out to .38 via [disabled], which is the single
+   loudest piece of old-theme left in here. theme.js now keeps it live and
+   nudges the size row instead — .bar--awaiting is the PDP's own class. */
+.qv__buy .bar--awaiting,
+.cart-miniview__buy .bar--awaiting { opacity: 1; }
+
+.pdp-usp-lines,
+.pdp-checks {
+  display: grid;
+  gap: 8px;
+}
+
+.pdp-usp-line,
+.pdp-checks p,
+.pdp-trust-box p,
+.pdp-viewers,
+.pdp-low-stock {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+}
+
+.pdp-usp-line__pulse,
+.pdp-delivery__dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pdp-usp-line__pulse {
+  animation: pdp-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pdp-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: .55; }
+  50% { box-shadow: 0 0 0 5px transparent; opacity: 1; }
+}
+
+.pdp-viewers {
+  margin-top: 4px;
+  padding-block: 2px;
+}
+
+.pdp-viewers [data-viewers-count] {
+  min-width: 2ch;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the one assurance line under the add button — a single line, not a
+   bordered checklist box */
+.pdp-usp-inline {
+  margin: 14px 0 0;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Label and price centred as ONE group. space-between pushed the label hard
+   left and the price hard right, so a 1170px-wide button read as two
+   separate controls with a gap between them. The "·" separator keeps them
+   apart. */
+.pdp__atc,
+.pdp__bar,
+.pdp__rb-atc {
+  justify-content: center;
+  gap: 16px;
+}
+
+[data-atc-price]:not(:empty)::before {
+  content: "·";
+  margin-right: 12px;
+}
+
+.pdp-payments {
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pdp-payments svg {
+  width: 38px;
+  height: 24px;
+}
+
+/* The icons hung on the button with margin-top:-4px, so they read as falling
+   INTO it. They sit clearly under it now. */
+.pdp-payments--column {
+  display: flex;
+  margin-top: 10px;
+}
+
+.pdp-payments--mobile {
+  display: none;
+}
+
+/* ---------- ONE assurance block ----------
+   One frame instead of separate delivery, trust and checklist frames. The shipping date is the headline, a hairline
+   separates it, the promises sit below as a two-column checklist. Two columns
+   because four one-line rows stacked read as a list of terms; paired, they read
+   as a set of conditions — and it costs 40px less height. */
+.pdp-assurance {
+  margin-top: 14px;
+  padding: 13px 14px 14px;
+  border: 1px solid var(--hairline, currentColor);
+}
+
+.pdp-delivery__date {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+/* size/shape already set above next to .pdp-usp-line__pulse — only the colour
+   is specific to the delivery line */
+.pdp-delivery__dot {
+  align-self: center;
+  background: #26734d;
+}
+
+.pdp-delivery__flag {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.pdp-assurance__checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 14px;
+  margin: 11px 0 0;
+  padding: 11px 0 0;
+  border-top: 1px solid var(--hairline, currentColor);
+  list-style: none;
+}
+
+.pdp-assurance__checks li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
+}
+
+.pdp-assurance__tick {
+  line-height: 1.35;
+}
+
+/* kept for a future opt-in, not emitted by default */
+.pdp-assurance__tick--green { color: #26734d; }
+
+/* one column below ~360px, where two columns would break every promise onto
+   three lines each */
+@media (max-width: 359px) {
+  .pdp-assurance__checks { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* RED pulse for the low-stock line. Carried over from the dropped "Few items
+   left" line; ink was too quiet for the one line that is meant to press. */
+.pdp-low-stock {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pdp-low-stock__pulse {
+  flex: 0 0 8px;
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  color: #B3282D;
+  background: currentColor;
+  animation: pdp-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdp-low-stock__pulse { animation: none; }
+}
+
+/* varied states: amber keeps the pulse, the green in-stock dot is calm — it
+   is reassurance, not pressure */
+.pdp-low-stock--fast .pdp-low-stock__pulse { color: #a15c00; }
+.pdp-low-stock--stock .pdp-low-stock__pulse { color: #26734d; animation: none; }
+
+.pdp-fit {
+  display: grid;
+  gap: 10px;
+  padding-block: 14px;
+  border-block: 1px solid var(--hairline, currentColor);
+}
+
+/* sizekit: fit scale + measure note merged into ONE bordered block with
+   tight gaps — the old stack (bordered fit band + loose note underneath)
+   read as clutter under the size buttons. */
+.pdp-sizekit {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-block: 12px;
+  border-block: 1px solid var(--hairline, currentColor);
+}
+.pdp-sizekit .pdp-fit { padding-block: 0; border-block: 0; gap: 6px; }
+/* pull the pole labels up against the track so scale + labels + note read as
+   ONE unit */
+.pdp-sizekit .pdp-fit__labels { margin-top: -2px; }
+.pdp-sizekit .pdp-measure-note { margin: 0; }
+
+/* bundle ladder: no card, no border — title 0.8em/600/uppercase, subtitle
+   0.75em, tinted tiles with 4px gaps and a bold dark percentage, tile text
+   at 0.78em/opacity .8. */
+.pdp__bundle-line {
+  display: block;
+  margin: 14px 0 0;
+}
+.pdp__bundle-head {
+  margin: 0 0 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.pdp__bundle-note {
+  margin: 0 0 8px;
+  font-size: 0.75em;
+  opacity: 0.5;
+}
+.pdp__bundle-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pdp__bundle-tiers li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  /* tiles wear the SAME fill + hairline as the delivery-timeline circles
+     above, so page stays paper and the cards carry the tint. */
+  background: var(--cream, #f1ede6);
+  border: 1px solid var(--hairline, currentColor);
+}
+.pdp__bundle-pctcol {
+  font-size: 0.78em;
+  font-weight: 700;
+  color: #111111;
+  white-space: nowrap;
+}
+.pdp__bundle-desc {
+  font-size: 0.78em;
+  opacity: 0.8;
+}
+
+.pdp-fit__heading {
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* Adjusted where a thinner reference version conflicts with this theme's
+   own rules.
+
+   The track is a soft 3px PILL, not a hairline — at 1px the marker reads
+   as a dot floating in space rather than as a position on a scale.
+
+   Worth calling out: the STATIC MID TICK. It is a fixed mark at 50%, present
+   on every product regardless of the value, sitting under "True to size".
+   Without it an off-centre marker has nothing to be off-centre FROM, and the
+   shopper has to infer the midpoint from the label row. This is the one
+   detail that makes the whole component readable at a glance.
+
+   This theme has a hard 12px floor (legibility for a 40+ audience), so the
+   labels stay at 12px rather than a smaller reference size. */
+.pdp-fit__track {
+  position: relative;
+  height: 16px;
+}
+
+/* the rail */
+.pdp-fit__track::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 999px;
+  /* rgba first: color-mix needs Safari 16.2, this theme's floor is 15.4 (showModal) */
+  background: rgb(20 19 16 / 0.12);
+  background: color-mix(in srgb, var(--ink, #141310) 12%, transparent);
+  transform: translateY(-50%);
+}
+
+/* the fixed "true to size" reference tick — always at dead centre, never moves */
+.pdp-fit__track::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgb(20 19 16 / 0.22);
+  background: color-mix(in srgb, var(--ink, #141310) 22%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.pdp-fit__marker {
+  position: absolute;
+  top: 50%;
+  left: clamp(6px, var(--fit-position), calc(100% - 6px));
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink, #141310);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.16);
+  transform: translate(-50%, -50%);
+}
+
+.pdp-fit__labels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 12px;
+}
+
+.pdp-fit__labels span:nth-child(2) { text-align: center; }
+.pdp-fit__labels span:last-child { text-align: right; }
+
+/* BUNDLE & SAVE card: filled cream card, free-standing paper tiles with the
+   percentage in the sale red — instead of the hairline-joined grid. */
+.pdp__bundle {
+  border: none;
+  background: var(--cream, #F1EDE6);
+  padding: 18px 16px 16px;
+}
+
+.pdp__bundle-head {
+  color: inherit;
+}
+
+.pdp__bundle .pdp__bundle-tiers {
+  gap: 8px;
+  background: transparent;
+}
+
+.pdp__bundle .pdp__bundle-tier {
+  gap: 3px;
+  padding: 14px 4px 12px;
+  border: 1px solid var(--hairline, currentColor);
+  background: var(--paper, #FAF8F4);
+}
+
+/* same face as the BUNDLE & SAVE heading, not the Prata display serif —
+   the large numbers use the same font family as the title */
+.pdp__bundle .pdp__bundle-qty { font-family: inherit; font-size: 24px; font-weight: 600; }
+
+/* bigger price in the add button, so it reads clearly */
+.pdp__atc [data-atc-price] { font-size: 17px; font-weight: 600; letter-spacing: .04em; }
+
+.pdp__bundle .pdp__bundle-pct {
+  color: #b3261e;
+  font-weight: 600;
+}
+
+/* complete-the-look rows overflowed their box by 17px at 390px: 60px image
+   + 12px gaps + the Choose-size link left too little for title/price.
+   Slimmer image, tighter gap, smaller link below 420px. */
+@media (max-width: 419px) {
+  /* doubled selectors: the base rules for these classes sit LATER in this file
+     and would win the same-specificity tie */
+  .pdp-complete-look .pdp-complete-look__item { grid-template-columns: 48px minmax(0, 1fr) auto; gap: 6px; }
+  .pdp-complete-look .pdp-complete-look__image, .pdp-complete-look .pdp-complete-look__image img { width: 48px; height: 72px; }
+  .pdp-complete-look .pdp-complete-look__item .tlink { font-size: 11px; letter-spacing: .03em; }
+}
+
+/* 5-up related row: smaller cards, more products. The section still ships
+   .grid-4; this widens it only under .related, so PLP and homepage grids
+   stay 4-up. */
+@media (min-width: 900px) { .related .grid-4 { grid-template-columns: repeat(5, 1fr); } }
+/* 6 cards ship server-side so the 2-col mobile grid fills 3 full rows;
+   desktop is 5-up, so the sixth card would orphan a second row — hide it
+   there instead of rendering fewer. */
+@media (min-width: 900px) { .related .grid-4 > :nth-child(n+6) { display: none; } }
+
+.pdp-complete-look {
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline, currentColor);
+}
+
+.related .sec-head h2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.pdp-complete-look__head h2 {
+  margin: 0 0 12px;
+}
+
+.pdp-complete-look__list {
+  display: grid;
+}
+
+.pdp-complete-look__item {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-block: 10px;
+  border-top: 1px solid var(--hairline, currentColor);
+}
+
+.pdp-complete-look__image,
+.pdp-complete-look__image img {
+  display: block;
+  width: 60px;
+  height: 90px;
+  object-fit: cover;
+}
+
+.pdp-complete-look__copy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.pdp-complete-look__copy > a {
+  overflow-wrap: anywhere;
+}
+
+.pdp-complete-look__price .pb--pdp .pb__badge {
+  min-height: 20px;
+}
+
+.pdp-complete-look__add {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 12px;
+}
+
+.pdp__frame {
+  position: relative;
+}
+
+
+
+.gallery-item {
+  cursor: zoom-in;
+  scroll-margin: 20px;
+}
+
+.pdp-zoom {
+  opacity: 0;
+  transition: opacity 260ms cubic-bezier(.22, 1, .36, 1), display 260ms allow-discrete, overlay 260ms allow-discrete;
+}
+
+.pdp-zoom[open] {
+  opacity: 1;
+}
+
+.pdp-zoom[open] .zoom-dialog__inner img {
+  transform: scale(1);
+  transition: transform 360ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.pdp-zoom.is-closing {
+  opacity: 0;
+}
+
+.pdp-zoom.is-closing .zoom-dialog__inner img {
+  transform: scale(.96);
+}
+
+@starting-style {
+  .pdp-zoom[open] { opacity: 0; }
+  .pdp-zoom[open] .zoom-dialog__inner img { transform: scale(.96); }
+}
+
+@media (max-width: 899px) {
+  /* NO icons in the sticky bar. The buy column's own icon row now shows on
+     mobile too — same spot as desktop, under the in-flow ATC.
+     .pdp-payments--mobile markup stays in the barwrap for an easy revert. */
+  .pdp-payments--mobile {
+    display: none;
+  }
+
+  .pdp-delivery {
+    align-items: flex-start;
+  }
+
+  .pdp-delivery__date {
+    flex: 1 1 auto;
+  }
+
+  .pdp-delivery__free {
+    flex: 0 1 42%;
+    justify-content: flex-end;
+  }
+
+
+}
+
+@media (max-width: 420px) {
+  .pdp-delivery {
+    display: grid;
+  }
+
+  .pdp-delivery__free {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .pdp-complete-look__item {
+    grid-template-columns: 54px minmax(0, 1fr) 44px;
+    gap: 9px;
+  }
+
+  .pdp-complete-look__image,
+  .pdp-complete-look__image img {
+    width: 54px;
+    height: 81px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdp-usp-line__pulse {
+    animation: none;
+  }
+
+  .pdp-zoom,
+  .pdp-zoom .zoom-dialog__inner img {
+    transition: none;
+  }
+}
+
+
+/* Tactile press on every add button. Hover stays the theme's opacity fade;
+   this is the press-in only. */
+.pdp__atc:active:not([disabled]),
+.pdp__bar:active:not([disabled]),
+.pdp__rb-atc:active:not([disabled]) { transform: translateY(1px); }
+
+
+/* ==== Cart extras: drawer trust strip, milestones, mini-PDP, checkout deck ==== */
+
+/* Cart layer: ink on paper, hairlines, zero radius. Loaded after theme.css. */
+:where(#cart-drawer, [data-cart-page]) *,
+:where(#cart-drawer, [data-cart-page]) *::before,
+:where(#cart-drawer, [data-cart-page]) *::after { box-sizing: border-box; }
+
+:where(#cart-drawer, [data-cart-page]) .lbl-sm { font-size: max(12px, .72rem); }
+:where(#cart-drawer, [data-cart-page]) button,
+:where(#cart-drawer, [data-cart-page]) a,
+:where(#cart-drawer, [data-cart-page]) select { touch-action: manipulation; }
+:where(#cart-drawer, [data-cart-page]) button:focus-visible,
+:where(#cart-drawer, [data-cart-page]) a:focus-visible,
+:where(#cart-drawer, [data-cart-page]) select:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* The whole inner is replaced on every mutation. Items are the only normal-flow
+   scroller; the recommendation and decisional footer always remain visible. */
+#cart-drawer .cart-drawer__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: var(--paper, #f7f4ee);
+}
+
+.cart-announcement {
+  --cart-ann-h: 34px;
+  flex: 0 0 auto;
+  min-height: var(--cart-ann-h);
+  margin: 0;
+  padding: 7px 46px 6px;
+  color: #fff;
+  background: var(--ink, #171715);
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* ROTATING, like the site header. One fact per slide instead of one long
+   line that wrapped to two rows inside a 30px band. Keyframes come from the
+   section — the slide count is only known there. */
+.cart-announcement--rotating {
+  display: block;
+  height: var(--cart-ann-h);
+  min-height: var(--cart-ann-h);
+  padding: 0;
+  overflow: hidden;
+}
+.cart-announcement__track {
+  display: grid;
+  grid-auto-rows: var(--cart-ann-h);
+  animation: cart-ann-rotate var(--cart-ann-cycle, 15s) infinite;
+}
+.cart-announcement__slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--cart-ann-h);
+  margin: 0;
+  padding-inline: 46px;
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cart-announcement__track { animation: none; }
+}
+
+#cart-drawer .cart-drawer__head {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding-block: 4px;
+}
+
+.cart-countdown {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  margin: 0;
+  padding: 3px 16px;
+  border-block: 1px solid var(--hairline, currentColor);
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: .04em;
+}
+.cart-countdown strong { min-width: 3.2ch; margin-inline-start: .45ch; font-variant-numeric: tabular-nums; }
+
+/* Quantity milestones: labels flank the rail and each tag sits directly on it. */
+.qty-tier-bar {
+  flex: 0 0 auto;
+  margin: 0;
+  /* fixed 12px inline padding: edge-tight — a clamp grew to 24px+ on wider
+     drawers and read as wasted space either side of the bar */
+  padding: 8px 12px 7px;
+  border-bottom: 1px solid var(--hairline, currentColor);
+  overflow: hidden;
+}
+.qty-tier-bar__offer,
+.qty-tier-bar__msg { margin: 0; text-align: center; }
+.qty-tier-bar__offer { font-size: 13px; }
+.qty-tier-bar__msg { min-height: 16px; margin-top: 2px; line-height: 1.3; }
+/* Edge-tight rework: the old grid centred each marker in a 1/N column,
+   wasting a half column of dead space either side. Flex space-between pins
+   the outer markers flush to the padding edge and the rail runs
+   marker-centre to marker-centre (12px = half the 24px marker). */
+.qty-tier-bar__labels,
+.qty-tier-bar__milestones {
+  display: flex;
+  justify-content: space-between;
+}
+.qty-tier-bar__labels { font-size: 12px; line-height: 1.2; text-align: center; }
+.qty-tier-bar__labels--above { margin-top: 0; margin-bottom: 4px; }
+.qty-tier-bar__labels--below { margin-top: 3px; }
+.qty-tier-bar__labels span { min-width: 0; white-space: nowrap; }
+.qty-tier-bar__labels span:first-child { text-align: left; }
+.qty-tier-bar__labels span:last-child { text-align: right; }
+.qty-tier-bar__milestones { position: relative; align-items: center; min-height: 24px; }
+.qty-tier-bar__rail {
+  position: absolute;
+  z-index: 0;
+  right: 12px;
+  left: 12px;
+  height: 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+.qty-tier-bar__rail span { display: block; width: var(--qty-tier-progress); height: 100%; background: currentColor; }
+.qty-tier-bar__marker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: var(--paper, #f7f4ee);
+}
+/* the tag glyph's ink sits low-left inside its 16px viewBox (x 1–13.5, y 1.5–16);
+   +.6/-.6 at 13px render size puts its optical centre on the circle's centre */
+.qty-tier-bar__marker svg { width: 13px; height: 13px; fill: currentColor; transform: translate(.6px, -.6px); }
+.qty-tier-bar__marker.is-hit { color: var(--paper, #f7f4ee); background: var(--ink, #171715); }
+
+/* Drawer form: one line, no rail — the full milestone display cost 126px of
+   the 285px item region at 785px window height. */
+.qty-tier-bar--compact { padding: 6px clamp(12px, 4vw, 24px); }
+.qty-tier-bar--compact .qty-tier-bar__line {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* The drawer is modal; wheel over its non-scrolling regions must not move
+   the page behind it. */
+body:has(#cart-drawer[open]) { overflow: hidden; }
+
+/* Explicitly load-bearing: flex + min-height:0 prevents the fixed cross-sell
+   band from squeezing the line region to a sliver on short phones. */
+#cart-drawer .cart-drawer__items {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.cart-drawer__lines { padding-inline: clamp(12px, 4vw, 20px); }
+
+/* THE FOOT CARRIES THE WHOLE DECISION NOW: add-ons, breakdown, totals,
+   checkout, wallets, payment marks, rating, trust line. That is a lot of
+   height, so it is allowed to scroll INSIDE itself on short screens rather
+   than push the bag list to nothing — the list keeps flex priority, the
+   foot caps at half the drawer. */
+#cart-drawer .cart-drawer__foot {
+  flex: 0 1 auto;
+  max-height: 56%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* Bigger photograph, title on two lines if it needs them, variant as quiet
+   text, stepper under it, price and Remove stacked on the right. Nothing
+   boxed. */
+.cart-line {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--hairline, currentColor);
+  font-size: 12px;
+}
+.cart-line__media,
+.cart-line__ph { display: block; width: 78px; aspect-ratio: 3 / 4; overflow: hidden; background: #e8e3da; }
+.cart-line__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cart-line__body { min-width: 0; }
+.cart-line__title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1.3;
+  letter-spacing: .06em;
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.cart-line__kind,
+.cart-line__variant { display: block; margin-top: 6px; line-height: 1.25; color: var(--mute); font-size: 13px; letter-spacing: .06em; }
+.cart-line--addon .cart-line__title::after { content: ""; }
+.cart-line__right { min-width: 62px; text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; letter-spacing: .06em; }
+/* ONE LINE: the grid stacked the struck-through compare price above the
+   current one, so the two numbers a shopper compares sat on different
+   baselines at different sizes. */
+.cart-line__price { display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; white-space: nowrap; }
+/* RED, not green. Same red the sale price and the percentage badge already
+   use, so a discounted bag speaks with one colour instead of two. */
+.cart-line__saving,
+/* the ONLY savings line (the original strike row was removed) — red + one
+   step up so the good news actually registers. Doubled class: the base
+   .cart-sum { font-size: 12px } rule sits LATER in this file and ties on
+   specificity, so a single class here loses the cascade. */
+.cart-sum.cart-sum--saving { color: #B3282D; font-size: 14px; font-weight: 600; }
+.cart-line__saving { display: block; margin-top: 3px; white-space: nowrap; }
+.cart-compare { margin-inline-end: 5px; color: inherit; opacity: .62; }
+
+/* History: one full-width <select> per option plus a four-cell stepper wrapped to
+   three 40px rows and made every line 212px tall; splitting the selects onto one
+   shared row got it to 166px. Both were still boxes stacked on boxes. This is the
+   old shape — one variant control, a small stepper, a Remove text link — at ~110px,
+   and it keeps the size/colour swap the old drawer never had.
+
+   Font stays 16px on the select: anything smaller makes iOS zoom the whole page
+   on focus. */
+.cart-line__control { display: flex; align-items: center; min-width: 0; margin-top: 10px; }
+/* Remove sits under the price on the RIGHT, as in the reference — the markup
+   keeps it inside .cart-line__control for the addon-decline contract, so it
+   is moved visually rather than re-parented. */
+.cart-line__remove {
+  margin-top: 8px;
+  color: var(--mute);
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 1px;
+  font-size: 13px;
+  letter-spacing: .06em;
+}
+.cart-line__remove:hover { color: var(--ink); border-bottom-color: var(--ink); }
+.cart-line__right { display: grid; justify-items: end; align-content: start; }
+.cart-line__option select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 28px 6px 8px;
+  border: 1px solid currentColor;
+  border-radius: 0;
+  color: inherit;
+  background-color: transparent;
+  font: inherit;
+  font-size: 16px;
+}
+/* no box around the stepper — three bare glyphs */
+.cart-line__qty {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 34px);
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 34px;
+  border: 0;
+}
+.cart-line__qty button,
+.cart-line__qty span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 15px;
+}
+.cart-line__qty button { color: var(--mute); }
+.cart-line__qty button:hover:not([disabled]) { color: var(--ink); }
+.cart-line__qty button:last-child { border-right: 0; }
+.cart-line__qty button:disabled { opacity: .35; }
+.cart-line__trash svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: square; }
+
+/* BACK OUT OF THE LIST, AND FOLDABLE: the upsell needs to stay visible and
+   open by default. Inside the scrolling list it dropped below the fold from
+   four items on. It is now the first row of the foot: always rendered, open
+   on arrival, closable by the shopper. */
+#cart-drawer .cart-drawer__cross {
+  width: 100%;
+  max-height: none;
+  min-width: 0;
+  margin: 0;
+  /* theme.css styles this element as `display:grid; gap:12px`. That gap was still
+     inherited here and pushed the card 12px down: 7 + 16 + 12 + 4 + 88 + 8 = 135
+     inside a 124px cap, so the card overlapped the foot and got clipped. The head
+     keeps its own 4px margin-bottom as the separator. */
+  gap: 0;
+  padding: 7px clamp(8px, 2.5vw, 14px) 8px;
+  overflow: hidden;
+  border-top: 1px solid var(--hairline, currentColor);
+  border-bottom: 1px solid var(--hairline, currentColor);
+  background: var(--paper, #f7f4ee);
+  /* The band is pinned above the foot while the bag list scrolls underneath it.
+     With a hairline alone, a cart line cut off at that edge reads as a rendering
+     fault rather than as "there is more above". A soft upward shadow makes
+     the layering legible. */
+}
+.cart-cross__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 32px; margin-bottom: 2px; cursor: pointer; list-style: none; }
+.cart-cross__head::-webkit-details-marker { display: none; }
+.cart-cross__head h3 { margin: 0; font-size: 12px; }
+.cart-cross__meta { display: flex; align-items: center; gap: 10px; }
+/* the one open/closed affordance: a chevron that flips, no plus/minus glyph */
+.cart-cross__chevron { width: 8px; height: 8px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(-135deg) translate(-2px, -2px); transition: transform var(--dur-fast, .18s) var(--ease, ease); }
+.cart-drawer__cross:not([open]) .cart-cross__chevron { transform: rotate(45deg) translate(-2px, -2px); }
+.cart-cross__stage { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; min-width: 0; }
+.cart-cross__arrow,
+.cart-cross-card__choose,
+.cart-cross-card__add {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid currentColor;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 14px;
+}
+.cart-cross__arrow { width: 40px; border-color: transparent; font-size: 18px; }
+.cart-cross__arrow:disabled { opacity: .25; }
+.cross-row { min-width: 0; }
+.cart-cross-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  height: 88px;
+  cursor: pointer;
+}
+.cart-cross-card__media { display: block; width: 58px; height: 78px; overflow: hidden; background: #e8e3da; }
+.cart-cross-card__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cart-cross-card__body { min-width: 0; }
+/* two lines before truncating: since the select left the card there is room
+   for the full name */
+.cart-cross-card__title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.cart-cross-card__price { min-height: 16px; margin-top: 1px; line-height: 1.25; }
+/* ONE CONTROL, FULL WIDTH. The row was a select + a bag icon + a 48px Add
+   crammed into three columns; the size is now picked in the mini product
+   page, so the card needs exactly one button. */
+.cart-cross-card__actions { display: grid; margin-top: 6px; }
+/* white-space: nowrap so a label can never wrap inside the box and spill over
+   the card (that is what "Select a size" did at 48px). */
+.cart-cross-card__choose,
+.cart-cross-card__add { width: 100%; font-size: 12px; text-transform: uppercase; white-space: nowrap; }
+.cart-cross-card__add { color: var(--paper, #f7f4ee); background: var(--ink, #171715); }
+.cart-cross-card__add[disabled] { opacity: .4; cursor: not-allowed; }
+
+#cart-drawer .cart-drawer__foot {
+  display: block;
+  flex: 0 0 auto;
+  max-height: none;
+  /* padding-top: 0 — the recommendation brings its own top border and padding
+     and is the first thing in here now, so any extra gap reads as a break
+     between the bag and the checkout block. */
+  padding: 0 clamp(12px, 4vw, 20px) max(8px, env(safe-area-inset-bottom));
+  overflow: visible;
+  background: var(--paper, #f7f4ee);
+}
+/* the band is edge-to-edge inside the padded foot */
+#cart-drawer .cart-drawer__foot .cart-drawer__cross { margin-inline: calc(clamp(12px, 4vw, 20px) * -1); }
+.cart-price-summary { display: grid; gap: 2px; }
+.cart-sum { display: flex; justify-content: space-between; gap: 12px; min-width: 0; font-size: 12px; line-height: 1.35; }
+.cart-sum > :last-child { flex: 0 0 auto; text-align: right; font-variant-numeric: tabular-nums; }
+.cart-sum--total { margin-top: 2px; padding-top: 4px; border-top: 1px solid var(--hairline, currentColor); font-size: 14px; font-weight: 700; }
+#cart-drawer .cart-drawer__foot .cart-price-summary { gap: 0; }
+#cart-drawer .cart-drawer__foot .cart-sum { line-height: 1.25; }
+#cart-drawer .cart-drawer__foot .cart-sum--total { margin-top: 1px; padding-top: 3px; }
+.cart-breakdown { margin: 4px 0 0; }
+.cart-breakdown summary { display: flex; align-items: center; justify-content: space-between; min-height: 40px; cursor: pointer; font-size: 12px; }
+.cart-breakdown__body { display: grid; gap: 2px; padding: 3px 0 5px; }
+.cart-sum--soft { opacity: .76; }
+
+/* FLUSH AGAINST WHAT IS ABOVE IT: the checkout add-on section used to carry
+   its own top margin and its own top hairline on top of the foot's padding,
+   so it floated free of the recommendation above it. The recommendation's
+   bottom border is the separator now; the second hairline only comes back
+   when there is no recommendation to sit under. */
+.cart-upsells { display: grid; gap: 0; margin-top: 0; border-top: 1px solid var(--hairline, currentColor); }
+#cart-drawer .cart-drawer__cross + .cart-upsells { border-top: 0; }
+/* in the items region the ticks align with the bag lines' left edge — the
+   rows sat flush against the drawer edge there */
+#cart-drawer .cart-drawer__items .cart-upsells { padding-inline: clamp(12px, 4vw, 20px); }
+/* foot placement: the toggle sits directly above the price summary — kill
+   the inherited 20px bottom margin, the rows should read as one block */
+#cart-drawer .cart-drawer__foot .cart-upsells { margin-bottom: 5px; }
+.cart-upsell {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px solid var(--hairline, currentColor);
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+/* NOT currentColor: theme.css sets color:var(--paper) on this box so the ✓ glyph
+   reads white once .is-on paints the box ink. currentColor therefore drew a
+   paper-on-paper border — an invisible checkbox next to a paid add-on. */
+.cart-upsell__box { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--ink, currentColor); }
+.cart-upsell.is-on .cart-upsell__box { color: var(--paper, #f7f4ee); background: var(--ink, #171715); }
+.cart-upsell__text { min-width: 0; }
+.cart-upsell__title { display: block; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.cart-upsell__desc { display: none; }
+.cart-upsell__price { font-size: 12px; white-space: nowrap; }
+
+/* TWO-DECK CHECKOUT: lock + label on the main row, the money-back subline
+   INSIDE the button. The subline stays sentence-case and dimmed so the
+   uppercase main row keeps the hierarchy. */
+.cart-checkout.bar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 58px;
+  margin-top: 7px;
+  padding-block: 9px;
+  border-radius: 0;
+  font-size: 13px;
+  text-align: center;
+  text-transform: uppercase;
+}
+.cart-checkout__main { display: inline-flex; align-items: center; gap: 7px; }
+.cart-checkout__main svg { flex: 0 0 auto; display: block; }
+.cart-checkout__sub {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .05em;
+  text-transform: none;
+  opacity: .8;
+}
+.cart-checkout.bar:active { transform: translateY(1px); }
+/* ships-by line directly under the decision, centred, one icon + one sentence */
+.cart-dispatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  text-align: center;
+  line-height: 1.35;
+}
+.cart-dispatch svg { flex: 0 0 auto; }
+.cart-trust-line,
+.cart-rating,
+.cart-tax { margin: 5px 0 0; text-align: center; line-height: 1.35; }
+.cart-trust-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 7px; }
+.cart-trust-line span + span::before { content: "·"; margin-inline-end: 7px; }
+#cart-drawer .cart-drawer__foot .cart-checkout { margin-top: 6px; }
+#cart-drawer .cart-drawer__foot .cart-trust-line { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cart-payment-icons { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 5px; }
+.cart-payment-icons svg { width: auto; height: 20px; }
+.cart-rating span { letter-spacing: .03em; }
+/* the drawn stars are an inline-block, so the centred rating line needs them on
+   the text baseline rather than sitting on their own row */
+.cart-rating .stars { margin-inline-end: 5px; translate: 0 2px; }
+#cart-drawer [data-cart-express-slot] { margin-top: 7px; }
+#cart-drawer [data-cart-express-slot] .cart-drawer__express { padding: 0; }
+
+/* Empty cart sells, it never dead-ends. The six category tiles are gone;
+   what is left is the invitation plus four real products. */
+#cart-drawer .cart-empty-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.cart-empty { width: min(100%, 540px); margin: auto; padding: clamp(18px, 5vw, 32px) clamp(12px, 4vw, 20px); text-align: center; }
+.cart-empty h2,
+.cart-empty h3,
+.cart-empty p { margin-top: 0; }
+/* the drawer is narrow — the headline gets the display face but not the page's
+   display SIZE, or "That's fixable." alone eats the first screen */
+#cart-drawer .cart-empty { display: grid; justify-items: center; gap: 12px; padding-block: clamp(20px, 5vw, 30px); }
+#cart-drawer .cart-empty .dl { font-size: clamp(24px, 6vw, 30px); }
+#cart-drawer .cart-empty .bar { width: auto; min-height: 48px; padding-inline: 30px; }
+
+.cart-empty-picks { padding: 0 clamp(12px, 4vw, 20px) clamp(16px, 4vw, 24px); }
+.cart-empty-picks h4 { margin: 0 0 10px; font-size: 12px; }
+.cart-empty-picks__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
+.cart-empty-pick { display: grid; gap: 6px; min-width: 0; color: inherit; text-decoration: none; }
+.cart-empty-pick__media { display: block; overflow: hidden; aspect-ratio: 3 / 4; background: #e8e3da; }
+.cart-empty-pick__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* two lines, then clamp — a title that wraps to four rows pushes the price of
+   the neighbouring card off its baseline and the row stops reading as a row */
+.cart-empty-pick__title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.cart-empty-pick__price { font-size: 12px; }
+
+/* Drawer-local mini PDP. [hidden] remains authoritative after layout styles. */
+.cart-miniview[hidden] { display: none; }
+.cart-miniview {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink, #171715);
+  background: var(--paper, #f7f4ee);
+}
+.cart-miniview__head { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; min-height: 52px; padding: 4px 12px 4px 18px; border-bottom: 1px solid var(--hairline, currentColor); }
+.cart-miniview__head p { margin: 0; }
+.cart-miniview__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* TWO THIRDS OF THE WIDTH, WHOLE PHOTOGRAPH, after trying both extremes:
+   full-bleed 2:3 was 645px tall — too much — and the original 4/3 frame
+   cropped the garment at the hem.
+
+   Worth writing down: 4/3 was never the problem. Adding `max-height: 32vh`
+   to buy vertical room squeezed the frame from ~322px to ~233px at the same
+   width and cut deeper into a 2:3 photograph. The cap was the defect. This
+   frame carries the image's own 2:3, so nothing is cropped at any width,
+   and at 66% it stands ~430px tall in a 430px drawer. */
+.cart-miniview__media {
+  width: 66%;
+  aspect-ratio: 2 / 3;
+  margin: 12px auto 0;
+  overflow: hidden;
+  background: #e8e3da;
+}
+.cart-miniview__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cart-miniview__buy { padding: 14px clamp(14px, 4vw, 22px) 22px; }
+.cart-miniview__price { margin-top: 8px; font-size: 16px; }
+/* the PDP's badge: red on paper inside a hairline box, not a filled red chip */
+/* solid chip, same design as every other percentage badge */
+.cart-miniview__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 2px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.cart-miniview__options { display: grid; margin-top: 4px; }
+.cart-miniview__buy .opt { min-width: 0; margin: 14px 0 0; padding: 0; border: 0; }
+.cart-miniview__buy .opt__label { margin: 0; }
+.cart-miniview__buy .swatch:disabled { opacity: .3; }
+/* The buy button never scrolls away. A product with fifteen colours needs three
+   swatch rows, and at that point no cap on the photograph gets the button above
+   the fold — sticky does, at any option count, on any screen. */
+.cart-miniview__atc {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  min-height: 52px;
+  margin-top: 12px;
+  box-shadow: 0 6px 0 6px var(--paper, #f7f4ee);
+}
+.cart-miniview__trust { display: grid; gap: 5px; margin-top: 10px; padding: 10px 0; border-block: 1px solid var(--hairline, currentColor); }
+.cart-miniview__trust span::before { content: "✓"; margin-inline-end: 7px; }
+.cart-miniview__buy .tlink { min-height: 40px; margin-top: 7px; }
+
+/* /cart keeps the same facts and controls with more air. */
+[data-cart-page] .cart-page { align-items: start; }
+[data-cart-page] .cart-line { grid-template-columns: 76px minmax(0, 1fr) auto; padding-block: 14px; }
+[data-cart-page] .cart-line__media,
+[data-cart-page] .cart-line__ph { width: 76px; }
+[data-cart-page] .cart-page__summary { min-width: 0; padding: clamp(16px, 3vw, 28px); border: 1px solid var(--hairline, currentColor); }
+[data-cart-page] .cart-upsell__desc { display: block; margin-top: 2px; }
+[data-cart-page] .cart-empty { min-height: 42vh; }
+
+@media (max-width: 720px) {
+  [data-cart-page] .cart-page { display: grid; grid-template-columns: minmax(0, 1fr); }
+  [data-cart-page] #CartPageForm,
+  [data-cart-page] .cart-page__summary { min-width: 0; width: 100%; }
+}
+
+@media (max-width: 380px) {
+  .cart-announcement { padding-inline: 12px; }
+  .cart-line { grid-template-columns: 54px minmax(0, 1fr) auto; gap: 7px; }
+  .cart-line__media,
+  .cart-line__ph { width: 54px; }
+  .cart-line__right { min-width: 56px; }
+  .cart-line__qty { grid-template-columns: repeat(4, 40px); }
+  .cart-cross__stage { grid-template-columns: 40px minmax(0, 1fr) 40px; }
+  .cart-cross-card { grid-template-columns: 52px minmax(0, 1fr); gap: 6px; }
+  .cart-cross-card__media { width: 52px; }
+}
+
+@media (max-height: 700px) {
+  #cart-drawer .cart-drawer__cross { padding-block: 4px; }
+  .cart-cross-card { height: 82px; }
+  .cart-cross-card__media { height: 72px; }
+  .cart-cross__head { min-height: 28px; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cart-cross-card__add,
+  .cart-cross-card__choose,
+  .cart-cross__arrow,
+  .cart-line__qty button,
+  .cart-upsell { transition: color .2s ease, background-color .2s ease; }
+  .cart-cross-card__add:hover { color: var(--ink, #171715); background: transparent; }
+  .cart-line__qty button:hover,
+  .cart-upsell:hover,
+  .cart-cross-card__choose:hover,
+  .cart-cross__arrow:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(#cart-drawer, [data-cart-page]) * { scroll-behavior: auto; transition-duration: .01ms; }
+}
+
+
+/* ==== Home extras: reviews grid, UGC review photos, fit/fabric benefit blocks ==== */
+
+/* home-extras.css */
+
+/* ============================================================================
+   ===== S1 — sections/customer-reviews.liquid (home + PDP, shared) =====
+   Old .tp__list/.tp__item/.tp__quote/.tp__by/.tp__source rules further up in
+   theme.css belonged to the pre-rebuild single-list layout and are no longer
+   emitted by the section — dead, harmless, not our file to prune. .tp__head
+   and .tp__stars ARE still emitted (heading spacing + star row) and stay live.
+   ========================================================================= */
+.tp__grid { display: grid; gap: clamp(28px, 6vw, 48px); }
+@media (min-width: 900px) {
+  .tp__grid { grid-template-columns: minmax(220px, 320px) 1fr; align-items: start; gap: clamp(40px, 6vw, 96px); }
+}
+.tp__intro { display: grid; gap: 12px; }
+.tp__rating { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* SWIPEABLE ROW, not a timed crossfade. Every card used to sit in the same
+   grid cell at opacity 0 and take a 5-second turn, so a shopper saw one
+   quote out of four with no way to reach the others. Now they are a
+   scroll-snapped row — native scrolling, no JS, no timer, and the peeking
+   next card is what tells you there are more. */
+.tp__cards {
+  display: grid;
+  grid-auto-flow: column;
+  /* NOT minmax(0, x): a zero minimum lets the grid compress every column to fit
+     the container instead of overflowing it, so four cards came out ~90px wide
+     with one word per line. A fixed track is what makes the row scroll. */
+  grid-auto-columns: 78%;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  /* the row is focusable so it can be scrolled by keyboard — give that a ring */
+  scrollbar-width: thin;
+}
+.tp__cards:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+@media (min-width: 721px) { .tp__cards { grid-auto-columns: 46%; } }
+@media (min-width: 1100px) { .tp__cards { grid-auto-columns: 32%; } }
+
+.tp__card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  scroll-snap-align: start;
+  padding: clamp(16px, 4vw, 22px);
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+}
+/* reviews + UGC selfies merged — customer photo on top of each card,
+   full-bleed against the card padding, quote underneath */
+.tp__card-photo {
+  width: calc(100% + 2 * clamp(16px, 4vw, 22px));
+  /* the global img { max-width: 100% } clamps the full-bleed width back to the
+     content box and left the photo hanging with a gap on the right — lift it */
+  max-width: none;
+  margin: calc(-1 * clamp(16px, 4vw, 22px)) calc(-1 * clamp(16px, 4vw, 22px)) 4px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: top;
+}
+.tp__card-quote { max-width: 46ch; }
+.tp__card-by { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+
+/* ============================================================================
+   ===== S2 — sections/proof-home.liquid fit/fabric benefit blocks =====
+   Fit facts, not marketing filler. Ink only (house rule: no accent colour
+   outside sale-red / money-back-green, and this is neither).
+   ========================================================================= */
+.proof-fit {
+  display: grid; gap: 14px;
+  max-width: 60ch; margin-inline: auto;
+  padding-top: clamp(20px, 4vw, 32px);
+}
+.proof-fit__item {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-family: var(--font-ui); font-size: 15px; line-height: 1.4;
+}
+.proof-fit__ico { flex: none; margin-top: 2px; }
+@media (min-width: 721px) {
+  .proof-fit { grid-template-columns: repeat(2, 1fr); gap: 16px 32px; max-width: none; }
+  .proof-fit__item { font-size: 16px; }
+}
+
+
+/* ==== Standard extras: PDP USP stack, delivery timeline, info accordions, social proof, footer market selector ==== */
+
+/* standard-extras.css is a late-loading layer:
+   loads after every other extras file, only adds or overrides. Owns: PDP USP stack, delivery
+   timeline, measure note, PDP info accordions, social-proof band, footer
+   country selector. Uses only the theme's existing tokens (--ink/--paper/
+   --cream/--hairline/--mute, --dur / --ease) and type classes (lbl/lbl-sm/
+   stmt-sm/prose). */
+
+/* ---- PDP: USP stack under the price ---- */
+/* 26px top gives 27px of air between the price and trust lines. NOTE: keep
+   comments OUTSIDE this rule — the CDN minifier can drop the whole block if
+   an apostrophe-bearing comment sits inside it. */
+.pdp-usp-stack {
+  display: grid;
+  gap: 8px;
+  margin: 15px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.pdp-usp-stack li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  letter-spacing: .02em;
+}
+.pdp-usp-stack li svg { flex: none; opacity: .82; }
+
+/* ---- PDP: delivery timeline under the add button ---- */
+.pdp-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 14px 12px;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+}
+.pdp-timeline__step {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.pdp-timeline__icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  background: var(--cream);
+}
+.pdp-timeline__label { font-size: 11px; }
+.pdp-timeline__date { font-size: 11px; white-space: nowrap; }
+.pdp-timeline__line {
+  flex: 0 1 34px;
+  height: 1px;
+  background: var(--hairline);
+  margin-top: 17px;
+}
+
+/* ---- PDP: measure note under the size tools ---- */
+.pdp-measure-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+.pdp-measure-note svg { flex: none; opacity: .7; }
+
+/* ---- PDP: info accordions (replace the inline tab nav) ----
+   The old .pdp__info two-column grid rules still ship in theme.css; the
+   --acc modifier flattens the layout to one readable column. */
+.pdp__info--acc { display: block; max-width: 760px; }
+.pdp__acc details.acc summary { cursor: pointer; }
+.pdp__acc .acc__body { max-width: 65ch; }
+.pdp__acc .pdp__details { margin-top: 12px; }
+
+/* ---- Home: social-proof band ---- */
+.social-proof { padding-inline: var(--gutter, 20px); }
+.social-proof__head { text-align: center; margin-bottom: 6px; }
+.social-proof__sub { text-align: center; margin: 0 0 22px; }
+.social-proof__row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 62vw;
+  gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+}
+.social-proof__row::-webkit-scrollbar { display: none; }
+.social-proof__item {
+  margin: 0;
+  scroll-snap-align: center;
+}
+.social-proof__item[hidden] { display: none; }
+.social-proof__item img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+}
+@media (min-width: 721px) {
+  .social-proof__row { grid-auto-columns: 300px; justify-content: safe center; }
+}
+
+/* ---- Footer: country/market selector ---- */
+.ftr__loc { margin-top: 26px; }
+.ftr-loc { position: relative; display: inline-block; }
+.ftr-loc__current {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+  list-style: none;
+  color: var(--ink);
+}
+.ftr-loc__current::-webkit-details-marker { display: none; }
+.ftr-loc__panel {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: max(100%, 220px);
+  display: grid;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  z-index: 5;
+}
+.ftr-loc__option {
+  padding: 11px 14px;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+}
+.ftr-loc__option:last-child { border-bottom: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .ftr-loc__option:hover { background: var(--cream); }
+}
+.ftr-loc__option[aria-current="true"] { background: var(--cream); }
+
+/* ---- PDP: sticky gallery pins to the very top of the viewport ----
+   The image should ride up to the browser edge, not stop below the header.
+   The header hides on scroll anyway, so top:0 never fights it. Overrides
+   theme.css's top: calc(var(--chrome-h) + 24px). */
+@media (min-width: 900px) {
+  .pdp__top > .pdp__stage { top: 0; }
+}
+
+/* ---- Header + mobile-menu market switcher ---- */
+.hdr-loc { position: relative; }
+.hdr-loc__current {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 10px;
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.hdr-loc__current::-webkit-details-marker { display: none; }
+.hdr-loc__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  display: grid;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  z-index: 40;
+}
+@media (max-width: 720px) {
+  /* icon row is tight on phones; the drawer switcher covers mobile */
+  .hdr .hdr-loc { display: none; }
+}
+.menu-loc {
+  display: grid;
+  gap: 0;
+  margin-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+.menu-loc__option {
+  padding: 13px 0;
+  text-align: left;
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+}
+.menu-loc__option[aria-current="true"]::after { content: ' ✓'; }
+
+/* size-guide link sits IN the size head row, right-aligned (.opt__head is
+   already flex space-between). Same look as the old .pdp-guide-row link;
+   min-height 40px tap target comes from the older .opt__head rule. */
+.opt__head .opt__guide {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--ink);
+  border-bottom: 0;
+  padding-bottom: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  letter-spacing: .06em;
+  margin-right: -.06em;
+}
+
+/* ============================================================
+   Drawer refresh: trust strip under the head · cross-sell back ON THE
+   PRODUCT LEVEL as two stacked white cards with a head pager · the bag
+   list fades out toward the decision level · payment marks + rating back
+   under the wallets. Later-in-file wins: everything here overrides the
+   CRO foot-band styling above by cascade. */
+
+/* Trust strip: black band directly under the drawer head. */
+.cart-banner {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding: 11px var(--gutter, 16px);
+  background: var(--ink, #171715);
+  color: var(--paper, #f7f4ee);
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* Product level dissolves into the decision level. A mask (not an
+   overlay) so the last card genuinely fades instead of being tinted;
+   with short content nothing reaches the edge and nothing changes. */
+#cart-drawer .cart-drawer__items {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+}
+
+/* The band scrolls with the lines again: strip the pinned-band chrome. */
+#cart-drawer .cart-drawer__cross {
+  border-top: 1px solid var(--hairline, #e2ddd2);
+  border-bottom: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 14px clamp(12px, 4vw, 20px) 26px;
+}
+/* Pager lives in the head row now; the fold chevron would be a third
+   glyph next to it, so it yields (folding still works on the title). */
+#cart-drawer .cart-cross__chevron { display: none; }
+#cart-drawer .cart-cross__stage { grid-template-columns: minmax(0, 1fr); }
+#cart-drawer .cart-cross__arrow {
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border: 1px solid var(--hairline, #e2ddd2);
+  border-radius: 50%;
+  background: #fff;
+  font-size: 16px;
+  line-height: 1;
+}
+.cross-row[data-cart-cross-row] { display: grid; gap: 10px; }
+
+/* White cards. */
+#cart-drawer .cart-cross-card {
+  height: auto;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--hairline, #e2ddd2);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(23, 23, 21, .06);
+}
+#cart-drawer .cart-cross-card__media { width: 64px; height: 86px; border-radius: 8px; }
+#cart-drawer .cart-cross-card__actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+#cart-drawer .cart-cross-card__choose,
+#cart-drawer .cart-cross-card__add {
+  width: auto;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border-color: var(--ink, #171715);
+  background: var(--ink, #171715);
+  color: var(--paper, #f7f4ee);
+}
+
+/* Payment marks + rating under the wallets, lifted back from the folded
+   cart-extras block. */
+.cart-payment-icons { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 7px; }
+.cart-payment-icons svg { width: auto; height: 20px; }
+/* flex-centred: the drawn stars sat lower than the text — the old baseline
+   translate overshot at 13px */
+.cart-rating { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 5px 0 0; line-height: 1.35; }
+.cart-rating span { letter-spacing: .03em; }
+.cart-rating .cart-rating__value { font-weight: 600; }
+/* translate: none is load-bearing — the folded cart-extras rule further up
+   still says translate: 0 2px (grep all occurrences before trusting a reset). */
+.cart-rating .stars { margin-inline-end: 0; translate: none; }
+#cart-drawer [data-cart-express-slot] { margin-top: 7px; }
+#cart-drawer [data-cart-express-slot] .cart-drawer__express { padding: 0; }
+/* 390px head row: heading may wrap, the counter + pager may not. */
+#cart-drawer .cart-cross__head h3 { flex: 1 1 auto; min-width: 0; }
+#cart-drawer .cart-cross__meta { flex: 0 0 auto; }
+#cart-drawer [data-cart-cross-status] { white-space: nowrap; }
+
+/* ================= LIGHTBOX: unzoomed open, gesture-driven zoom =================
+   The zoom dialog now opens UNZOOMED — theme.js sizes the photo via inline
+   width (fit at z=1, pinch/double-tap/ctrl-wheel to zoom, swipe to flip).
+   Overrides the folded pdp-extras rules near line 1467/1469: the 160%
+   pre-magnification loses to the inline width, touch-action swaps from
+   pinch-zoom (Safari page-zoom) to pan-x pan-y (our JS owns the pinch),
+   and margin:auto centres a fitted photo while keeping every corner
+   reachable once it overflows (the flex/overflow clipping classic). */
+.zoom-dialog__inner { display: flex; touch-action: pan-x pan-y; overscroll-behavior: contain; }
+.zoom-dialog__inner img { width: auto; height: auto; max-width: none; margin: auto; }
+
+/* ---- LIGHTBOX v2: transform-based zoom ----
+   The earlier width+native-scroll model fought the gestures. Now: photo at
+   FIT size, zoom/pan = one GPU transform driven by pointer events in
+   theme.js; no native scrolling inside the dialog at all, so no gesture
+   ever leaks. Explicit resets required (earlier rules above/at ~1467 +
+   ~3094 set overflow:auto, touch-action and a 360ms transform TRANSITION
+   that would lag every pinch frame — grep all occurrences before trusting
+   a reset). */
+.zoom-dialog__inner { overflow: hidden; touch-action: none; }
+.zoom-dialog__inner img { will-change: transform; }
+.pdp-zoom[open] .zoom-dialog__inner img { transition: none; }
+.pdp-zoom[open] .zoom-dialog__inner img.is-anim { transition: transform 240ms cubic-bezier(.22, 1, .36, 1); }
+
+/* ================================================================
+   Drawer + mobile PDP refresh:
+   1) Drawer: the white cart-count head row is gone — the black
+      trust strip is the top row and carries its own white close X
+      (absolute right; text stays centered via symmetric padding).
+   2) Mobile PDP: the in-flow column ATC never renders below 900px —
+      the fixed bottom bar is the only add button, present from page
+      load (theme.js sync() pins is-shown while .pdp__atc has no box).
+   Desktop is untouched by 2). New classes, no reuse (grepped).
+   ================================================================ */
+.cart-banner { position: relative; padding-inline: 44px; }
+.cart-banner__close {
+  position: absolute; right: 6px; top: 50%; translate: 0 -50%;
+  display: grid; place-items: center; padding: 8px;
+  background: none; border: 0; color: inherit; cursor: pointer;
+}
+
+/* An earlier mobile display:none on .pdp__atc was REVERTED. The in-flow
+   ATC renders on mobile again — between the fit scale and the secure line,
+   which is where the markup already puts it — and the sticky bar goes back
+   to reveal-on-scroll-past (theme.js sync(): ATC visible again = normal
+   path; the offsetParent guard stays as a no-op safety). */
+
+/* -- Drawer rating gone in Liquid. One secure line centered over the
+   payment marks closes the buy zone; the marks center under it. Below the
+   accordions: timeline, then the two-point trust row. New classes, no
+   reuse (grepped). -- */
+.pdp-secure {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  margin: 22px 0 0;
+}
+.pdp-secure svg { flex: none; opacity: .82; }
+.pdp__buy .pdp-payments--column { justify-content: center; }
+/* Two hairline cards in the timeline box's own vocabulary — icon on top,
+   centered claim. They hang 10px under the timeline so the three boxes
+   read as one delivery/trust set. */
+.pdp-trust-duo {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  /* 10px→16px — the timeline box above it is gone, the pair now hangs
+     directly under the accordions. */
+  margin-top: 16px;
+}
+.pdp-trust-duo span {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 9px; text-align: center;
+  padding: 18px 12px;
+  border: 1px solid var(--hairline); background: var(--paper);
+}
+.pdp-trust-duo em { font-style: normal; line-height: 1.5; }
+.pdp-trust-duo svg { flex: none; opacity: .82; }
+/* Stock line right under the price (moved from the pre-buy slot). */
+.pdp__buy .pdp-low-stock { margin: 14px 0 2px; }
+
+/* -- Every product/collection image crops to the 2:3 frame (fixed
+   portrait ratio + cover).
+   Cascade note: these unguarded rules sit at the file END, so they also beat
+   the ≥900px gallery auto-reset (~1068) and the home-cat 4:5/3:4 pair (~656).
+   The zoom/lightbox dialog keeps the uncropped photograph on purpose. */
+.gallery-item img, .gallery-item svg { aspect-ratio: 2 / 3; height: auto; object-fit: cover; object-position: center top; }
+.pdp__thumb img { aspect-ratio: 2 / 3; object-fit: cover; object-position: center top; }
+.card__art img, .card__art svg { object-fit: cover; object-position: center top; }
+.qv__main img { object-fit: cover; object-position: center top; }
+.cross-row:not([data-cart-cross-row]) img { object-fit: cover; object-position: center top; }
+.home-cat img, .home-cat svg { aspect-ratio: 2 / 3; }
+/* center top: a source TALLER than 2:3 crops top+bottom under plain cover —
+   measured on the PLP, that beheaded the model. Pinned top, the crop takes
+   the feet instead. Wider sources crop left/right and are unaffected. */
+/* The rating is ONE line, always. Measured fix — see pdp-rating.liquid
+   comment. Ellipsis is the safety net, never a wrap. */
+.pdp-rating { flex-wrap: nowrap; white-space: nowrap; max-width: 100%; }
+.pdp-rating .mute { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ================= Desktop PDP layout pass. Desktop/tablet only, mobile untouched.
+   Companion Liquid change: .pdp__info--acc moved INSIDE .pdp__buy.
+   Revert = drop this block + move the info div back out. ================= */
+
+/* The info block now lives inside the buy column: kill its .wrap chrome on
+   every viewport (the buy column already provides the mobile gutter). */
+.pdp__buy .pdp__info--acc { max-width: none; padding-inline: 0; }
+
+@media (min-width: 900px) {
+  /* Buy column capped like the reference's right rail instead of eating all
+     remaining width (was minmax(380px,1fr) -> ~700px of stretched controls).
+     Pair centers in the page; image column cap unchanged (sticky-height math
+     depends on the 510px image cap — do not widen it). */
+  .pdp__top {
+    grid-template-columns: minmax(0, 588px) minmax(360px, 500px);
+    justify-content: center;
+  }
+  /* Calmer title block (reference sets the title barely larger than body).
+     Overrides the 26px/20px pair from the block above. */
+  .pdp__name { font-size: 21px; letter-spacing: .04em; }
+  .pdp__price { font-size: 17px; margin-top: 10px; }
+  /* Colour thumbs were 46x69 — unreadable full-body crops. */
+  .pdp__buy .swatch { width: 56px; height: 84px; }
+  /* Bottom buy bar: an earlier desktop-hidden variant was REVERTED the same
+     day — bar renders on all viewports again, reveal-on-scroll logic
+     untouched. */
+  /* Inside the 500px rail the accordion body breathes a little less. */
+  .pdp__buy .pdp__info--acc { padding-block: 30px 0; }
+}
+
+/* Header stays visible at ALL times on every viewport — the hide-on-scroll/
+   return-on-swipe dance read as irritating. theme.js#initHeaderHide keeps
+   toggling .is-hidden; this neutralises it instead of forking the JS.
+   Revert = drop this rule. */
+.hdr-wrap.is-hidden { translate: 0 0; }
+
+/* The 2:3-cover block above pins the desktop photo to width x 1.5 (510 ->
+   765px). On shorter windows the stage grew taller than the viewport, sticky
+   could no longer pin (a sticky box taller than the window has no room to
+   hold), the photo scrolled 1:1 under the now always-visible header, and
+   the full garment needed scrolling to see.
+   Fix: derive the IMAGE COLUMN from the free height under the header, so the
+   2:3 photo always fits fully below the frosted lid — no scrolling to see it.
+   78px = 66px thumb rail + 12px gap; 56px = 24px sticky offset + bottom air. */
+@media (min-width: 900px) {
+  .pdp__top {
+    grid-template-columns:
+      minmax(0, min(588px, calc((100vh - var(--chrome-h) - 56px) * 2 / 3 + 78px)))
+      minmax(360px, 500px);
+  }
+}
+
+/* An earlier rule pinned the sticky gallery to top:0 under the premise "the
+   header hides on scroll anyway". That premise no longer holds (header is
+   now always visible), so the photo was riding UNDER the frosted lid. Pin
+   below the header again. */
+@media (min-width: 900px) {
+  .pdp__top > .pdp__stage { top: calc(var(--chrome-h) + 16px); }
+}
+
+/* Lightbox click-to-zoom cursor feedback on fine pointers only (theme.js
+   toggles .is-zoomed in zApply). Touch devices see no cursor, so this
+   changes nothing for them. */
+@media (hover: hover) and (pointer: fine) {
+  .zoom-dialog__inner { cursor: zoom-in; }
+  .zoom-dialog__inner.is-zoomed { cursor: zoom-out; }
+}

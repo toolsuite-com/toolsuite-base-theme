@@ -1,0 +1,92 @@
+{%- comment -%}
+  Editorial band: one full-bleed photograph, a voice line and one
+  underlined text link.
+
+  On desktop the copy sits ON the LEFT HALF of the frame, over the empty-wall
+  area of the editorial shot — ink on a bright surface, still no scrim (the
+  thesis bans them). Below 900px the same markup falls back UNDER the picture:
+  at 390px the crop leaves no empty half to print on. One DOM, two layouts
+  (theme.css .home-ed__foot).
+{%- endcomment -%}
+{%- liquid
+  assign col = section.settings.collection
+  assign url = section.settings.link
+  if url == blank and col != blank
+    assign url = col.url
+  endif
+-%}
+<section class="home-ed bleed reveal">
+  <div class="home-ed__frame">
+    {%- liquid
+      comment
+        The product picker wins over the atmosphere image — shows a model
+        actually wearing a catalog piece (featured image).
+      endcomment
+      assign ed_img = section.settings.image
+      if section.settings.image_product != blank and section.settings.image_product.featured_image != blank
+        assign ed_img = section.settings.image_product.featured_image
+      endif
+      comment
+        asset_image: landscape model shot shipped as a theme asset. A product
+        featured image is 2:3 portrait and crops badly in this 3:2 slot —
+        prefer a real landscape.
+      endcomment
+    -%}
+    {%- if section.settings.asset_image != blank -%}
+      <a class="home-ed__art" href="{{ url | default: routes.all_products_collection_url }}" tabindex="-1" aria-hidden="true">
+        <img src="{{ section.settings.asset_image | asset_url }}" sizes="100vw" width="1536" height="1024" alt="" loading="lazy" decoding="async">
+      </a>
+    {%- elsif ed_img != blank -%}
+      <a class="home-ed__art" href="{{ url | default: routes.all_products_collection_url }}" tabindex="-1" aria-hidden="true">
+        <img
+          src="{{ ed_img | image_url: width: 900 }}"
+          srcset="{{ ed_img | image_url: width: 560 }} 560w, {{ ed_img | image_url: width: 900 }} 900w, {{ ed_img | image_url: width: 1400 }} 1400w"
+          sizes="100vw"
+          width="{{ ed_img.width }}" height="{{ ed_img.height }}"
+          alt="" loading="lazy" decoding="async">
+      </a>
+    {%- endif -%}
+    <div class="wrap home-ed__foot">
+      {%- liquid
+        assign ed_caption = section.settings.caption
+        assign ed_link = section.settings.link_label
+        unless request.locale.primary
+          assign ed_caption = 'home.editorial.caption' | t
+          assign ed_link = 'home.editorial.link_label' | t
+        endunless
+      -%}
+      {%- if ed_caption != blank -%}
+        <p class="dl home-ed__say">{{ ed_caption | escape }}</p>
+      {%- endif -%}
+      {%- if ed_link != blank -%}
+        <a class="tlink" href="{{ url | default: routes.all_products_collection_url }}">{{ ed_link | escape }}</a>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Editorial",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Image", "info": "Shopify Files: brand-editorial.webp (landscape 3:2)." },
+    { "type": "product", "id": "image_product", "label": "Or: product whose model photo to show", "info": "Uses the product's featured image (2:3 portrait — crops hard in this landscape slot; prefer the asset filename below)." },
+    { "type": "text", "id": "asset_image", "label": "Or: theme-asset filename (wins over both)", "info": "e.g. my-image.webp — the landscape model shot shipped with the theme." },
+    { "type": "text", "id": "caption", "label": "Voice line", "default": "Made for the days that don't slow down", "info": "Printed in ink on the left half of the image on desktop, under it on mobile. Keep it under ~40 characters." },
+    { "type": "collection", "id": "collection", "label": "Collection" },
+    { "type": "url", "id": "link", "label": "Link override", "info": "Leave empty to link to the collection." },
+    { "type": "text", "id": "link_label", "label": "Link label", "default": "Shop the edit" }
+  ],
+  "presets": [
+    {
+      "name": "Editorial",
+      "settings": {
+        "image": "",
+        "caption": "Made for the days that don't slow down",
+        "collection": "all",
+        "link_label": "Shop the edit"
+      }
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,320 @@
+{%- comment -%}
+  Cart drawer. The .cart-drawer__inner wrapper, data-cart-count-src and every
+  [data-qty-change] contract are owned by theme.js and must survive wholesale
+  section replacement. All new client state lives outside this DOM.
+{%- endcomment -%}
+<div class="cart-drawer__inner" data-cart-count-src="{{ cart.item_count }}">
+  {%- comment -%} NO ANNOUNCEMENT STRIP IN HERE: the site's own bar is already
+  on screen behind the drawer and says the same things. Removing it hands 34px
+  back to the bag list on every screen size. The setting stays in the theme
+  editor so it can be brought back without touching code. {%- endcomment -%}
+  {%- comment -%} The white "YOUR BAG (1)" head row is gone — the black trust
+  strip is now the drawer's top row and carries the close button itself (white
+  X, absolute right). Saves the whole head row. The title survives
+  visually-hidden for screen readers. Claims mirror the storefront's own
+  announcement verbatim — free shipping and 30-day returns are both live
+  promises, so the strip introduces no new claim. {%- endcomment -%}
+  <div class="cart-banner">
+    <h2 class="visually-hidden">{{ 'cart.title' | t }} ({{ cart.item_count }})</h2>
+    <span class="cart-banner__txt">&#10003;&nbsp; {{ 'cart.banner' | t }}</span>
+    <button type="button" class="cart-banner__close" data-close-dialog aria-label="{{ 'cart.close_bag_aria' | t }}">
+      {% render 'icon', name: 'close', size: 18 %}
+    </button>
+  </div>
+
+  {%- if cart.item_count > 0 -%}
+    {%- assign compare_total = 0 -%}
+    {%- for item in cart.items -%}
+      {%- if item.variant.compare_at_price > item.variant.price -%}
+        {%- assign line_compare = item.variant.compare_at_price | times: item.quantity -%}
+      {%- else -%}
+        {%- assign line_compare = item.original_line_price -%}
+      {%- endif -%}
+      {%- assign compare_total = compare_total | plus: line_compare -%}
+    {%- endfor -%}
+    {%- assign cart_savings = compare_total | minus: cart.total_price -%}
+    {%- comment -%} items_subtotal_price is AFTER line-level discount
+    allocations, so a naive anchor_savings calculation would silently swallow
+    the bundle discount. Anchor savings diff against the pre-discount original
+    line prices instead, and the line-level allocations are summed separately
+    so the discount prints as its own NAMED row (the tier bar's promise,
+    visibly kept). {%- endcomment -%}
+    {%- assign original_subtotal = 0 -%}
+    {%- assign line_discount_total = 0 -%}
+    {%- assign line_discount_title = '' -%}
+    {%- for item in cart.items -%}
+      {%- assign original_subtotal = original_subtotal | plus: item.original_line_price -%}
+      {%- for da in item.line_level_discount_allocations -%}
+        {%- assign line_discount_total = line_discount_total | plus: da.amount -%}
+        {%- assign line_discount_title = da.discount_application.title -%}
+      {%- endfor -%}
+    {%- endfor -%}
+    {%- assign anchor_savings = compare_total | minus: original_subtotal -%}
+
+    {%- comment -%} This is the drawer's only normal-flow scroll container.
+    Ambient offers lead into the lines; secondary add-ons and reassurance follow
+    them, leaving the decisional footer and fixed cross-sell outside. {%- endcomment -%}
+    <div class="cart-drawer__items">
+      {% render 'cart-countdown' %}
+
+      {%- comment -%} Tier bar sits at the top: the milestone display is
+      edge-tight — the rail runs marker-to-marker with the outer markers flush
+      against the padding, no half-column dead space; see cart-extras.css
+      space-between rework. {%- endcomment -%}
+      {% render 'qty-tier-bar' %}
+
+      <div class="cart-drawer__lines">
+        {%- comment -%} TWO PASSES: real products first, add-ons after them.
+        Shopify appends new lines, so cart order alone puts the add-ons above
+        anything bought afterwards. The line markup below is untouched — only
+        the order it runs in. {%- endcomment -%}
+        {%- for pass in (1..2) -%}
+        {%- for item in cart.items -%}
+          {%- assign is_addon = false -%}
+          {%- if item.product.handle == settings.upsell_1_handle or item.product.handle == settings.upsell_2_handle -%}
+            {%- assign is_addon = true -%}
+          {%- endif -%}
+          {%- if pass == 1 and is_addon -%}{%- continue -%}{%- endif -%}
+          {%- unless pass == 1 or is_addon -%}{%- continue -%}{%- endunless -%}
+          {%- comment -%} With upsell_hide_lines on, the paid add-on never
+          renders as a cart LINE — its toggle row (cart-upsells below) is the
+          single representation: clearly labelled, priced, one tap to remove,
+          price in the total. That keeps the Art. 22 CRD / §312a BGB opt-in
+          contract intact. {%- endcomment -%}
+          {%- if is_addon and settings.upsell_hide_lines -%}{%- continue -%}{%- endif -%}
+          {%- assign has_variant_control = false -%}
+          {%- for option in item.product.options_with_values -%}
+            {%- if option.values.size > 1 -%}{%- assign has_variant_control = true -%}{%- endif -%}
+          {%- endfor -%}
+          <article
+            class="cart-line lbl{% if is_addon %} cart-line--addon{% endif %}"
+            data-cart-line
+            data-product-handle="{{ item.product.handle | escape }}"
+            data-current-options="{{ item.variant.options | json | escape }}"
+          >
+            {%- if item.image -%}
+              <a class="cart-line__media" href="{{ item.url }}" tabindex="-1" aria-hidden="true">
+                <img src="{{ item.image | image_url: width: 152 }}" width="76" height="101" alt="" loading="lazy">
+              </a>
+            {%- else -%}
+              <div class="cart-line__ph" aria-hidden="true"></div>
+            {%- endif -%}
+            <div class="cart-line__body">
+              <a class="cart-line__title" href="{{ item.url }}">{{ item.product.title | escape }}</a>
+              {%- if is_addon -%}<span class="cart-line__kind lbl-sm mute">{{ 'cart.line.addon_badge' | t }}</span>{%- endif -%}
+              {%- comment -%} THE LINE: image · title · variant as PLAIN TEXT
+              ("RED / L") · stepper below, with price and Remove stacked on
+              the right.
+
+              NOTE what this costs: the per-line size/colour swap is gone with
+              it — a select was the only way to offer it. Re-adding it means
+              putting a control back into this line, which is exactly what
+              made it 212px tall before. The variant swap code in
+              cart-extras.js is untouched and still serves the cart PAGE, so
+              bringing it back here is markup-only. {%- endcomment -%}
+              {%- unless item.variant.title contains 'Default' -%}
+                <div class="cart-line__variant">{{ item.variant.title | escape }}</div>
+              {%- endunless -%}
+              <div class="cart-line__control">
+                <div class="cart-line__qty" aria-label="{{ 'cart.line.quantity_aria' | t }}">
+                  <button
+                    type="button"
+                    data-qty-change="{{ item.quantity | minus: 1 }}"
+                    data-variant-id="{{ item.variant_id }}"
+                    {% if is_addon and item.quantity == 1 %}data-addon-decline="{{ item.variant_id }}"{% endif %}
+                    aria-label="{{ 'cart.line.decrease_aria' | t }}"
+                  >&minus;</button>
+                  <span aria-label="{{ 'cart.line.qty_value_aria' | t: qty: item.quantity }}">{{ item.quantity }}</span>
+                  <button type="button" data-qty-change="{{ item.quantity | plus: 1 }}" data-variant-id="{{ item.variant_id }}" aria-label="{{ 'cart.line.increase_aria' | t }}">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="cart-line__right">
+              {%- if item.variant.compare_at_price > item.variant.price -%}
+                {%- assign line_compare_price = item.variant.compare_at_price | times: item.quantity -%}
+              {%- else -%}
+                {%- assign line_compare_price = item.original_line_price -%}
+              {%- endif -%}
+              {%- assign line_saving = line_compare_price | minus: item.final_line_price -%}
+              <div class="cart-line__price">
+                {%- if line_saving > 0 -%}<s class="cart-compare">{{ line_compare_price | money_without_trailing_zeros }}</s>{%- endif -%}
+                {{ item.final_line_price | money_without_trailing_zeros }}
+              </div>
+              {%- if line_saving > 0 -%}{%- assign _save_fmt = line_saving | money_without_trailing_zeros -%}<span class="cart-line__saving lbl-sm">{{ 'cart.line.saving' | t: amount: _save_fmt }}</span>{%- endif -%}
+              {%- comment -%} Remove lives in the price column, under the
+              number. It used to be absolutely positioned out of the control
+              row and landed on top of the savings line. {%- endcomment -%}
+              <button
+                type="button"
+                class="cart-line__remove"
+                data-qty-change="0"
+                data-variant-id="{{ item.variant_id }}"
+                {% if is_addon %}data-addon-decline="{{ item.variant_id }}"{% endif %}
+              >{{ 'cart.line.remove_button' | t }}</button>
+            </div>
+          </article>
+        {%- endfor -%}
+        {%- endfor -%}
+      </div>
+
+      {%- comment -%} Add-on toggle renders in the foot, directly above the
+      price summary — not inside the scroll layer, so it sits on the same
+      level as the checkout button. {%- endcomment -%}
+
+      {%- comment -%} Cross-sell sits ON THE PRODUCT LEVEL: recommendations
+      belong to the bag list and fade out toward the decision level — see the
+      cart-drawer__items mask in the cart stylesheet. In the scroll layer the
+      band scrolls with the lines, so it can never crowd the checkout button.
+      cross_heading is a market-global section setting — non-primary locales
+      fall back to the translated locale default, same pattern as empty_line
+      below. {%- endcomment -%}
+      {%- assign cc_heading = section.settings.cross_heading -%}
+      {%- unless request.locale.primary -%}{%- assign cc_heading = blank -%}{%- endunless -%}
+      {% render 'cart-cross', heading: cc_heading %}
+
+    </div>
+
+    {%- comment -%} EVERYTHING DECISIONAL ON ONE LEVEL: payment icons, reviews
+    and shipping protection all sit at or above the secure-checkout level, not
+    at the very bottom of the scroll area.
+
+    Order: recommendation → add-ons (still a choice) → savings breakdown →
+    totals → checkout → express wallets → payment marks → rating → trust line.
+    The add-ons sit ABOVE the total on purpose: ticking one changes that number,
+    so it has to be visible when it moves.
+
+    The recommendation LEADS this level: inside the scrolling item list it
+    falls below the fold from four bag items on (card at y=692, scroll region
+    ending at y=573). Out here it is always on screen — and foldable, so it
+    can never crowd out the checkout button. {%- endcomment -%}
+    <div class="cart-drawer__foot lbl">
+      {%- comment -%} Cross-sell is removed from the drawer here: the drawer
+      is a checkout tunnel, upsell communication lives on the PDP. Re-add by
+      restoring the cc_heading capture +
+      {% render 'cart-cross', heading: cc_heading %} {%- endcomment -%}
+
+      {%- comment -%} Savings-breakdown accordion is removed here — the
+      three-line summary below already carries original / you-save / total. {%- endcomment -%}
+
+      {%- comment -%} Add-on toggle sits on the decision level, above the
+      price: ticking it changes the total directly below, so the number moves
+      in view. {%- endcomment -%}
+      {% render 'cart-upsells' %}
+
+      <div class="cart-price-summary" aria-label="{{ 'cart.summary.price_summary_aria' | t }}">
+        {%- comment -%} The three-line form only says anything when there IS a
+        saving. On a bag of full-price pieces it would print "Original $196.80 /
+        You save $0 / Total $196.80" — three rows restating one number, with a $0
+        sitting where the good news belongs. Below the threshold it collapses to
+        the total alone. {%- endcomment -%}
+        {%- if cart_savings > 0 -%}
+          {%- comment -%} The Original strike row is gone — one red "You save
+          [amount]" line is the whole story (anchor savings AND applied
+          discounts in a single number, no discount names). cart_savings (=
+          compare_total − total_price) is exactly that sum; compare_total
+          stays computed above because it feeds it. {%- endcomment -%}
+          <div class="cart-sum cart-sum--saving"><span>{{ 'cart.summary.you_save' | t }}</span><span>{{ cart_savings | money_without_trailing_zeros }}</span></div>
+        {%- endif -%}
+        {%- comment -%} "Total", not "Estimated total": the hedge and its
+        explanatory line both go — with no sales tax added at checkout the
+        number IS the total, and calling it an estimate invited a question
+        that has no answer. {%- endcomment -%}
+        <div class="cart-sum cart-sum--total"><span>{{ 'cart.summary.total' | t }}</span><span>{{ cart.total_price | money_without_trailing_zeros }}</span></div>
+      </div>
+
+      {%- comment -%} data-no-instant: page-speed/prefetch app embeds prefetch
+      every same-origin <a> on touchstart/mouseover. /cart/checkout is not idempotent — a
+      prefetch GET actually CREATES a checkout server-side. Keep this
+      attribute even if the app is removed. {%- endcomment -%}
+      {%- comment -%} No price on the button. The Total row sits directly
+      above it and carries the same number — printed twice, 40px apart, it
+      read as two figures to compare rather than one to accept. {%- endcomment -%}
+      <a href="{{ routes.cart_url }}/checkout" data-no-instant class="bar cart-checkout" onclick="document.dispatchEvent(new CustomEvent('theme:begin_checkout'))">
+        <span class="cart-checkout__main">{% render 'icon', name: 'lock', size: 15 %}<span>{{ 'cart.checkout.secure' | t }}</span></span>
+        {%- comment -%} The subline reuses product.usp.money_back so the button can
+        never promise a window the policy page does not carry — one claim, one key. {%- endcomment -%}
+        <span class="cart-checkout__sub">{{ 'product.usp.money_back' | t }}</span>
+      </a>
+      {%- comment -%} Express wallets sit DIRECTLY under the primary checkout
+      button — nothing between the two checkout paths. theme.js parks the
+      live wallet node in the dialog shell and moves it into this slot after
+      every wholesale inner replacement — the slot moved, the contract did not. {%- endcomment -%}
+      {%- if settings.cart_express_enabled -%}<div data-cart-express-slot></div>{%- endif -%}
+
+      {%- comment -%} No ships-by line between the two checkout buttons: it
+      would break the checkout → express → trust order. {%- endcomment -%}
+
+      {%- comment -%} Payment marks + rating sit under the wallets. The rating
+      prints the same storefront-proof numbers as pdp-rating, behind the same
+      rating_enabled toggle. {%- endcomment -%}
+      <div class="cart-payment-icons" aria-label="{{ 'general.accepted_payment_methods' | t }}">
+        {%- for type in shop.enabled_payment_types -%}{{ type | payment_type_svg_tag }}{%- endfor -%}
+      </div>
+      {%- comment -%} Rating line is removed here. Payment marks stay; the
+      PDP rating still carries the claim. Re-add = the rating_enabled block. {%- endcomment -%}
+
+      {%- comment -%} Trust line is removed here: the checkout button's own
+      subline (30-day money-back) already carries the same promise — one
+      claim, one place. Its settings keys stay untouched. {%- endcomment -%}
+    </div>
+  {%- else -%}
+    {%- comment -%} PRODUCTS, NOT A LINK MENU: the six category tiles were URL
+    settings with hardcoded fallbacks (/collections/women, /collections/sale,
+    /pages/track-order …). Collections vary per store, so an unfilled setting
+    can easily point at a handle the store doesn't have and ship a 404.
+    Products carry no such risk: they come from a real collection, and an
+    empty one simply renders nothing.
+
+    Server-rendered on purpose. The drawer already has a JS recommendation band,
+    but it seeds off the first cart line and an empty bag has none. Liquid also
+    means the prices are right on first paint, with no flash of an empty row. {%- endcomment -%}
+    {%- assign empty_collection = collections[section.settings.empty_collection] -%}
+    {%- if empty_collection == blank or empty_collection.products_count == 0 -%}
+      {%- assign empty_collection = collections['new-in'] -%}
+    {%- endif -%}
+    <div class="cart-empty-wrap">
+      <div class="cart-empty">
+        <h3 class="dl">{{ 'cart.empty.heading' | t }}</h3>
+        {%- assign _empty_line = section.settings.empty_line -%}{%- unless request.locale.primary -%}{%- assign _empty_line = blank -%}{%- endunless -%}{%- if _empty_line == blank -%}{%- assign _empty_line = 'cart.empty.subtext_fallback' | t -%}{%- endif -%}<p class="prose mute">{{ _empty_line }}</p>
+        {%- if empty_collection != blank -%}
+          <a class="bar" href="{{ empty_collection.url }}">{{ 'cart.empty.shop_button' | t: title: empty_collection.title }}</a>
+        {%- endif -%}
+      </div>
+
+      {%- if empty_collection.products_count > 0 -%}
+        <section class="cart-empty-picks" aria-label="{{ 'cart.suggested_products_aria' | t }}">
+          {%- assign _cross_h = section.settings.cross_heading -%}{%- if _cross_h == blank -%}{%- assign _cross_h = 'cart.cross.default_heading' | t -%}{%- endif -%}<h4 class="lbl">{{ _cross_h | escape }}</h4>
+          <div class="cart-empty-picks__grid">
+            {%- for empty_product in empty_collection.products limit: 4 -%}
+              {%- assign empty_variant = empty_product.selected_or_first_available_variant -%}
+              <a class="cart-empty-pick" href="{{ empty_product.url }}">
+                <span class="cart-empty-pick__media">
+                  {%- if empty_product.featured_media != blank -%}
+                    <img src="{{ empty_product.featured_media | image_url: width: 360, height: 480, crop: 'center' }}" width="180" height="240" alt="" loading="lazy">
+                  {%- endif -%}
+                </span>
+                <span class="cart-empty-pick__title lbl-sm">{{ empty_product.title | escape }}</span>
+                <span class="cart-empty-pick__price lbl-sm">
+                  {%- render 'price-badge', price: empty_variant.price, compare: empty_variant.compare_at_price, layout: 'card' -%}
+                </span>
+              </a>
+            {%- endfor -%}
+          </div>
+        </section>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+
+  {% render 'cart-miniview' %}
+</div>
+
+{% schema %}
+{
+  "name": "Cart drawer",
+  "settings": [
+    { "type": "text", "id": "cross_heading", "label": "Cross-sell heading", "default": "You might also like" },
+    { "type": "collection", "id": "empty_collection", "label": "Empty bag: products to suggest", "info": "Its first 4 products are shown with prices, plus a button to the collection. Empty = New In." },
+    { "type": "text", "id": "empty_line", "label": "Empty bag: line under the headline", "default": "The light’s still good. Take another look." }
+  ]
+}
+{% endschema %}

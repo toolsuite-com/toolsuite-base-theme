@@ -1,0 +1,30 @@
+{%- comment -%} 404 — restyled to Display L on paper with an underlined text
+  link. No image chrome, no boxed search field. Heading/text come from locale
+  keys rather than section-setting defaults, so a localized storefront
+  renders the 404 page in its own language. {%- endcomment -%}
+<section class="sec">
+  <div class="wrap wrap--narrow center e404">
+    <p class="lbl mute">404</p>
+    <h1 class="dl">{{ 'error_404.heading' | t }}</h1>
+    <p class="prose mute">{{ 'error_404.text' | t }}</p>
+    <form action="{{ routes.search_url }}" method="get" role="search" class="e404__form">
+      <label class="visually-hidden" for="e404-q">{{ 'search.label' | t }}</label>
+      <input id="e404-q" class="field" type="search" name="q" placeholder="{{ 'error_404.placeholder' | t }}">
+      <button type="submit" class="tlink">{{ 'search.label' | t }}</button>
+    </form>
+    <a href="{{ routes.root_url }}" class="tlink">{{ 'error_404.back_home' | t }}</a>
+  </div>
+</section>
+
+<style>
+  .e404 { display: grid; gap: 20px; justify-items: center; }
+  .e404 .prose { margin-inline: auto; }
+  .e404__form { display: flex; align-items: center; gap: 16px; width: min(100%, 380px); margin-top: 8px; }
+</style>
+
+{% schema %}
+{
+  "name": "404 page",
+  "settings": []
+}
+{% endschema %}

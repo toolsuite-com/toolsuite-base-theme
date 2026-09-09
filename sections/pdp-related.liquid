@@ -1,0 +1,93 @@
+{%- comment -%}
+  This section uses Shopify's native Recommendations API with a server-side
+  fallback, rather than a fully custom category-based renderer: the API's
+  suggestions improve as order data accumulates, even though on a new store
+  it may still return generic storewide lists at first. Only the
+  locale-fallback heading logic below is custom.
+
+  ONE cross-sell block, nothing else (no second rec feed).
+
+  Mechanism: the section renders a server-side fallback from the product's
+  first collection, and theme.js re-fetches this same section through the
+  Recommendations API (?section_id=…&intent=related) and swaps in [data-related-grid]
+  when the engine actually returns products — new stores often return none, which is
+  why the collection fallback exists at all. Both paths use the stage-2 product card,
+  so this row can never drift from the PLP.
+{%- endcomment -%}
+{%- comment -%} This section uses an OFFER heading —
+"Combine and receive an extra N% discount" — instead of a neutral "you may also like",
+because that turns a related row into a reason to add a second piece.
+
+Two things make it honest rather than a promise the checkout breaks:
+
+  1. It renders ONLY while settings.qty_tiers_enabled is on, i.e. only once the matching
+     Shopify automatic discounts actually exist. Off, the row falls back to the plain
+     heading setting — so the offer wording is never live while no discount is.
+  2. The percentage is READ FROM settings.qty_tiers, not typed in. A hardcoded
+     percentage can silently disagree with the real ladder (e.g. copy says 15% while
+     the ladder is 2:10, 3:15, 4:20). It now shows the top tier, which is the
+     one worth advertising, and it can never drift from the ladder again. {%- endcomment -%}
+{%- liquid
+  assign rel_heading = section.settings.heading
+  assign rel_offer_tpl = section.settings.offer_heading
+  unless request.locale.primary
+    assign rel_heading = 'product.related.heading' | t
+    assign rel_offer_tpl = 'product.related.offer_heading' | t
+  endunless
+  if settings.qty_tiers_enabled and settings.qty_tiers != blank
+    assign rel_top_pct = 0
+    assign rel_tiers = settings.qty_tiers | remove: ' ' | split: ','
+    for rel_t in rel_tiers
+      assign rel_parts = rel_t | split: ':'
+      assign rel_p = rel_parts[1] | plus: 0
+      if rel_p > rel_top_pct
+        assign rel_top_pct = rel_p
+      endif
+    endfor
+    if rel_top_pct > 0
+      capture rel_heading
+        echo rel_offer_tpl | default: 'Add another piece — save up to [pct]%' | replace: '[pct]', rel_top_pct
+      endcapture
+    endif
+  endif
+-%}
+<section class="sec--tight related" data-related data-section-id="{{ section.id }}" data-product-id="{{ product.id }}" aria-label="{{ rel_heading | escape }}">
+  <div class="wrap sec-head sec-head--center">
+    <h2 class="dl">{{ rel_heading | escape }}</h2>
+  </div>
+  {%- if recommendations.performed and recommendations.products_count > 0 -%}
+    <div class="grid-4" data-related-grid data-related-target>
+      {%- for p in recommendations.products limit: 6 -%}
+        {% render 'product-card', product: p, card_index: forloop.index %}
+      {%- endfor -%}
+    </div>
+  {%- else -%}
+    {%- assign rel_col = product.collections.first -%}
+    {%- assign shown = 0 -%}
+    {%- if rel_col and rel_col.products.size > 1 -%}
+      <div class="grid-4 product-grid" data-related-target>
+        {%- for p in rel_col.products limit: 12 -%}
+          {%- unless p.id == product.id or shown >= 6 -%}
+            {%- assign shown = shown | plus: 1 -%}
+            {% render 'product-card', product: p, card_index: shown %}
+          {%- endunless -%}
+        {%- endfor -%}
+      </div>
+    {%- else -%}
+      {%- comment -%} nothing to show yet: theme.js removes the whole section when the
+      API comes back empty too, so no skeleton is ever left stranded {%- endcomment -%}
+      <div data-related-target hidden></div>
+    {%- endif -%}
+  {%- endif -%}
+</section>
+
+{% schema %}
+{
+  "name": "PDP related products",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "You may also like", "info": "Shown while the bundle discounts are switched off." },
+    { "type": "text", "id": "offer_heading", "label": "Offer heading (bundle discounts on)", "default": "Add another piece — save up to [pct]%", "info": "Replaces the heading above once Bundle discounts are enabled. [pct] is filled in with the highest tier from the ladder, so the number can never disagree with the offer." }
+  ],
+  "presets": [{ "name": "PDP related products" }]
+}
+{% endschema %}

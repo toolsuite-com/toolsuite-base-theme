@@ -1,0 +1,70 @@
+{%- comment -%}
+  Social-proof photo band — reference-store pattern: a horizontal row of
+  "customers at home with their order" photos under the brand heading.
+  Honesty note: the imagery is AI-generated brand imagery in the store's own
+  visual world (same policy as every model photo in this catalog); the
+  section makes NO review/statistics claim — it is a mood band, and the
+  heading stays a brand line, never a fabricated count.
+
+  Images: image_picker blocks (Theme-Editor-curated Files) with a theme-asset
+  fallback per block index (social-proof-<n>.webp) so the band renders out of
+  the box on a fresh store before Files are wired. Mobile: scroll-snap row;
+  desktop: single row, gentle overflow scroll.
+{%- endcomment -%}
+{%- if section.blocks.size > 0 -%}
+<section class="sec social-proof reveal">
+  {%- comment -%} Heading falls back to the locale key when the setting is blank —
+  JSON-template settings cannot localize, so a blank setting + locale default keeps
+  every storefront locale consistent without Translate & Adapt overlays. {%- endcomment -%}
+  {%- assign sp_heading = section.settings.heading | default: '' -%}
+  {%- if sp_heading == blank -%}{%- assign sp_heading = 'social_proof.heading' | t -%}{%- endif -%}
+  {%- if sp_heading != blank -%}
+    <h2 class="dl social-proof__head">{{ sp_heading | escape }}</h2>
+  {%- endif -%}
+  {%- if section.settings.subline != blank -%}
+    <p class="social-proof__sub stmt-sm mute">{{ section.settings.subline | escape }}</p>
+  {%- endif -%}
+  <div class="social-proof__row" tabindex="0" aria-label="{{ section.settings.heading | default: shop.name | escape }}">
+    {%- for block in section.blocks -%}
+      <figure class="social-proof__item" {{ block.shopify_attributes }}>
+        {%- if block.settings.image != blank -%}
+          <img
+            src="{{ block.settings.image | image_url: width: 480, height: 640, crop: 'center' }}"
+            srcset="{{ block.settings.image | image_url: width: 480, height: 640, crop: 'center' }} 480w, {{ block.settings.image | image_url: width: 720, height: 960, crop: 'center' }} 720w"
+            sizes="(max-width: 720px) 62vw, 300px"
+            width="480" height="640" loading="lazy"
+            alt="{{ block.settings.alt | default: shop.name | escape }}"
+          >
+        {%- else -%}
+          {%- assign sp_asset = 'social-proof-' | append: forloop.index | append: '.webp' -%}
+          <img src="{{ sp_asset | asset_url }}" width="480" height="640" loading="lazy" alt="{{ block.settings.alt | default: shop.name | escape }}" onerror="this.closest('figure').hidden = true">
+        {%- endif -%}
+      </figure>
+    {%- endfor -%}
+  </div>
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Social proof band",
+  "max_blocks": 8,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "BRAND at home" },
+    { "type": "text", "id": "subline", "label": "Subline", "info": "Keep it a brand line. Never a fabricated customer count or review claim." }
+  ],
+  "blocks": [
+    {
+      "type": "photo",
+      "name": "Photo",
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Image", "info": "Empty = the theme asset social-proof-<position>.webp is used, if present." },
+        { "type": "text", "id": "alt", "label": "Alt text" }
+      ]
+    }
+  ],
+  "presets": [
+    { "name": "Social proof band", "blocks": [ { "type": "photo" }, { "type": "photo" }, { "type": "photo" }, { "type": "photo" }, { "type": "photo" } ] }
+  ]
+}
+{% endschema %}

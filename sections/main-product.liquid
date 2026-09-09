@@ -1,0 +1,724 @@
+{%- comment -%}
+  PDP: a gallery + buy bar layout with a 2-col info list. Ground-up
+  markup; only the JS-contract hooks are carried across revisions —
+  [data-product-root], #product-json, .pdp__gallery,
+  .gallery-item[data-colors], .pdp__thumb, [data-atc], [data-opt-btn],
+  [data-opt-current], [data-price],
+  [data-gallery-dots], #zoom-dialog, [data-open-size-chart]/
+  #size-chart-dialog, .opt/.sizes/.size-btn/.swatches/.swatch (theme.js reads
+  those class names, and the quick-view dialog reuses their styling).
+
+  THE ATC:
+    MOBILE  — unchanged. The fixed bottom bar is the only add button, present
+              from page load, reading "SELECT A SIZE" until a size is picked.
+    DESKTOP — the buy column owns the primary black ATC (.pdp__atc), accepted
+              payment marks sit under it, and the bottom bar turns into the
+              RICH bar (thumbnail · name · colour · price · inline size row ·
+              ink add block) that only appears once the column has scrolled out
+              of view.
+  All three add buttons carry [data-atc] and theme.js paints every one of them
+  from the same render() pass — there is no second source of truth.
+
+  Scarcity and live viewers are setting-owned and disappear when cleared.
+  Delivery estimates stay off: the dated card below promises only a
+  policy-matched SHIPPING date. Model measurements (models are AI-generated)
+  and unverified natural-fibre claims stay off too.
+
+  The newsletter popup is theme-owned, rendered from layout/theme.liquid
+  (snippets/newsletter-popup.liquid + initNewsletterPopup in theme.js). It
+  stays disabled INSIDE this section — the PDP itself stays popup-free, and
+  the newsletter dialog never auto-opens over an open size sheet or bag.
+{%- endcomment -%}
+{%- liquid
+  comment
+    colour option index, hoisted above the initial-variant pick because that
+    pick now needs it. Every image of a colour (not just the variant's featured
+    one) is tagged from its alt text (" in <Colour>," / " in <Colour>-"), with
+    the variant featured-media link as the fallback; theme.js filters on it.
+  endcomment
+  assign color_opt_index = -1
+  assign color_values = '' | split: ''
+  for option in product.options_with_values
+    assign g_opt_down = option.name | downcase
+    if g_opt_down == 'color' or g_opt_down == 'colour'
+      assign color_opt_index = forloop.index0
+      assign color_values = option.values
+    endif
+  endfor
+
+  comment
+    Initial variant: an explicit ?variant= keeps winning (selected_variant),
+    otherwise the LEAD COLOUR wins — the colour of the first alt-tagged media,
+    i.e. the photograph the PLP card just showed. selected_or_first_available
+    follows variant (import) order, which can open a mismatched colour card.
+    theme.js initPDP() and the quick-view open() apply the same rule.
+  endcomment
+  assign v = product.selected_or_first_available_variant
+  if product.selected_variant == nil and color_opt_index > -1
+    assign lead_color = ''
+    for m in product.media
+      if m.media_type != 'image'
+        continue
+      endif
+      assign m_lead_alt = m.alt | default: '' | downcase
+      for cv in color_values
+        assign cv_lead_down = cv | downcase
+        assign lead_needle = ' in ' | append: cv_lead_down | append: ','
+        assign lead_needle2 = ' in ' | append: cv_lead_down | append: '-'
+        assign lead_needle3 = ' i ' | append: cv_lead_down | append: ','
+        assign lead_needle4 = ' i ' | append: cv_lead_down | append: '-'
+        if m_lead_alt contains lead_needle or m_lead_alt contains lead_needle2 or m_lead_alt contains lead_needle3 or m_lead_alt contains lead_needle4
+          assign lead_color = cv
+          break
+        endif
+      endfor
+      if lead_color != ''
+        break
+      endif
+    endfor
+    if lead_color != ''
+      for pv in product.variants
+        if pv.available and pv.options[color_opt_index] == lead_color
+          assign v = pv
+          break
+        endif
+      endfor
+    endif
+  endif
+
+  comment
+    Full title shown as-is, pipe included — no name/descriptor split.
+    pdp_descriptor stays as an always-blank variable so the richbar's elsif
+    keeps compiling.
+  endcomment
+  assign pdp_name = product.title
+  assign pdp_descriptor = ''
+
+  comment
+    Apparel guard, mirrored from theme.js initPDP(): a multi-value size option is
+    NEVER pre-selected, so the bar opens on "Select a size" and the first paint
+    matches what the JS renders a moment later (no label flash). An explicit
+    ?variant= link keeps its size, exactly as the JS does.
+  endcomment
+  assign needs_size = false
+  for option in product.options_with_values
+    assign o_down = option.name | downcase
+    if o_down contains 'size' and option.values.size > 1
+      assign needs_size = true
+    endif
+  endfor
+  if product.selected_variant
+    assign needs_size = false
+  endif
+  comment
+    Sizes are pre-selected — the needs_size computation above stays for
+    reference, but the first paint matches theme.js: v (lead colour, first
+    available size) is fully selected and every add button reads add-to-bag
+    with a price.
+  endcomment
+  assign needs_size = false
+  assign pdp_images = product.media | where: 'media_type', 'image'
+  assign pdp_image_count = pdp_images.size
+  assign pdp_price_pct = 0
+  if v.compare_at_price > v.price
+    assign pdp_price_pct = v.compare_at_price | minus: v.price | times: 100.0 | divided_by: v.compare_at_price | round
+  endif
+-%}
+{%- comment -%} Description split: the first paragraph and the detail list are
+kept separate so each can be styled deliberately, but both print exactly once
+inside the Description info panel. Nothing from product.description remains
+open under the buy buttons. {%- endcomment -%}
+{%- assign desc_intro = '' -%}
+{%- assign desc_rest = product.description -%}
+{%- if product.description contains '</p>' -%}
+  {%- assign desc_parts = product.description | split: '</p>' -%}
+  {%- assign desc_intro = desc_parts | first | append: '</p>' -%}
+  {%- assign intro_check = desc_intro | strip_html | strip -%}
+  {%- if intro_check == blank -%}
+    {%- assign desc_intro = '' -%}
+  {%- else -%}
+    {%- assign desc_rest = product.description | remove_first: desc_intro -%}
+  {%- endif -%}
+{%- endif -%}
+{%- assign details_check = desc_rest | strip_html | strip -%}
+
+{%- capture size_chart_html -%}{{ product.metafields.custom.size_table }}{%- endcapture -%}
+{%- if size_chart_html == blank -%}
+  {%- capture size_chart_html -%}{{ section.settings.size_chart_default }}{%- endcapture -%}
+{%- endif -%}
+
+<section class="pdp" data-product-root>
+  <div class="pdp__top">
+
+    <div class="pdp__stage">
+      {%- if pdp_image_count > 1 -%}
+        <div class="pdp__rail" aria-label="{{ 'product.gallery.aria' | t }}">
+          {%- for media in product.media -%}
+            {%- if media.media_type == 'image' -%}
+              {%- capture thumb_colors -%}{%- if color_opt_index > -1 -%}{%- assign tm_alt = media.alt | default: '' | downcase -%}{%- for cv in color_values -%}{%- assign cv_down = cv | downcase -%}{%- assign tneedle = ' in ' | append: cv_down | append: ',' -%}{%- assign tneedle2 = ' in ' | append: cv_down | append: '-' -%}{%- assign tneedle3 = ' i ' | append: cv_down | append: ',' -%}{%- assign tneedle4 = ' i ' | append: cv_down | append: '-' -%}{%- if tm_alt contains tneedle or tm_alt contains tneedle2 or tm_alt contains tneedle3 or tm_alt contains tneedle4 -%}{{ cv }}||{%- endif -%}{%- endfor -%}{%- endif -%}{%- endcapture -%}
+              {%- if color_opt_index > -1 and thumb_colors == blank -%}{%- capture thumb_colors -%}{%- for pv in product.variants -%}{%- if pv.featured_media.id == media.id -%}{{ pv.options[color_opt_index] }}||{%- endif -%}{%- endfor -%}{%- endcapture -%}{%- endif -%}
+              <button type="button" class="pdp__thumb" data-thumb-target="{{ media.id }}"{% if thumb_colors != blank %} data-colors="{{ thumb_colors | escape }}"{% endif %} aria-label="{{ 'product.gallery.show_image' | t: index: forloop.index }}">
+                <img src="{{ media | image_url: width: 132 }}" width="66" height="99" loading="lazy" alt="">
+              </button>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+
+      <div class="pdp__frame">
+        <div class="pdp__gallery">
+          {%- for media in product.media -%}
+            {%- if media.media_type == 'image' -%}
+              {%- capture media_colors -%}{%- if color_opt_index > -1 -%}{%- assign m_alt = media.alt | default: '' | downcase -%}{%- for cv in color_values -%}{%- assign cv_down = cv | downcase -%}{%- assign needle = ' in ' | append: cv_down | append: ',' -%}{%- assign needle2 = ' in ' | append: cv_down | append: '-' -%}{%- assign needle3 = ' i ' | append: cv_down | append: ',' -%}{%- assign needle4 = ' i ' | append: cv_down | append: '-' -%}{%- if m_alt contains needle or m_alt contains needle2 or m_alt contains needle3 or m_alt contains needle4 -%}{{ cv }}||{%- endif -%}{%- endfor -%}{%- endif -%}{%- endcapture -%}
+              {%- if color_opt_index > -1 and media_colors == blank -%}
+                {%- capture media_colors -%}{%- for pv in product.variants -%}{%- if pv.featured_media.id == media.id -%}{{ pv.options[color_opt_index] }}||{%- endif -%}{%- endfor -%}{%- endcapture -%}
+              {%- endif -%}
+              {%- comment -%} ceiling 1024×1536: the masters are 2:3 at that size and Shopify
+              silently DROPS the crop once the requested height exceeds the source, handing
+              back an uncropped original at a different URL. The three srcset steps + sizes
+              below must stay byte-identical to the preload in layout/theme.liquid or the
+              hero image downloads twice. {%- endcomment -%}
+              <button
+                type="button"
+                class="gallery-item{% if forloop.first %} is-current{% endif %}"
+                data-media-id="{{ media.id }}"
+                data-zoom-src="{{ media | image_url: width: 1024 }}"
+                {% if media_colors != blank %}data-colors="{{ media_colors | escape }}"{% endif %}
+                aria-label="{{ 'product.gallery.zoom_image' | t: index: forloop.index }}"
+              >
+                <img
+                  src="{{ media | image_url: width: 800 }}"
+                  srcset="{{ media | image_url: width: 500 }} 500w, {{ media | image_url: width: 640 }} 640w, {{ media | image_url: width: 800 }} 800w, {{ media | image_url: width: 1024 }} 1024w"
+                  sizes="(max-width: 720px) 80vw, 46vw"
+                  width="800" height="1200"
+                  alt="{{ media.alt | default: product.title | escape }}"
+                  {% if forloop.first %}fetchpriority="high"{% else %}loading="lazy"{% endif %}
+                >
+              </button>
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if pdp_image_count == 0 -%}
+            {%- assign ph = product.id | modulo: 6 | plus: 1 -%}
+            <div class="gallery-item is-current">{{ 'product-' | append: ph | placeholder_svg_tag }}</div>
+          {%- endif -%}
+        </div>
+
+        {%- comment -%} Dots and a visible "n / total" counter are omitted:
+        with many images the dot row reads as a dotted rule across the
+        photograph rather than as an indicator. The counter stays in the
+        markup but visually hidden — it is the aria-live region that tells
+        a screen-reader user which image they moved to, and the gallery has no
+        other spoken position cue. {%- endcomment -%}
+        {%- if pdp_image_count > 0 -%}<p class="visually-hidden" data-gallery-counter aria-live="polite">1 / {{ pdp_image_count }}</p>{%- endif -%}
+      </div>
+    </div>
+
+    <div class="pdp__buy">
+      {%- render 'pdp-rating' -%}
+      {%- comment -%} Title block: NAME + descriptor on one row, price on its own
+      row underneath, so the price never gets lost hard-right of the title. The
+      colour moved onto the COLOR option label ("Color: Pink") further down —
+      same [data-opt-current] hook, one line less. {%- endcomment -%}
+      <div class="pdp__titles">
+        <h1 class="pdp__name lbl">{{ pdp_name | escape }}</h1>
+        {%- comment -%} descriptor sits BESIDE the name, not three rows below it {%- endcomment -%}
+        {%- if pdp_descriptor != blank -%}
+          <p class="pdp__descriptor lbl-sm">{{ pdp_descriptor | escape }}</p>
+        {%- endif -%}
+      </div>
+      <div class="pdp__price lbl">
+        <span data-price>
+          {%- if v.compare_at_price > v.price -%}
+            <s>{{ v.compare_at_price | money_without_trailing_zeros }}</s> <span class="price--sale">{{ v.price | money_without_trailing_zeros }}</span>
+          {%- else -%}
+            {{ v.price | money_without_trailing_zeros }}
+          {%- endif -%}
+        </span>
+        {%- comment -%} Sibling by contract: theme.js replaces every [data-price]
+        innerHTML on a size click, so the real percentage badge must live outside it. {%- endcomment -%}
+        <span data-price-badge{% if pdp_price_pct <= 0 %} hidden{% endif %}>{%- if pdp_price_pct > 0 -%}&minus;{{ pdp_price_pct }}%{%- endif -%}</span>
+      </div>
+
+      {%- comment -%} The three-line USP stack under the price is gone. Its
+      claims moved — secure payment closes the buy zone (one line over the
+      payment marks), shipping + money-back sit as a two-point trust row under
+      the accordions. Snippet + settings stay; re-adding means putting the
+      render back here. {%- endcomment -%}
+
+      {%- comment -%} The stock/urgency line sits between price and colour —
+      not buried between fit scale and the buy zone. Viewers travels with it
+      (its toggle needs a call site, ships OFF). {%- endcomment -%}
+      {%- render 'pdp-scarcity', product: product -%}
+      {%- render 'pdp-viewers', product: product -%}
+
+      {%- unless product.has_only_default_variant -%}
+        {%- for option in product.options_with_values -%}
+          {%- assign opt_index = forloop.index0 -%}
+          {%- assign opt_down = option.name | downcase -%}
+          {%- assign is_color = false -%}
+          {%- if opt_down == 'color' or opt_down == 'colour' -%}{%- assign is_color = true -%}{%- endif -%}
+          {%- if option.values.size < 2 -%}{%- continue -%}{%- endif -%}
+          {%- assign is_size = false -%}
+          {%- if opt_down contains 'size' -%}{%- assign is_size = true -%}{%- endif -%}
+          {%- comment -%} Option NAME localisation: the option VALUE
+          (v.options[opt_index], size_btn text, swatch value) is never touched
+          here — the alt-text parser depends on those staying exactly as imported.
+          Only the NAME ("Color"/"Size") routes through a locale key. {%- endcomment -%}
+          {%- assign opt_label = option.name -%}
+          {%- if is_color -%}
+            {%- assign opt_label = 'product.option_color' | t -%}
+          {%- elsif is_size -%}
+            {%- assign opt_label = 'product.option_size' | t -%}
+          {%- endif -%}
+          <div class="opt"{% if is_size %} data-size-opt{% endif %}>
+            {%- comment -%} SIZE head = label left, size-guide link right on the
+            same row (saves an extra link row below the buttons). No value
+            echo — the picked size shows on the selected button. Colour keeps
+            its value (swatches carry no name). The finder lives inside the
+            guide dialog. {%- endcomment -%}
+            <div class="opt__head">
+              {%- if is_size -%}
+                <p class="opt__label lbl-sm mute">{{ opt_label | upcase | escape }}</p>
+                {%- if size_chart_html != blank -%}
+                  <button type="button" class="tlink opt__guide" data-open-size-chart>{{ 'product.size.chart_link' | t }}</button>
+                {%- endif -%}
+              {%- else -%}
+                <p class="opt__label lbl-sm mute">{{ opt_label | upcase | escape }}: <strong class="opt__value" data-opt-current="{{ opt_index }}">{{ v.options[opt_index] | upcase | escape }}</strong></p>
+              {%- endif -%}
+            </div>
+            {%- if is_color -%}
+              <div class="swatches" role="group" aria-label="{{ opt_label | escape }}">
+                {%- for value in option.values -%}
+                  {%- comment -%} A colour is picked from its own photograph. The curated
+                  alt-tagged media wins (same " in Colour," / " in Colour-" contract as
+                  the gallery), variant featured media is only the fallback. {%- endcomment -%}
+                  {%- assign cv_media = false -%}
+                  {%- assign value_down = value | downcase -%}
+                  {%- assign cv_needle = ' in ' | append: value_down | append: ',' -%}
+                  {%- assign cv_needle2 = ' in ' | append: value_down | append: '-' -%}
+                  {%- assign cv_needle3 = ' i ' | append: value_down | append: ',' -%}
+                  {%- assign cv_needle4 = ' i ' | append: value_down | append: '-' -%}
+                  {%- for cv_product_media in product.media -%}
+                    {%- if cv_product_media.media_type == 'image' -%}
+                      {%- assign cv_product_alt = cv_product_media.alt | default: '' | downcase -%}
+                      {%- if cv_product_alt contains cv_needle or cv_product_alt contains cv_needle2 or cv_product_alt contains cv_needle3 or cv_product_alt contains cv_needle4 -%}
+                        {%- assign cv_media = cv_product_media -%}
+                        {%- break -%}
+                      {%- endif -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                  {%- unless cv_media -%}
+                  {%- for cv_variant in product.variants -%}
+                    {%- if cv_variant.options[opt_index] == value and cv_variant.featured_media != blank -%}
+                      {%- assign cv_media = cv_variant.featured_media -%}
+                      {%- break -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                  {%- endunless -%}
+                  {%- if cv_media -%}
+                    <button type="button" class="swatch swatch--img" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}" aria-label="{{ value | escape }}" title="{{ value | escape }}"><img src="{{ cv_media | image_url: width: 96, height: 144, crop: 'center' }}" srcset="{{ cv_media | image_url: width: 96, height: 144, crop: 'center' }} 2x, {{ cv_media | image_url: width: 144, height: 216, crop: 'center' }} 3x" width="48" height="72" alt="" loading="lazy"></button>
+                  {%- else -%}
+                    {%- comment -%} colourless in Liquid on purpose: theme.js paintSwatches()
+                    fills these from qvSwatchMap, so the fashion-hex table lives in exactly
+                    one place (the PLP cards and the quick view share it). {%- endcomment -%}
+                    <button type="button" class="swatch" data-swatch="{{ value | escape }}" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}" aria-label="{{ value | escape }}" title="{{ value | escape }}"></button>
+                  {%- endif -%}
+                {%- endfor -%}
+              </div>
+            {%- else -%}
+              <div class="sizes" role="group" aria-label="{{ opt_label | escape }}">
+                {%- for value in option.values -%}
+                  <button type="button" class="size-btn" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if needs_size %}false{% elsif v.options[opt_index] == value %}true{% else %}false{% endif %}">{{ value | escape }}</button>
+                {%- endfor -%}
+              </div>
+            {%- endif -%}
+          </div>
+          {%- comment -%} return anchor: the bar's expansion panel MOVES this row into
+          the sheet (no duplicate picker to keep in sync) and puts it back here. {%- endcomment -%}
+          {%- if is_size -%}<span data-size-home hidden></span>{%- endif -%}
+        {%- endfor -%}
+      {%- endunless -%}
+
+      {%- comment -%} Size recommender lives inside the option loop, above the
+      size row — see the render inside the loop. It still applies its answer
+      by clicking the real size button (never a second picker). {%- endcomment -%}
+      {%- comment -%} FIT SCALE is toggle-owned; derivation from
+      custom.fit_note is unchanged. {%- endcomment -%}
+      {%- comment -%} sizekit: fit scale sits in one bordered block. The
+      measure note is no longer printed — the settings toggle stays but this
+      template doesn't render it. {%- endcomment -%}
+      {%- if settings.fit_scale_enabled -%}
+        <div class="pdp-sizekit">
+          {%- render 'pdp-fit-scale' -%}
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} ORDER: size grid → size help + fit → scarcity → buy —
+      the scarcity line sits directly against the button, not separated from
+      it by fit scale and spacing.
+
+      The viewers line is removed here: with scarcity, the drawer countdown
+      and the tier upsell already live, a fourth pressure signal cost 30px
+      that kept the add button below the 785px fold. The snippet and its CSS
+      stay — re-adding the render line brings it back. {%- endcomment -%}
+
+      {%- comment -%} THE desktop add button. This is the primary action from
+      900px up — it replaces a floating payment button far from the size just
+      picked; below that it never renders and the fixed bar stays THE buy
+      button. It carries [data-atc] like every other add button in
+      this theme, and theme.js paints all of them from the one render() pass. {%- endcomment -%}
+      <button
+        type="button"
+        class="bar pdp__atc{% if needs_size %} bar--awaiting{% endif %}"
+        data-atc
+        data-variant-id="{% unless needs_size %}{{ v.id }}{% endunless %}"
+        {% unless needs_size or v.available %}disabled{% endunless %}
+      >
+        <span data-atc-label>{% if needs_size %}{{ 'product.atc.select_size' | t }}{% elsif v.available %}{{ 'product.atc.add_to_bag' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span>
+        <span data-atc-price>{% if v.available and needs_size == false %}{{ v.price | money_without_trailing_zeros }}{% endif %}</span>
+      </button>
+
+      {%- comment -%} The secure-payment trust line above the payment marks
+      reads the locale key on every language — the settings value carries
+      different (longer) wording than what belongs here, and only the primary
+      locale would otherwise read the setting raw (same locale-fallback
+      architecture rule as the retired USP stack). The delivery timeline moved
+      below the accordions. {%- endcomment -%}
+      {%- assign cp_sec = 'product.usp.secure' | t -%}
+      {%- if cp_sec != blank -%}
+        <p class="pdp-secure lbl-sm">{% render 'icon', name: 'lock', size: 15 %}<span>{{ cp_sec | escape }}</span></p>
+      {%- endif -%}
+      {%- if shop.enabled_payment_types.size > 0 -%}
+        <div class="pdp-payments pdp-payments--column" aria-label="{{ 'general.accepted_payment_methods' | t }}">
+          {%- for payment_type in shop.enabled_payment_types -%}{{ payment_type | payment_type_svg_tag }}{%- endfor -%}
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Renders only while the tier discounts exist — with them off
+      this is nothing at all. {%- endcomment -%}
+      {%- render 'pdp-usp-lines' -%}
+
+
+      {%- comment -%} Buy-more upsell ladder. It follows the completed buy
+      zone: the moment a shopper has decided on one piece is the moment a
+      second one is easiest to sell. DISPLAY ONLY — it renders only while
+      settings.qty_tiers_enabled is on, and that switch must stay off until
+      the matching Shopify automatic discounts exist. {%- endcomment -%}
+      {%- comment -%} Bundle ladder condensed to one line — the tier bar in
+      the drawer carries the full ladder at the moment it matters. qty/pct
+      read dynamically from the first and last ladder step so the line can
+      never contradict the settings. {%- endcomment -%}
+      {%- if settings.qty_tiers_enabled and settings.qty_tiers != blank -%}
+        {%- assign pb_tiers = settings.qty_tiers | remove: ' ' | split: ',' -%}
+        {%- comment -%} Heading + auto-apply subline + one soft tile per step
+        (percentage bold left, e.g. "from 2 items – 10% EXTRA off" muted
+        right). Reads straight from settings.qty_tiers so the lines can never
+        contradict the discounts. {%- endcomment -%}
+        <div class="pdp__bundle-line">
+          <p class="pdp__bundle-head">{{ 'product.bundle.heading' | t }}</p>
+          <p class="pdp__bundle-note">{{ 'product.bundle.auto_note' | t }}</p>
+          <ul class="pdp__bundle-tiers">
+            {%- for pb_tier in pb_tiers -%}
+              {%- assign pb_pair = pb_tier | split: ':' -%}
+              <li><span class="pdp__bundle-pctcol">{{ pb_pair[1] }}%</span><span class="pdp__bundle-desc">{{ 'product.bundle.tier_text' | t: qty: pb_pair[0], pct: pb_pair[1] }}</span></li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} pdp-complete-look renders at the page end — cross-sell
+      never sits inside the buy zone. {%- endcomment -%}
+
+      {%- comment -%} desc_intro and desc_rest both render once, in the
+      Description info panel below — neither renders here. {%- endcomment -%}
+
+      {%- comment -%} pdp__facts block is removed here: fit_note already
+      renders in the Size & fit tab and the benefit lives in the Product details
+      bullets — the duplicate line pair under the description read as clutter.
+      The metafields stay populated; only this render spot is gone. {%- endcomment -%}
+
+  {%- liquid
+    assign has_description_tab = true
+    if desc_intro == blank and details_check == blank
+      assign has_description_tab = false
+    endif
+  -%}
+    {%- comment -%} The whole info block (accordions + trust duo +
+    complete-look) lives INSIDE .pdp__buy so it sits in the right rail on
+    desktop instead of a centered orphan column. Mobile order is unchanged
+    (block still renders after the buy content). Same-order guarantee:
+    accordions -> trust duo -> complete-look. {%- endcomment -%}
+  {%- comment -%} ACCORDIONS, not inline tab-links. Same native
+  <details class="acc"> vocabulary as the homepage FAQ, so the CSS animation
+  and the WebKit WAAPI fallback (theme.js initAccordions, global details.acc
+  query) apply with zero new JS. Description ships open — it is the first
+  thing a paid click wants. The old [data-info-tab] handler in theme.js is
+  now unused on this page and harmless. {%- endcomment -%}
+  <div class="pdp__info pdp__info--acc wrap">
+    <div class="pdp__acc bt">
+      {%- if has_description_tab -%}
+        {%- comment -%} Ships CLOSED like every other panel — quiet page,
+        reader opens what they want. {%- endcomment -%}
+        <details class="acc bb">
+          <summary class="acc__q lbl">{{ 'product.tabs.description' | t }}<span class="acc__sign" aria-hidden="true"></span></summary>
+          <div class="acc__body pdp-rte prose">
+            {%- if desc_intro != blank -%}<div class="pdp__desc" data-pdp-desc>{{ desc_intro }}</div>{%- endif -%}
+            {%- if details_check != blank -%}<div class="pdp__details">{{ desc_rest }}</div>{%- endif -%}
+          </div>
+        </details>
+      {%- endif -%}
+      <details class="acc bb">
+        <summary class="acc__q lbl">{{ 'product.tabs.fabric' | t }}<span class="acc__sign" aria-hidden="true"></span></summary>
+        <div class="acc__body pdp-rte">
+          {%- if product.metafields.custom.care != blank -%}
+            {{ product.metafields.custom.care }}
+          {%- else -%}
+            {{ section.settings.care_default }}
+          {%- endif -%}
+        </div>
+      </details>
+      <details class="acc bb">
+        <summary class="acc__q lbl">{{ 'product.tabs.fit' | t }}<span class="acc__sign" aria-hidden="true"></span></summary>
+        <div class="acc__body pdp-rte">
+          {%- if product.metafields.custom.fit_note != blank -%}
+            <p>{{ product.metafields.custom.fit_note | escape }}</p>
+          {%- else -%}
+            <p>{{ 'product.fit.true_to_size' | t }}</p>
+          {%- endif -%}
+          {%- comment -%} custom.model_note prints verbatim and stays hidden
+          while empty. Standing rule: models are AI-generated, so any
+          measurement or model-size claim in this metafield would be
+          fabricated. Fit guidance belongs in custom.fit_note. {%- endcomment -%}
+          {%- if product.metafields.custom.model_note != blank -%}
+            <p>{{ product.metafields.custom.model_note | escape }}</p>
+          {%- endif -%}
+          {%- if size_chart_html != blank -%}
+            <p><button type="button" class="tlink" data-open-size-chart>{{ 'product.size.guide' | t }}</button></p>
+          {%- endif -%}
+          {%- if section.settings.enable_size_recommendation and size_chart_html != blank -%}
+            <p><button type="button" class="tlink" data-open-size-rec>{{ 'product.size.find_my_size' | t }}</button></p>
+          {%- endif -%}
+          <p><a href="/policies/refund-policy">{{ 'product.returns.doesnt_fit' | t }}</a></p>
+        </div>
+      </details>
+      <details class="acc bb">
+        <summary class="acc__q lbl">{{ 'product.tabs.shipping' | t }}<span class="acc__sign" aria-hidden="true"></span></summary>
+        <div class="acc__body pdp-rte">
+          <p>{{ 'product.shipping.estimate' | t }}</p>
+          <p>{{ settings.ship_processing | escape }} {{ 'product.shipping.weekdays_then_way' | t }} {{ settings.ship_free_line | escape }}. {{ 'product.shipping.policy_link_intro' | t }} <a href="/policies/shipping-policy">{{ 'product.shipping.policy_link_text' | t }}</a>.</p>
+          <p>{{ 'product.returns.window' | t }} <a href="mailto:{{ settings.biz_email }}">{{ settings.biz_email }}</a> {{ 'product.returns.authorization' | t }} {{ 'product.returns.policy_link_intro' | t }} <a href="/policies/refund-policy">{{ 'product.returns.policy_link_text' | t }}</a>.</p>
+        </div>
+      </details>
+      {%- comment -%} GPSR (EU 2023/988) safety accordion is disabled by default;
+      enable it once manufacturer/safety data is available. {%- endcomment -%}
+      {% if false %}
+      <details class="acc bb">
+        <summary class="acc__q lbl">{{ 'product.tabs.gpsr' | t }}<span class="acc__sign" aria-hidden="true"></span></summary>
+        <div class="acc__body pdp-rte">{%- render 'pdp-gpsr' -%}</div>
+      </details>
+      {% endif %}
+    </div>
+
+    {%- comment -%} Delivery time sits after the dropdowns, then the two
+    remaining trust points (money-back + shipping), then similar products.
+    Same settings + locale-fallback pattern as the rest of the buy column — no new
+    keys. {%- endcomment -%}
+    {%- assign cp_back = settings.guarantee_line -%}
+    {%- assign cp_ship = settings.ship_free_line -%}
+    {%- unless request.locale.primary -%}
+      {%- assign cp_back = 'product.usp.money_back' | t -%}
+      {%- assign cp_ship = 'product.usp.shipping' | t -%}
+    {%- endunless -%}
+    {%- if cp_back != blank or cp_ship != blank -%}
+      <div class="pdp-trust-duo lbl-sm">
+        {%- if cp_back != blank -%}<span>{% render 'icon', name: 'returns', size: 20 %}<em>{{ cp_back | escape }}</em></span>{%- endif -%}
+        {%- if cp_ship != blank -%}<span>{% render 'icon', name: 'truck', size: 20 %}<em>{{ cp_ship | escape }}</em></span>{%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} Complete-the-look renders at the page end — after the
+    info accordions, before the related section that the template renders
+    next. {%- endcomment -%}
+    {%- render 'pdp-complete-look', product: product -%}
+  </div>
+    </div>
+  </div>
+
+  {%- comment -%} Info list: two columns on every viewport, content swaps
+  inline (theme.js), never an accordion and never a page jump. {%- endcomment -%}
+  {%- comment -%} Description is the first info entry. The split first
+  paragraph and detail list are both inside it, each exactly once. When no
+  split exists, desc_rest already equals the full product.description, so the
+  same panel remains lossless. {%- endcomment -%}
+
+  {%- comment -%} Second full-width USP trio is removed entirely — the
+  buy-column trio is the only trust trio on the PDP now, both viewports. {%- endcomment -%}
+
+  {%- comment -%} NO BREADCRUMB on the PDP, top or bottom: the bottom
+  .pdp__crumbs nav and its styles were deleted outright. Do not reintroduce
+  either one. {%- endcomment -%}
+
+  {%- comment -%} THE buy bar. Present from page load on both viewports, carries
+  [data-atc] because it IS the add button (no static ATC anywhere above). Inside
+  data-product-root so theme.js's scoped queries reach it; position:fixed is
+  unaffected — no ancestor creates a containing block.
+
+  Layout: label LEFT, price RIGHT inside the bar. Mechanic: "SELECT A SIZE"
+  until a size is picked. Tapping it unpicked opens the expansion panel above
+  the bar, which the JS fills by MOVING [data-size-opt] into it — one picker,
+  one state, no sync code. {%- endcomment -%}
+  <div class="pdp__barwrap" data-barwrap>
+    <div class="pdp__sheet" data-vsheet hidden>
+      <div class="pdp__sheet-head">
+        <p class="lbl-sm mute">{{ 'product.atc.select_size' | t }}</p>
+        <button type="button" class="hdr__icon" data-vsheet-close aria-label="{{ 'product.size_sheet.close' | t }}">
+          {% render 'icon', name: 'close', size: 18 %}
+        </button>
+      </div>
+      <div class="pdp__sheet-slot" data-vsheet-slot></div>
+    </div>
+    <button
+      type="button"
+      class="bar pdp__bar{% if needs_size %} bar--awaiting{% endif %}"
+      data-atc
+      data-variant-id="{% unless needs_size %}{{ v.id }}{% endunless %}"
+      {% unless needs_size or v.available %}disabled{% endunless %}
+    >
+      <span data-atc-label>{% if needs_size %}{{ 'product.atc.select_size' | t }}{% elsif v.available %}{{ 'product.atc.add_to_bag' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span>
+      <span data-atc-price>{% if v.available and needs_size == false %}{{ v.price | money_without_trailing_zeros }}{% endif %}</span>
+    </button>
+    {%- if shop.enabled_payment_types.size > 0 -%}
+      <div class="pdp-payments pdp-payments--mobile" aria-label="{{ 'general.accepted_payment_methods' | t }}">
+        {%- for payment_type in shop.enabled_payment_types -%}{{ payment_type | payment_type_svg_tag }}{%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} The DESKTOP bar carries more information than a plain
+    "SELECT A SIZE" slab: thumbnail, name, colour and price on the left, the
+    size row inline in the middle, the ink add block on the right. It only
+    appears once the shopper has scrolled PAST the buy column (theme.js
+    initBuyBar); the buy column owns the action until then.
+
+    The size buttons here are a SECOND set of [data-opt-btn] elements, not a second
+    picker: theme.js's render() paints every [data-opt-btn] on the page and its
+    delegated click handler reads every one of them, so this row shares one state with
+    the column with no sync code. data-opt-dup marks them so the size recommender only
+    ever clicks the column's copy. {%- endcomment -%}
+    <div class="pdp__richbar" aria-hidden="false">
+      <div class="pdp__rb-id">
+        {%- if product.featured_media != blank -%}
+          <img src="{{ product.featured_media | image_url: width: 120, height: 180, crop: 'center' }}" width="40" height="60" alt="" loading="lazy">
+        {%- endif -%}
+        <div class="pdp__rb-text">
+          <p class="pdp__rb-name lbl">{{ pdp_name | escape }}</p>
+          {%- if color_opt_index > -1 -%}
+            <p class="pdp__rb-sub lbl-sm">in <span data-opt-current="{{ color_opt_index }}">{{ v.options[color_opt_index] | escape }}</span></p>
+          {%- elsif pdp_descriptor != blank -%}
+            <p class="pdp__rb-sub lbl-sm">{{ pdp_descriptor | escape }}</p>
+          {%- endif -%}
+        </div>
+        <div class="pdp__rb-price lbl">
+          <span data-price>
+            {%- if v.compare_at_price > v.price -%}
+              <s>{{ v.compare_at_price | money_without_trailing_zeros }}</s> <span class="price--sale">{{ v.price | money_without_trailing_zeros }}</span>
+            {%- else -%}
+              {{ v.price | money_without_trailing_zeros }}
+            {%- endif -%}
+          </span>
+          <span data-price-badge{% if pdp_price_pct <= 0 %} hidden{% endif %}>{%- if pdp_price_pct > 0 -%}&minus;{{ pdp_price_pct }}%{%- endif -%}</span>
+        </div>
+      </div>
+
+      {%- unless product.has_only_default_variant -%}
+        {%- for option in product.options_with_values -%}
+          {%- assign rb_down = option.name | downcase -%}
+          {%- if rb_down contains 'size' and option.values.size > 1 -%}
+            <div class="pdp__rb-sizes">
+              <div class="sizes" role="group" aria-label="{{ 'product.option_size' | t }}">
+                {%- for value in option.values -%}
+                  <button type="button" class="size-btn" data-opt-btn data-opt-dup data-opt-index="{{ forloop.parentloop.index0 }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if needs_size %}false{% elsif v.options[forloop.parentloop.index0] == value %}true{% else %}false{% endif %}">{{ value | escape }}</button>
+                {%- endfor -%}
+              </div>
+            </div>
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endunless -%}
+
+      <button
+        type="button"
+        class="bar pdp__rb-atc{% if needs_size %} bar--awaiting{% endif %}"
+        data-atc
+        data-variant-id="{% unless needs_size %}{{ v.id }}{% endunless %}"
+        {% unless needs_size or v.available %}disabled{% endunless %}
+      >
+        <span data-atc-label>{% if needs_size %}{{ 'product.atc.select_size' | t }}{% elsif v.available %}{{ 'product.atc.add_to_bag' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span>
+        <span data-atc-price>{% if v.available and needs_size == false %}{{ v.price | money_without_trailing_zeros }}{% endif %}</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+{%- if size_chart_html != blank -%}
+{%- comment -%} data-chart-units drives the client-side unit localization in
+standard-extras.js: size-chart headers may be localized
+and are converted to inches on imperial locales, at 1 decimal.
+data-converted-note replaces the unit note once a conversion actually
+happened. {%- endcomment -%}
+<dialog
+  id="size-chart-dialog"
+  class="pdp-sheet"
+  aria-label="{{ 'product.size.guide' | t }}"
+  data-chart-units="{{ 'product.size_finder.unit_system' | t }}"
+  data-converted-note="{{ 'product.size.converted_note' | t | escape }}"
+>
+  <div class="pdp-sheet__head">
+    <h2 class="lbl">{{ 'product.size.guide' | t }}</h2>
+    <button type="button" class="hdr__icon" data-close-dialog aria-label="{{ 'product.size_guide.close' | t }}">
+      {% render 'icon', name: 'close', size: 20 %}
+    </button>
+  </div>
+  <div class="pdp-sheet__body pdp-rte">
+    {{ size_chart_html }}
+    {%- if section.settings.size_unit_note != blank -%}<p class="lbl-sm mute" data-size-unit-note>{{ section.settings.size_unit_note | escape }}</p>{%- endif -%}
+    {%- comment -%} The size finder lives inside the guide dialog, behind its
+    own toggle — one entry point for everything size. Its apply() still
+    clicks the real size buttons in the buy column; the dialog stays open so
+    the shopper reads the recommendation, the picked size is set behind it. {%- endcomment -%}
+    {%- render 'size-recommendation' -%}
+  </div>
+</dialog>
+{%- endif -%}
+
+<dialog id="zoom-dialog" class="pdp-zoom" aria-label="{{ 'product.zoom.aria' | t }}">
+  <button type="button" class="pdp-zoom__close hdr__icon" data-close-dialog aria-label="{{ 'product.zoom.close' | t }}">
+    {% render 'icon', name: 'close', size: 22 %}
+  </button>
+  <button type="button" class="pdp-zoom__nav pdp-zoom__nav--prev hdr__icon" data-zoom-prev aria-label="{{ 'product.zoom.prev' | t }}">
+    {% render 'icon', name: 'arrow', size: 22 %}
+  </button>
+  <button type="button" class="pdp-zoom__nav pdp-zoom__nav--next hdr__icon" data-zoom-next aria-label="{{ 'product.zoom.next' | t }}">
+    {% render 'icon', name: 'arrow', size: 22 %}
+  </button>
+  <div class="zoom-dialog__inner"><img src="" alt="" width="1024" height="1536"></div>
+</dialog>
+
+<script id="product-json" type="application/json">
+  {{ product | json }}
+</script>
+
+{%- comment -%} jsonld is rendered from layout/theme.liquid for every template — emitting
+the Product block here as well would duplicate it. {%- endcomment -%}
+
+{% schema %}
+{
+  "name": "Product page",
+  "settings": [
+    { "type": "text", "id": "benefit_fallback", "label": "Fallback fact line", "info": "Second fact line under the description when the product has no custom.benefit_line." },
+    { "type": "text", "id": "complete_look_collections", "label": "Complete-the-look category collections", "default": "womens-dresses,womens-knitwear,womens-coats-jackets,womens-tops-blouses", "info": "Comma-separated collection handles. The widget shows one piece from each category the current product is NOT in — the Recommendations API alone tends to repeat the same handful of bestsellers storewide." },
+    { "type": "checkbox", "id": "enable_size_recommendation", "label": "Size recommendation widget", "default": true, "info": "Height/weight → suggested size, under the size row. Only appears when the product has a size chart (custom.size_table) that parses to a Bust or Hip column." },
+    { "type": "text", "id": "size_unit_note", "label": "Size-guide unit note", "default": "All measurements in inches.", "info": "Printed under the size table in the size guide." },
+    { "type": "richtext", "id": "care_default", "label": "Default fabric & care copy", "info": "Used when the product has no custom.care metafield. Keep it honest — never name a fibre the supplier has not confirmed.", "default": "<p>Machine wash cold on a gentle cycle, inside out. Do not bleach. Line dry or dry flat. Cool iron if needed.</p>" },
+    { "type": "html", "id": "size_chart_default", "label": "Default size chart (HTML table)", "info": "Shown in the size guide when the product has no custom.size_table metafield.", "default": "<table><thead><tr><th>Size (US)</th><th>Size (UK)</th><th>Bust</th><th>Waist</th><th>Hip</th></tr></thead><tbody><tr><td>2</td><td>6</td><td>80</td><td>64</td><td>90</td></tr><tr><td>4</td><td>8</td><td>85</td><td>68</td><td>90</td></tr><tr><td>6</td><td>10</td><td>90</td><td>72</td><td>90</td></tr><tr><td>8</td><td>12</td><td>95</td><td>76</td><td>90</td></tr><tr><td>10</td><td>14</td><td>100</td><td>80</td><td>109</td></tr></tbody></table>" }
+  ]
+}
+{% endschema %}

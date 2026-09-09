@@ -1,0 +1,496 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "general": {
+    "meta": {
+      "page": "Page {{ page }}"
+    },
+    "accepted_payment_methods": "Accepted payment methods",
+    "shop_all": "Shop all",
+    "pagination_aria": "Pagination",
+    "months_short": "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+    "title_page": "Page {{ page }}"
+  },
+  "shopify": {
+    "checkout": {
+      "alternative_payment_method_banner": {
+        "or": "or"
+      },
+      "tips": {
+        "title": "Leave a tip",
+        "description": "Enjoying BRAND? Tips buy our small team their morning coffee",
+        "presets_description": "Pick a little thank-you",
+        "custom_label": "Your amount",
+        "message": "Thank you! Today's coffee is on you.",
+        "no_tip_label": "No thanks"
+      }
+    }
+  },
+  "layout": {
+    "skip_to_content": "Skip to content"
+  },
+  "header": {
+    "nav": {
+      "open_menu": "Open menu",
+      "search": "Search",
+      "primary": "Primary",
+      "support": "Support",
+      "popular_categories": "Popular categories",
+      "about_us": "About us",
+      "faq": "FAQ",
+      "track_order": "Track your order"
+    },
+    "cart": {
+      "open_bag": {
+        "one": "Open bag (1 item)",
+        "other": "Open bag ({{ count }} items)"
+      }
+    },
+    "mobile": {
+      "menu_aria": "Menu",
+      "close_menu": "Close menu",
+      "categories": "Categories",
+      "view_all": "View all {{ title }}",
+      "secondary": "Secondary",
+      "search_link": "Search"
+    }
+  },
+  "footer": {
+    "newsletter_heading": "We write rarely. It's worth it.",
+    "newsletter_placeholder": "Your email",
+    "newsletter_button": "Sign up",
+    "newsletter_note": "No spam, unsubscribe anytime.",
+    "shop_heading": "Shop",
+    "help_heading": "Help",
+    "newsletter": {
+      "email_label": "Email address"
+    },
+    "legal_heading": "Legal",
+    "cookie_settings": "Cookie settings",
+    "business": {
+      "heading": "Store information",
+      "store_label": "Shop:",
+      "owner_label": "Owner:",
+      "sole_proprietorship": "(Sole Proprietorship)",
+      "company_line": "{{ name }}",
+      "vat_label": "VAT ID:",
+      "company_address_label": "Shop Address:",
+      "warehouse_address_label": "Warehouse Address:",
+      "returns_label": "Returns:",
+      "email_label": "Email:",
+      "phone_label": "Phone:",
+      "hours_label": "Customer Service Hours:"
+    },
+    "copyright": {
+      "rights": "All rights reserved."
+    },
+    "back_to_top": "Back to top",
+    "retractation_prompt": "Want to cancel your order?"
+  },
+  "product": {
+    "option_color": "Color",
+    "option_size": "Size",
+    "option_select": "Select",
+    "gallery": {
+      "aria": "Product images",
+      "show_image": "Show image {{ index }}",
+      "zoom_image": "Zoom image {{ index }}"
+    },
+    "size": {
+      "chart_link": "Size chart",
+      "guide": "Size guide",
+      "find_my_size": "Find my size",
+      "measure_note": "Please measure before you order. It saves you an exchange.",
+      "converted_note": "All measurements converted from centimeters to inches (1 decimal). Slight variations of 0.5–1 in may occur."
+    },
+    "atc": {
+      "select_size": "Select a size",
+      "add_to_bag": "Add to bag",
+      "sold_out": "Sold out",
+      "unavailable": "Unavailable",
+      "select_size_aria": "Select a size to add to bag",
+      "added": "Added ✓"
+    },
+    "bundle": {
+      "heading": "Buy more, save more",
+      "items_label": "items",
+      "pct_off": "{{ pct }}% off",
+      "note": "Mix any pieces. Auto-applied at checkout.",
+      "compact": "Buy {{ qty }}+ pieces and save up to {{ pct }}% – discount applied automatically",
+      "tier_text": "Buy {{ qty }}+ items – {{ pct }}% EXTRA off",
+      "auto_note": "Discount applied automatically in the cart – no code needed"
+    },
+    "tabs": {
+      "description": "Description",
+      "fabric": "Fabric & care",
+      "fit": "Size & fit",
+      "shipping": "Shipping & returns",
+      "gpsr": "Safety & regulatory information"
+    },
+    "fit": {
+      "true_to_size": "True to size.",
+      "heading": "Fit",
+      "runs_small": "Runs small",
+      "true_to_size_label": "True to size",
+      "runs_large": "Runs large",
+      "slightly_small": "Runs slightly small",
+      "slightly_large": "Runs slightly large"
+    },
+    "returns": {
+      "doesnt_fit": "Doesn't fit? 30-day returns.",
+      "window": "30 days from delivery, unworn with tags. Email",
+      "authorization": "for a return authorization first, no restocking fees.",
+      "policy_link_intro": "Details in our",
+      "policy_link_text": "Return & Refund Policy"
+    },
+    "shipping": {
+      "estimate": "Orders are processed within 1–3 business days and delivered within 8–12 days.",
+      "weekdays_then_way": "(Mon–Fri), then on its way.",
+      "policy_link_intro": "Full delivery windows are in our",
+      "policy_link_text": "Shipping Policy"
+    },
+    "zoom": {
+      "aria": "Image zoom",
+      "close": "Close zoom",
+      "prev": "Previous image",
+      "next": "Next image"
+    },
+    "size_sheet": {
+      "close": "Close size picker"
+    },
+    "size_guide": {
+      "close": "Close size guide"
+    },
+    "trust": {
+      "shipping_estimate": "Ships in 1–3 days"
+    },
+    "scarcity": {
+      "fast": "Selling fast — stock is limited",
+      "stock": "In stock and ready to ship",
+      "low": "Almost sold out, only a few left in stock"
+    },
+    "complete_look": {
+      "heading": "Complete the look",
+      "choose_size_aria": "Choose a size for {{ title }}",
+      "choose_size": "Choose size",
+      "add": "Add",
+      "view_aria": "View {{ title }}"
+    },
+    "size_finder": {
+      "toggle": "Not sure about your size? ",
+      "height": "Height",
+      "height_feet_aria": "Height, feet",
+      "height_inches_aria": "Height, inches",
+      "weight": "Weight",
+      "weight_lbs_aria": "Weight in pounds",
+      "unit_system": "imperial",
+      "height_cm_aria": "Height in centimeters",
+      "weight_kg_aria": "Weight in kilograms",
+      "result_recommend": "We recommend size [size].",
+      "result_between": "Between [lo] and [hi]. We suggest [hi] for a relaxed fit.",
+      "note_tall": "Note: at your height this piece may run short. Please double-check the size chart below to be sure of the fit.",
+      "note_petite": "Note: at your height this piece may run long. Please double-check the size chart below to be sure of the fit.",
+      "sold_out": "We recommend size [size], but it’s currently sold out in this color.",
+      "sold_out_closest": "Size [size] is sold out in this color. [alt] is the closest available size.",
+      "select_above": "Select it above.",
+      "below_range": "Your measurements run smaller than our supported size range, so we are showing the closest fit.",
+      "above_range": "Your measurements run larger than our supported size range, so we are showing the closest fit.",
+      "err_height": "Enter your height to get a recommendation.",
+      "err_weight": "Enter your weight to get a recommendation."
+    },
+    "timeline": {
+      "aria": "Estimated delivery",
+      "ordered": "Ordered",
+      "ships": "Ships",
+      "delivery": "Delivery"
+    },
+    "related": {
+      "heading": "You may also like",
+      "offer_heading": "Add another piece and save up to [pct]%"
+    },
+    "usp": {
+      "shipping": "Free shipping on every order",
+      "money_back": "30-day money-back guarantee",
+      "secure": "Secure checkout"
+    },
+    "rating": {
+      "reviews_label": "reviews",
+      "reviews_by": "women have reviewed us",
+      "aria": "Rated {{ value }} out of 5 from {{ count }} reviews",
+      "aria_short": "Rated {{ value }} out of 5"
+    },
+    "viewers": {
+      "line": "people are viewing this item"
+    }
+  },
+  "gpsr": {
+    "responsible_line": "Distributor: BRAND. Contact: {{ email }}",
+    "manufacturer_line": "Manufacturer: information available on request from our customer service.",
+    "safety_line": "Safety instructions: keep plastic packaging out of reach of children and pets. Follow the care instructions on the product's label."
+  },
+  "retractation": {
+    "heading": "Withdrawal",
+    "intro": "You may withdraw from the contract within 14 days of receiving your order, without giving a reason. The form below lets you submit your withdrawal online.",
+    "trigger": "Withdraw from the contract",
+    "form": {
+      "subject": "Withdrawal",
+      "order_number": "Order number",
+      "reason": "Reason (optional)",
+      "submit": "Confirm the withdrawal",
+      "success": "Your withdrawal request has been sent. You will immediately receive an acknowledgement email with the date and time."
+    }
+  },
+  "quick_view": {
+    "dialog_aria": "Quick view",
+    "head_label": "Quick add",
+    "close": "Close quick view",
+    "view_all_details": "View all details"
+  },
+  "cart": {
+    "banner": "Free shipping & 30-day returns",
+    "mini": {
+      "product_details_aria": "Product details",
+      "close": "Close product details"
+    },
+    "cross": {
+      "default_heading": "You might also like",
+      "prev_aria": "Previous recommendation",
+      "next_aria": "Next recommendation",
+      "add_short": "Add"
+    },
+    "countdown": {
+      "reserved": "Your order is reserved for"
+    },
+    "drawer": {
+      "aria": "Shopping bag"
+    },
+    "title": "Your bag",
+    "close_bag_aria": "Close bag",
+    "line": {
+      "addon_badge": "Cart add-on",
+      "quantity_aria": "Quantity",
+      "decrease_aria": "Decrease quantity",
+      "increase_aria": "Increase quantity",
+      "qty_value_aria": "Quantity {{ qty }}",
+      "remove_button": "Remove",
+      "remove_aria": "Remove {{ title }}",
+      "change_option_aria": "Change {{ option }} for {{ title }}",
+      "saving": "Save {{ amount }}"
+    },
+    "summary": {
+      "order_summary_aria": "Order summary",
+      "price_summary_aria": "Price summary",
+      "original": "Original",
+      "you_save": "You save",
+      "total": "Total",
+      "see_savings": "See savings breakdown",
+      "original_price": "Original price",
+      "markdowns": "Product markdowns"
+    },
+    "page": {
+      "estimated_total": "Estimated total",
+      "tax_note": "Taxes calculated at checkout"
+    },
+    "checkout": {
+      "secure": "Secure checkout",
+      "dispatch": "Order today – ships by {{ date }}"
+    },
+    "empty": {
+      "heading": "Nothing here yet. That's fixable.",
+      "subtext_fallback": "The light's still good. Take another look.",
+      "shop_button": "Shop {{ title }}"
+    },
+    "suggested_products_aria": "Suggested products",
+    "errors": {
+      "generic": "Cart error",
+      "option_unavailable": "This option combination is unavailable."
+    },
+    "qty_tier": {
+      "items_count": {
+        "one": "{{ count }} item",
+        "other": "{{ count }} items"
+      },
+      "pct_off": "{{ pct }}% off",
+      "more_unlocked": {
+        "one": "{{ pct }}% unlocked. Add {{ count }} more item for {{ next_pct }}%.",
+        "other": "{{ pct }}% unlocked. Add {{ count }} more items for {{ next_pct }}%."
+      },
+      "top_unlocked": "Top saving unlocked.",
+      "unlock_first": {
+        "one": "Add {{ count }} item to unlock the first saving.",
+        "other": "Add {{ count }} items to unlock the first saving."
+      }
+    },
+    "trust_line": "Easy 30-day returns"
+  },
+  "collection": {
+    "filter": {
+      "trigger": "Filter",
+      "category_heading": "Category",
+      "all_prefix": "All {{ title }}",
+      "apply": "Apply",
+      "clear_all": "Clear all",
+      "from": "From",
+      "to": "To",
+      "availability": "Availability",
+      "price": "Price"
+    },
+    "count": {
+      "piece_singular": "piece",
+      "piece_plural": "pieces"
+    },
+    "sort": {
+      "prefix": "Sort:",
+      "mobile": "Sort"
+    }
+  },
+  "contact": {
+    "email_label": "Email",
+    "email_note": "For order support, sizing questions and general enquiries.",
+    "phone_label": "Phone",
+    "response_time_label": "Response time",
+    "form": {
+      "success": "Thanks, your message is in. A real person will get back to you within 24–48 hours.",
+      "name": "Name",
+      "order_number": "Order number (optional)",
+      "message": "Message",
+      "send": "Send message"
+    },
+    "info": {
+      "heading": "Customer care",
+      "text": "Whether you need help with an existing order, have a sizing question, or would like guidance choosing the right piece, we welcome your message.",
+      "phone_note": "Email is the fastest channel — every message reaches a real person.",
+      "response": "Within 24–48 hours"
+    }
+  },
+  "search": {
+    "title_results": "Search results",
+    "label": "Search",
+    "placeholder": "Search for dresses, knitwear, coats…",
+    "result_singular": "result",
+    "result_plural": "results",
+    "empty_heading": "Nothing under this light yet",
+    "empty_text": "Try a different word, or browse everything we have."
+  },
+  "error_404": {
+    "placeholder": "Search the store",
+    "back_home": "Back to the homepage",
+    "heading": "This page took the day off",
+    "text": "It happens. The clothes are still here, and they are worth the detour."
+  },
+  "blog": {
+    "prev": "Previous",
+    "next": "Next",
+    "empty_heading": "No stories yet"
+  },
+  "password_page": {
+    "store_password_label": "Store password",
+    "password_placeholder": "Password",
+    "enter": "Enter"
+  },
+  "gift_card": {
+    "title_prefix": "Gift card",
+    "label": "{{ shop }} gift card",
+    "expired": "This gift card has expired.",
+    "balance_label": "Balance",
+    "valid_until": "valid until",
+    "shop_button": "Shop {{ shop }}"
+  },
+  "product_card": {
+    "sale_flag": "Sale",
+    "quick_add_aria": "Quick add {{ title }}",
+    "more_colours": {
+      "one": "Show {{ count }} more colour of {{ title }}",
+      "other": "Show {{ count }} more colours of {{ title }}"
+    }
+  },
+  "usp": {
+    "store_promises_aria": "Store promises"
+  },
+  "list_collections": {
+    "aria": "Collections"
+  },
+  "category_typo": {
+    "aria": "Categories"
+  },
+  "promo": {
+    "bundle_slide": "Buy {{ qty }}, get {{ pct }}% off"
+  },
+  "newsletter": {
+    "popup": {
+      "aria": "Join the BRAND list",
+      "close": "Close",
+      "kicker": "The BRAND Club",
+      "heading": "Be first to the new pieces",
+      "body": "Join the list for first looks at new arrivals and restocks.",
+      "email_label": "Email address",
+      "cta": "Join the list",
+      "legal_html": "By signing up, you agree to receive marketing emails. View our <a href=\"/policies/privacy-policy\">privacy policy</a> and <a href=\"/policies/terms-of-service\">terms of service</a> for more info.",
+      "success_heading": "Welcome to the club.",
+      "success_body": "You're on the list. See you at the next drop.",
+      "success_cta": "Keep shopping"
+    }
+  },
+  "social_proof": {
+    "heading": "BRAND at home"
+  },
+  "home": {
+    "announcement": "Ships 1–3 workdays · Free shipping · 30-day returns",
+    "hero": {
+      "line_1": "Dressed, not fussed.",
+      "line_2": "New in for the season ahead.",
+      "cta_label": "Shop new in"
+    },
+    "editorial": {
+      "caption": "Made for the days that don’t slow down",
+      "link_label": "Shop the edit"
+    },
+    "bestsellers": {
+      "heading": "Bestsellers",
+      "link_label": "View all"
+    },
+    "highlight": {
+      "eyebrow": "New this week",
+      "blurb": "Sherpa where it counts, biker cut where it shows. Throw it over everything.",
+      "fallback_name": "The piece that carries the week",
+      "cta_label": "Shop the piece"
+    },
+    "proof": {
+      "voice": "Picked with care. Worn on repeat.",
+      "usp_1": "Free shipping",
+      "usp_2": "Ships within 1–3 business days",
+      "usp_3": "Secure checkout",
+      "fit_aria": "Fit and fabric"
+    },
+    "faq": {
+      "heading": "Good to know",
+      "q1_question": "How long does shipping take?",
+      "q1_answer_html": "<p>Orders leave the facility within 1–3 business days (Mon–Fri), shipping is free, and delivery takes 8–12 business days from dispatch.</p>",
+      "q2_question": "What is your return policy?",
+      "q2_answer_html": "<p>You have 30 days from delivery to return any unworn item in its original condition. Email <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> first for a return authorization. There are no restocking fees.</p>",
+      "q3_question": "How do I find my size?",
+      "q3_answer_html": "<p>Every product page has a size chart with the measurements for that specific style, since fit can vary between styles. Check the chart before you order, and email <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> if you're between sizes and want a hand picking one.</p>",
+      "q4_question": "Where does my order ship from?",
+      "q4_answer_html": "<p>We work with a small group of specialty suppliers, and your order ships directly from their fulfillment facility rather than a BRAND warehouse — that's how we keep prices fair without extra handling markup. Every order still arrives within the processing and delivery window above.</p>",
+      "q5_question": "How can I track my order?",
+      "q5_answer_html": "<p>As soon as your order ships, we'll email you a tracking number and link so you can follow it the whole way. You can also email <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> with your order number for a status update any time.</p>"
+    }
+  },
+  "pdp_story": {
+    "eyebrow": "Our approach",
+    "heading": "Effortless, on purpose",
+    "text_html": "<p>BRAND is an edit, not a catalogue. A piece earns its place when it goes on without thinking and still looks considered at the end of a long day: colours that live happily next to each other, shapes that layer, nothing that waits for an occasion.</p><p>We would rather carry fewer things and stand behind each one: honest photography, sizing you can check before you buy, and prices we can explain. If something is not right, you write to us and a person writes back.</p>",
+    "link_label": "About us"
+  },
+  "reviews": {
+    "heading": "What our customers say",
+    "aria": "Customer reviews"
+  }
+}

@@ -1,0 +1,146 @@
+{%- comment -%}
+  Curated customer reviews (Trust).
+  Renders ONLY when the merchant has entered real reviews as blocks in the
+  Theme Editor — no blocks, no section. Never write reviews or fabricate a
+  star count. These are the store's own reviews, hand-entered — no link to
+  an external review profile, no embedded third-party widget, no scraped
+  content. `source_note` is an optional caption ONLY (plain text, never a
+  link) kept for the PDP instance of this same section
+  (templates/product.json); leave it blank on the homepage instance.
+
+  Layout: left column is the static trust anchor — heading + aggregate
+  rating from settings.rating_value / settings.rating_count (global,
+  shop-wide — the same numbers used wherever a rating is shown elsewhere,
+  never invented here). Right column cycles through the review blocks.
+
+  The cycle is CSS-only, on purpose: it must not depend on theme.js and
+  must degrade honestly. All blocks are
+  stacked in one CSS-grid cell (`grid-area: 1 / 1`, so the container's height
+  is always the tallest card, no JS measuring) and each gets the same
+  @keyframes with a negative animation-delay of its own index × dwell time —
+  the classic delay-offset crossfade, computed once here from the real block
+  count so N reviews always divide the loop evenly (no dead gap, no double
+  showing). prefers-reduced-motion cancels the animation in home-extras.css
+  and falls back to a plain stacked list — nothing here reads that media
+  query in JS, the browser just never plays the @keyframes.
+
+  Accessibility note: cards that are mid-fade are hidden with opacity only,
+  not visibility/aria-hidden, so a screen reader still reaches every quote in
+  document order regardless of which one is visually on top — the audio
+  experience is effectively always the reduced-motion list.
+{%- endcomment -%}
+{%- liquid
+  assign count = section.blocks.size
+  assign rv = settings.rating_value | times: 1.0
+  assign filled = rv | round
+-%}
+{%- if count > 0 -%}
+<section class="sec--tight tp" id="pdp-reviews" aria-label="{{ 'reviews.aria' | t }}">
+  <div class="wrap tp__grid">
+    <div class="tp__intro reveal">
+      {%- liquid
+        assign tp_heading = section.settings.heading
+        unless request.locale.primary
+          assign tp_heading = 'reviews.heading' | t
+        endunless
+      -%}
+      <h2 class="dl">{{ tp_heading | escape }}</h2>
+      {%- if settings.rating_value != blank -%}
+        <div class="tp__rating">
+          {%- capture rating_label -%}{{ 'product.rating.aria_short' | t: value: settings.rating_value }}{%- endcapture -%}
+          {%- render 'stars', value: settings.rating_value, size: 18, label: rating_label -%}
+          <p class="stmt-sm mute">{{ settings.rating_value }}{% if settings.rating_count != blank %} · {{ settings.rating_count }} {{ 'product.rating.reviews_label' | t }}{% endif %}</p>
+        </div>
+      {%- endif -%}
+      {%- if section.settings.source_note != blank -%}
+        <p class="stmt-sm mute">{{ section.settings.source_note | escape }}</p>
+      {%- endif -%}
+    </div>
+    {%- comment -%} ALL REVIEWS AT ONCE, SWIPEABLE.
+
+    This used to stack every card in ONE grid cell and cross-fade between them on
+    a 5-second timer. So a shopper saw a single quote, had no idea three more
+    existed, could not go back to one that had passed, and on a 467px-tall block
+    that was one quote for a lot of page. Trust copy that hides itself is not
+    doing its job.
+
+    Now they are a scroll-snapped row: swipe on a phone, two-and-a-bit visible on
+    desktop, and the count is obvious from the peeking next card. Native
+    scrolling only — no JS, no timer, keyboard and screen readers get a plain
+    horizontally scrollable list with every quote in document order. {%- endcomment -%}
+    <div class="tp__cards reveal" tabindex="0" role="group" aria-label="{{ count }} customer reviews, scroll for more">
+      {%- for block in section.blocks -%}
+        {%- liquid
+          comment
+            Reviews render in the storefront language — the primary locale
+            reads the block settings, other locales read per-index locale
+            keys (reviews.rN_quote / rN_meta) with a translation-missing
+            guard, exactly like the FAQ blocks. Names stay as entered.
+          endcomment
+          assign tp_quote = block.settings.quote
+          assign tp_meta = block.settings.meta
+          unless request.locale.primary
+            assign tp_qk = 'reviews.r' | append: forloop.index | append: '_quote'
+            assign tp_mk = 'reviews.r' | append: forloop.index | append: '_meta'
+            assign tp_qt = tp_qk | t
+            assign tp_mt = tp_mk | t
+            unless tp_qt contains 'Translation missing' or tp_qt contains 'translation missing'
+              assign tp_quote = tp_qt
+              assign tp_meta = tp_mt
+            endunless
+          endunless
+        -%}
+        <figure class="tp__card" {{ block.shopify_attributes }}>
+          {%- comment -%} Reviews and the UGC selfie band share one card
+          format — photo on top of each card, quote under it. Block image
+          wins; empty falls back to the social-proof-<position>.webp theme
+          asset (same fallback contract as the social-proof section). The
+          meta line (country · date) is not rendered. {%- endcomment -%}
+          {%- if block.settings.image != blank -%}
+            <img class="tp__card-photo"
+              src="{{ block.settings.image | image_url: width: 480, height: 640, crop: 'center' }}"
+              srcset="{{ block.settings.image | image_url: width: 480, height: 640, crop: 'center' }} 480w, {{ block.settings.image | image_url: width: 720, height: 960, crop: 'center' }} 720w"
+              sizes="(max-width: 720px) 74vw, 340px"
+              width="480" height="640" loading="lazy" alt="">
+          {%- else -%}
+            {%- assign tp_asset = 'social-proof-' | append: forloop.index | append: '.webp' -%}
+            <img class="tp__card-photo" src="{{ tp_asset | asset_url }}" width="480" height="640" loading="lazy" alt="" onerror="this.hidden = true">
+          {%- endif -%}
+          {%- capture card_label -%}{{ block.settings.stars }} out of 5 stars{%- endcapture -%}
+          {%- render 'stars', value: block.settings.stars, size: 15, label: card_label -%}
+          <blockquote class="tp__card-quote stmt">{{ tp_quote | escape }}</blockquote>
+          {%- comment -%} Meta line format: "<country> · <recent date>". {%- endcomment -%}
+          <figcaption class="tp__card-by">
+            <span class="lbl">{{ block.settings.name | escape }}</span>
+            {%- if tp_meta != blank -%}<span class="stmt-sm mute">{{ tp_meta | escape }}</span>{%- endif -%}
+          </figcaption>
+        </figure>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Customer reviews",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Trusted by thousands" },
+    { "type": "text", "id": "source_note", "label": "Source note (optional)", "info": "Plain caption only, e.g. a date range. NEVER name a review platform here: these reviews are entered by hand and the aggregate figure is a shop setting, so crediting an external review service claims a verification that did not happen. Leave empty to hide." }
+  ],
+  "blocks": [
+    {
+      "type": "review",
+      "name": "Review",
+      "settings": [
+        { "type": "range", "id": "stars", "label": "Stars", "min": 1, "max": 5, "step": 1, "default": 5 },
+        { "type": "textarea", "id": "quote", "label": "Review text", "info": "Paste the real review verbatim — never write reviews yourself." },
+        { "type": "text", "id": "name", "label": "Reviewer name" },
+        { "type": "image_picker", "id": "image", "label": "Photo", "info": "Empty = the theme asset social-proof-<position>.webp is used, if present." },
+        { "type": "text", "id": "meta", "label": "Meta line (not rendered)", "info": "Kept for data safety; the card no longer prints it." }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Customer reviews" }]
+}
+{% endschema %}

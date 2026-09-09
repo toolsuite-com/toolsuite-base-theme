@@ -1,0 +1,51 @@
+{%- comment -%} Quick-view mini PDP: skeleton only — filled by theme.js from
+  /products/<handle>.js on open.
+
+  Anatomy matches the cart drawer's mini-page: Quick-add head with close, one
+  large centred 2:3 image, then rating · title · price (+ solid badge) ·
+  options · scarcity · sticky add button · trust lines · details link. The
+  data-qv-* contract with theme.js#initQuickView is unchanged; .qv-* layout
+  lives in the theme's stylesheet. The thumbs rail stays in the DOM
+  (display:none) so the filler keeps working untouched. {%- endcomment -%}
+<dialog id="quick-view" class="qv" aria-label="{{ 'quick_view.dialog_aria' | t }}">
+  <div class="qv__inner" data-qv-root>
+    <div class="qv__head">
+      <p class="lbl">{{ 'quick_view.head_label' | t }}</p>
+      <button type="button" class="hdr__icon" data-close-dialog aria-label="{{ 'quick_view.close' | t }}">
+        {% render 'icon', name: 'close', size: 20 %}
+      </button>
+    </div>
+    <div class="qv__body">
+      <div class="qv__media">
+        <div class="qv__main"><img data-qv-img src="" alt="" width="600" height="900"></div>
+        <div class="qv__thumbs" data-qv-thumbs></div>
+      </div>
+      <div class="qv__buy">
+        {%- render 'pdp-rating' -%}
+        <h3 class="pdp__name lbl" data-qv-title></h3>
+        <div class="pdp__price lbl" data-qv-price></div>
+        <div data-qv-options></div>
+        {%- comment -%} per-product scarcity, painted by theme.js S.applyScarcity
+        on open — the dialog serves many products (see pdp-scarcity.liquid) {%- endcomment -%}
+        {%- comment %} disabled: id-modulo pseudo-scarcity can read as fake urgency without real inventory gating; re-enable only once that exists {% endcomment -%}
+        {%- if false -%}
+        {%- if settings.low_stock_line != blank -%}
+          <p class="pdp-low-stock stmt-sm" data-qv-scarcity hidden></p>
+        {%- endif -%}
+        {%- endif -%}
+        <button type="button" class="bar qv__atc" data-qv-atc>
+          <span data-qv-atc-label>{{ 'product.atc.add_to_bag' | t }}</span>
+        </button>
+        {%- if settings.ship_free_line != blank or settings.trust_returns_line != blank or settings.trust_customers_line != blank -%}
+          <div class="qv__trust lbl-sm">
+            {%- if settings.ship_free_line != blank -%}<span>{{ settings.ship_free_line | escape }}</span>{%- endif -%}
+            {%- if settings.trust_returns_line != blank -%}<span>{{ settings.trust_returns_line | escape }}</span>{%- endif -%}
+            {%- comment %} disabled: unverified social proof — enable once backed by real customer counts {% endcomment -%}
+            {%- if false and settings.trust_customers_line != blank -%}<span>{{ settings.trust_customers_line | escape }}</span>{%- endif -%}
+          </div>
+        {%- endif -%}
+        <a class="tlink" data-qv-link href="#">{{ 'quick_view.view_all_details' | t }}</a>
+      </div>
+    </div>
+  </div>
+</dialog>

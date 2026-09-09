@@ -1,0 +1,46 @@
+{%- comment -%}
+  Classic numbered pagination — replaces a load-more button on the PLP and the
+  search page.
+
+  One snippet, both surfaces, so the two can never drift. Everything is server
+  rendered from the caller's {% paginate %} block: no JS, no appended DOM, no
+  lost scroll position on a back navigation, and page 2+ each get a real
+  crawlable URL. paginate.parts already carries the current query string, so an
+  active filter or sort survives a page change with no work here.
+
+  Param: paginate (required) — the paginate object from the caller.
+
+  paginate.parts entries are either a link (is_link) or plain text; the plain
+  ones are the current page and the "…" gaps. BOTH sides of that comparison get
+  rendered into a string with {% capture %} first: `part.title` and
+  `paginate.current_page` are not the same Liquid type, and comparing them
+  directly silently returns false — page 1 would otherwise ship as an
+  aria-hidden gap instead of the current page.
+{%- endcomment -%}
+{%- if paginate.pages > 1 -%}
+  {%- capture current_page_str %}{{ paginate.current_page }}{% endcapture -%}
+  <nav class="pager" aria-label="{{ 'general.pagination_aria' | t }}">
+    {%- if paginate.previous -%}
+      <a class="pager__edge" href="{{ paginate.previous.url }}" rel="prev">{{ 'blog.prev' | t }}</a>
+    {%- else -%}
+      <span class="pager__edge pager__off" aria-hidden="true">{{ 'blog.prev' | t }}</span>
+    {%- endif -%}
+
+    {%- for part in paginate.parts -%}
+      {%- capture part_title %}{{ part.title }}{% endcapture -%}
+      {%- if part.is_link -%}
+        <a href="{{ part.url }}" aria-label="{{ 'general.title_page' | t: page: part.title }}">{{ part.title }}</a>
+      {%- elsif part_title == current_page_str -%}
+        <span class="pager__now" aria-current="page">{{ part.title }}</span>
+      {%- else -%}
+        <span class="pager__gap" aria-hidden="true">{{ part.title }}</span>
+      {%- endif -%}
+    {%- endfor -%}
+
+    {%- if paginate.next -%}
+      <a class="pager__edge" href="{{ paginate.next.url }}" rel="next">{{ 'blog.next' | t }}</a>
+    {%- else -%}
+      <span class="pager__edge pager__off" aria-hidden="true">{{ 'blog.next' | t }}</span>
+    {%- endif -%}
+  </nav>
+{%- endif -%}

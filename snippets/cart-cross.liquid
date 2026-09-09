@@ -1,0 +1,34 @@
+{%- comment -%}
+  Recommendation band. cart-extras.js owns the rich card; the legacy theme.js
+  loader must stay disabled or it will race this row with
+  its old plain-link rendering.
+
+  ALWAYS ON SCREEN, OPEN BY DEFAULT: with several items in the bag a band
+  placed inside the scrolling item list can sit below the fold and a shopper
+  never sees it. It therefore renders in the drawer FOOT, outside the
+  scrolling item list, as a <details open> the shopper can fold away.
+{%- endcomment -%}
+<details
+  class="cart-drawer__cross"
+  data-cart-cross
+  data-addon-handles="{{ settings.upsell_1_handle | escape }},{{ settings.upsell_2_handle | escape }}"
+  open
+  hidden
+>
+  {%- comment -%} Arrows live in the HEAD row (heading left, pager right). They
+  sit inside the <summary>, so the click handler in cart-extras.js
+  preventDefaults them — otherwise every page-turn would also fold the band.
+  {%- endcomment -%}
+  <summary class="cart-cross__head">
+    {%- assign _cc_heading = heading -%}{%- if _cc_heading == blank -%}{%- assign _cc_heading = 'cart.cross.default_heading' | t -%}{%- endif -%}<h3 class="lbl">{{ _cc_heading | escape }}</h3>
+    <span class="cart-cross__meta">
+      <span class="lbl-sm mute" data-cart-cross-status></span>
+      <button type="button" class="cart-cross__arrow" data-cart-cross-prev aria-label="{{ 'cart.cross.prev_aria' | t }}">&lsaquo;</button>
+      <button type="button" class="cart-cross__arrow" data-cart-cross-next aria-label="{{ 'cart.cross.next_aria' | t }}">&rsaquo;</button>
+      <span class="cart-cross__chevron" aria-hidden="true"></span>
+    </span>
+  </summary>
+  <div class="cart-cross__stage">
+    <div class="cross-row" data-cart-cross-row aria-live="polite"></div>
+  </div>
+</details>

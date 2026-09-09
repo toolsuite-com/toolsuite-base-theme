@@ -1,0 +1,124 @@
+{%- comment -%}
+  Brand story — a narrative trust beat in place of a review-widget block:
+  builds trust through the store's own voice instead of borrowed star
+  ratings.
+
+  Layout: 50/50 split — copy on one side, one full-bleed atmosphere
+  photograph on the other, running to the page edge. Below 900px it stacks
+  image first, copy under it.
+
+  COPY RULES (hard, not stylistic):
+    · No craftsmanship, atelier, workshop or artisan claims unless the brand
+      can back them.
+    · No heritage, founding-year or "generations" story unless it's true.
+    · No natural-fibre claims unless the material is verified — treat as
+      imitation/blend otherwise.
+    · No model measurements when the models are AI-generated.
+    · No "small shop run by one person" framing: the shopper is buying
+      clothes, not a founder story. The voice is about curation and
+      effortless dressing, not about who packs the boxes.
+  Everything the default copy asserts should be verifiable: a deliberately
+  small edit, honest photography, published sizing, email answered by a
+  person. The shipped text is a PROPOSAL and every line is a section
+  setting.
+
+  Image: brand-story.webp — its own atmosphere frame (no model), kept
+  distinct from the homepage imagery so the PDP never repeats a picture.
+{%- endcomment -%}
+{%- liquid
+  assign story_url = section.settings.link
+  if story_url == blank and section.settings.page != blank
+    assign story_url = section.settings.page.url
+  endif
+-%}
+<section class="story bleed reveal" aria-label="{{ section.settings.heading | escape }}">
+  <div class="story__art">
+    {%- liquid
+      comment
+        The product picker takes priority over the plain image picker: when
+        set, it pulls the product's real featured image so a model is shown
+        actually wearing a catalog piece instead of a generic atmosphere shot.
+      endcomment
+      assign bs_img = section.settings.image
+      if section.settings.image_product != blank and section.settings.image_product.featured_image != blank
+        assign bs_img = section.settings.image_product.featured_image
+      endif
+    -%}
+    {%- if section.settings.asset_image != blank -%}
+      <img src="{{ section.settings.asset_image | asset_url }}" sizes="(max-width: 899px) 100vw, 50vw" width="1024" height="1536" alt="" loading="lazy" decoding="async">
+    {%- elsif bs_img != blank -%}
+      <img
+        src="{{ bs_img | image_url: width: 900 }}"
+        srcset="{{ bs_img | image_url: width: 560 }} 560w, {{ bs_img | image_url: width: 900 }} 900w, {{ bs_img | image_url: width: 1200 }} 1200w"
+        sizes="(max-width: 899px) 100vw, 50vw"
+        width="{{ bs_img.width }}" height="{{ bs_img.height }}"
+        alt="" loading="lazy" decoding="async">
+    {%- else -%}
+      {{ 'lifestyle-2' | placeholder_svg_tag }}
+    {%- endif -%}
+  </div>
+
+  {%- liquid
+    assign st_eyebrow = section.settings.eyebrow
+    assign st_heading = section.settings.heading
+    assign st_text = section.settings.text
+    assign st_link = section.settings.link_label
+    unless request.locale.primary
+      assign st_eyebrow = 'pdp_story.eyebrow' | t
+      assign st_heading = 'pdp_story.heading' | t
+      assign st_text_t = 'pdp_story.text_html' | t
+      if st_text_t != blank
+        assign st_text = st_text_t
+      endif
+      assign st_link = 'pdp_story.link_label' | t
+    endunless
+  -%}
+  <div class="story__body">
+    {%- if st_eyebrow != blank -%}
+      <p class="lbl-sm mute">{{ st_eyebrow | escape }}</p>
+    {%- endif -%}
+    {%- if st_heading != blank -%}
+      <h2 class="dm">{{ st_heading | escape }}</h2>
+    {%- endif -%}
+    {%- if st_text != blank -%}
+      <div class="prose story__text">{{ st_text }}</div>
+    {%- endif -%}
+    {%- if st_link != blank and story_url != blank -%}
+      <a class="tlink" href="{{ story_url }}">{{ st_link | escape }}</a>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Brand story",
+  "settings": [
+    { "type": "paragraph", "content": "Trust through the store's own voice. Never claim craftsmanship, an atelier, a heritage or a natural fibre here unless the brand can back it — unsubstantiated claims risk a Google Merchant Center misrepresentation flag." },
+    { "type": "image_picker", "id": "image", "label": "Image", "info": "Shopify Files: brand-story.webp (or another atmosphere shot). Runs full-bleed on the right half." },
+    { "type": "product", "id": "image_product", "label": "Or: product whose model photo to show", "info": "Uses the product's featured image (can crop awkwardly — prefer the asset filename below)." },
+    { "type": "text", "id": "asset_image", "label": "Or: theme-asset filename (wins over both)", "info": "e.g. my-image.webp — dedicated portrait model shot." },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Our approach" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Effortless, on purpose" },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "Text",
+      "default": "<p>BRAND is an edit, not a catalogue. A piece earns its place when it goes on without thinking and still looks considered at the end of a long day: colours that live happily next to each other, shapes that layer, nothing that waits for an occasion.</p><p>We would rather carry fewer things and stand behind each one: honest photography, sizing you can check before you buy, and prices we can explain. If something is not right, you write to us and a person writes back.</p>"
+    },
+    { "type": "text", "id": "link_label", "label": "Link label", "default": "About us" },
+    { "type": "page", "id": "page", "label": "Link page" },
+    { "type": "url", "id": "link", "label": "Link override", "info": "Leave empty to link to the page above." }
+  ],
+  "presets": [
+    {
+      "name": "Brand story",
+      "settings": {
+        "image": "",
+        "eyebrow": "Our approach",
+        "heading": "Effortless, on purpose",
+        "link_label": "About us"
+      }
+    }
+  ]
+}
+{% endschema %}

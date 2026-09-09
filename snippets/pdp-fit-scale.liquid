@@ -1,0 +1,128 @@
+{%- liquid
+  comment
+    VALUE RESOLUTION — ORCHESTRATOR EXTENSION POINT.
+    custom.fit_scale is the explicit override and must keep winning. Extend only
+    the blank fallback branch below when deriving a value from custom.fit_note.
+  endcomment
+  capture fit_override
+    echo product.metafields.custom.fit_scale.value | default: product.metafields.custom.fit_scale
+  endcapture
+  assign fit_resolved = fit_override | strip
+  if fit_resolved == blank
+    comment
+      DERIVED FROM custom.fit_note — no separate metafield run needed.
+
+      custom.fit_note is already populated across the catalog in a consistent voice by an
+      existing product-content pipeline, and each note states the sizing verdict in plain
+      words. So the scale reads the data that already exists, and custom.fit_scale stays
+      available as a per-product override for anything this gets wrong.
+
+      ORDER IS THE WHOLE TRICK. "true to size" is tested BEFORE "size down", because
+      "Runs true to size; size down for a closer fit" is a TRUE-TO-SIZE garment with a
+      styling tip attached — not a garment that runs large. Testing "size down" first
+      would mis-sort every one of those. Ordering the branches this way also avoids
+      needing a negation, which Liquid cannot express cleanly (`contains` does not
+      combine with `== false`).
+
+      Deliberately conservative: it fires only on an explicit statement and renders
+      NOTHING otherwise. A blank scale is honest; a guessed one sends someone the wrong
+      size and the parcel comes back.
+
+      Worked examples:
+        "Runs 1-2 sizes small, size up."                       -> runs-small
+        "Runs small, size up for a relaxed fit."               -> runs-small
+        "Runs true to size; size down for a closer fit."       -> true-to-size
+        "Runs oversized, order your usual size."               -> true-to-size
+        "Relaxed through the shoulders, order your usual size" -> true-to-size
+        "Runs oversized by design, size down for a closer fit" -> runs-large
+        "Runs loose and relaxed, size down for a closer fit."  -> runs-large
+        "Oversized, relaxed fit; size up for an even roomier"  -> nothing
+    endcomment
+    capture fit_note_raw
+      echo product.metafields.custom.fit_note.value | default: product.metafields.custom.fit_note
+    endcapture
+    comment
+      custom.fit_note may be written in Danish rather than English (e.g.
+      "Passer i normal størrelse"), so Danish patterns are matched alongside
+      the English ones. Branch ORDER still matters — see the long comment
+      above; the Danish phrases follow the same logic: an explicit
+      "størrelse større" (order a size up) marks runs-small BEFORE the
+      true-to-size test, "størrelse mindre" marks runs-large after it.
+    endcomment
+    assign fit_note = fit_note_raw | downcase
+    assign fit_derived = ''
+    comment
+      Intermediate positions: "lidt lille/stor" & "slightly small/large" land
+      BETWEEN the poles (25% / 75%) — these checks must run FIRST, because
+      "lidt lille i størrelsen" also contains the hard "lille i størrelsen"
+      needle and would otherwise mis-sort to the pole.
+    endcomment
+    if fit_note contains 'lidt lille' or fit_note contains 'en anelse lille' or fit_note contains 'slightly small' or fit_note contains 'a bit small' or fit_note contains 'runs a little small'
+      assign fit_derived = 'slightly-small'
+    elsif fit_note contains 'lidt stor' or fit_note contains 'en anelse stor' or fit_note contains 'slightly large' or fit_note contains 'a bit large' or fit_note contains 'runs a little large'
+      assign fit_derived = 'slightly-large'
+    elsif fit_note contains 'runs small' or fit_note contains 'sizes small' or fit_note contains 'lille i størrelsen' or fit_note contains 'størrelse større' or fit_note contains 'str. større'
+      assign fit_derived = 'runs-small'
+    elsif fit_note contains 'true to size' or fit_note contains 'true-to-size' or fit_note contains 'order your usual size' or fit_note contains 'fits true' or fit_note contains 'normal størrelse' or fit_note contains 'normal i størrelsen' or fit_note contains 'størrelsessvarende' or fit_note contains 'sædvanlige størrelse'
+      comment
+        "normal størrelse"/true-to-size notes are often generic boilerplate
+        rather than verified fit data — nearly the whole catalogue can carry
+        them, which would pin the scale at 50% storewide if trusted directly.
+        They fall through to the 25% catalogue default below instead. The
+        branch itself MUST stay: it still absorbs "runs true to size; size
+        down for a closer fit" before the size-down needle mis-sorts it to
+        runs-large. A real 50% comes only from an explicit custom.fit_scale
+        override backed by verified sizing data.
+      endcomment
+      assign fit_derived = 'slightly-small'
+    elsif fit_note contains 'size down' or fit_note contains 'stor i størrelsen' or fit_note contains 'størrelse mindre' or fit_note contains 'str. mindre'
+      assign fit_derived = 'runs-large'
+    endif
+    comment
+      DEFAULT: products with no derivable note show the marker at 25%
+      (slightly-small) instead of rendering nothing — the scale appears on
+      EVERY product with zero data upkeep. This deliberately overrides a
+      stricter "blank is honest" default: slightly-small is treated as the
+      safest catalogue-wide statement when sizing tends to run small more
+      often than large, and it nudges toward the size chart. An explicit
+      fit_note or custom.fit_scale still wins the moment it exists.
+    endcomment
+    if fit_derived == ''
+      assign fit_derived = 'slightly-small'
+    endif
+    assign fit_resolved = fit_derived
+  endif
+
+  assign fit_key = fit_resolved | downcase | strip | replace: '_', '-' | replace: ' ', '-'
+  assign fit_key = fit_key | replace: '--', '-' | replace: '--', '-'
+  assign fit_position = ''
+  assign fit_label = ''
+  case fit_key
+    when 'runs-small'
+      assign fit_position = '0%'
+      assign fit_label = 'product.fit.runs_small' | t
+    when 'slightly-small'
+      assign fit_position = '25%'
+      assign fit_label = 'product.fit.slightly_small' | t
+    when 'true-to-size'
+      assign fit_position = '50%'
+      assign fit_label = 'product.fit.true_to_size_label' | t
+    when 'slightly-large'
+      assign fit_position = '75%'
+      assign fit_label = 'product.fit.slightly_large' | t
+    when 'runs-large'
+      assign fit_position = '100%'
+      assign fit_label = 'product.fit.runs_large' | t
+  endcase
+-%}
+{%- if fit_position != blank -%}
+  <div class="pdp-fit" style="--fit-position: {{ fit_position }}" aria-label="{{ 'product.fit.heading' | t }}: {{ fit_label | escape }}">
+    <p class="pdp-fit__heading lbl-sm">{{ 'product.fit.heading' | t }}</p>
+    <div class="pdp-fit__track" aria-hidden="true"><span class="pdp-fit__marker"></span></div>
+    <div class="pdp-fit__labels stmt-sm mute" aria-hidden="true">
+      <span>{{ 'product.fit.runs_small' | t }}</span>
+      <span>{{ 'product.fit.true_to_size_label' | t }}</span>
+      <span>{{ 'product.fit.runs_large' | t }}</span>
+    </div>
+  </div>
+{%- endif -%}

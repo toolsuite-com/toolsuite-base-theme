@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>
+    {%- if request.page_type == 'index' -%}
+      {%- comment -%} Fallback for when the homepage title preference is unset or domain-only. {%- endcomment -%}
+      {%- if page_title == blank or page_title == 'BRAND-DOMAIN' or page_title == shop.name -%}
+        BRAND | Women's Fashion
+      {%- else -%}
+        {{- page_title -}}
+        {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+      {%- endif -%}
+    {%- else -%}
+      {{- page_title -}}
+      {%- if current_tags %} &ndash; {{ current_tags | join: ', ' }}{% endif -%}
+      {%- if current_page != 1 %} &ndash; {{ 'general.title_page' | t: page: current_page }}{% endif -%}
+      {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+    {%- endif -%}
+  </title>
+  {%- if page_description -%}
+    <meta name="description" content="{{ page_description | escape }}">
+  {%- elsif request.page_type == 'index' -%}
+    <meta name="description" content="BRAND — women's fashion with free shipping and 30-day returns.">
+  {%- endif -%}
+  <link rel="canonical" href="{{ canonical_url }}">
+  {% render 'social-meta' %}
+  {%- comment -%} Favicon files are generated from the logo — never hand-edit. {%- endcomment -%}
+  <link rel="icon" type="image/svg+xml" href="{{ 'brand-favicon.svg' | asset_url }}">
+  {%- comment -%} PNG fallback: mobile/in-app browsers + iOS don't take SVG favicons {%- endcomment -%}
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ 'brand-favicon-32.png' | asset_url }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ 'brand-touch-180.png' | asset_url }}">
+  {%- comment -%} Archivo covers --font-display AND --font-ui too (see @font-face + :root
+  below) — the Prata preload stays because .pdp__color ("in <Colour>") is still Prata
+  italic and sits above the fold on every PDP. {%- endcomment -%}
+  <link rel="preload" href="{{ 'prata-regular.woff2' | asset_url }}" as="font" type="font/woff2" crossorigin>
+  {%- comment -%} Archivo: now the whole UI/display/prose voice (regular + italic); the
+  500 weight rides the same variable file as regular (see @font-face below), no
+  third preload needed. {%- endcomment -%}
+  <link rel="preload" href="{{ 'archivo-var.woff2' | asset_url }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ 'archivo-400i.woff2' | asset_url }}" as="font" type="font/woff2" crossorigin>
+  {%- if template.name == 'product' and product.featured_media.media_type == 'image' -%}
+    {%- comment -%} ceiling 1024w. The URLs MUST mirror the gallery's exactly (500 / 800 / 1024,
+    width only, no height, no crop) — any difference and the CDN hands back a different URL than
+    the gallery renders, so the hero image downloads twice. height+crop is avoided here: the
+    source images are mixed formats (only 23% are true 2:3) and cropping them costs real garment
+    detail. Keep in sync with sections/main-product.liquid when the PDP stage writes it. {%- endcomment -%}
+    <link rel="preload" as="image"
+      href="{{ product.featured_media | image_url: width: 800 }}"
+      imagesrcset="{{ product.featured_media | image_url: width: 500 }} 500w, {{ product.featured_media | image_url: width: 640 }} 640w, {{ product.featured_media | image_url: width: 800 }} 800w, {{ product.featured_media | image_url: width: 1024 }} 1024w"
+      imagesizes="(max-width: 720px) 80vw, 46vw"
+      fetchpriority="high">
+  {%- endif -%}
+  <style>
+    @font-face {
+      font-family: 'Prata';
+      src: url('{{ 'prata-regular.woff2' | asset_url }}') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Prata-fallback';
+      src: local('Georgia'), local('Times New Roman');
+      size-adjust: 104%;
+      ascent-override: 98%;
+    }
+    {%- comment -%} archivo-var.woff2 is the full variable file (fvar wght 100-900,
+    confirmed via fontTools) but the @font-face range below is what the browser actually
+    maps CSS font-weight onto — set to "400 700" so the six font-weight:600 call sites
+    (.pdp__name, .pdp__rb-name, .acc__q, prose h4/strong) render as real Archivo Semibold
+    instead of clamping to 500. No new file fetch: the weight is already in the download. {%- endcomment -%}
+    @font-face {
+      font-family: 'Archivo';
+      src: url('{{ 'archivo-var.woff2' | asset_url }}') format('woff2');
+      font-weight: 400 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Archivo';
+      src: url('{{ 'archivo-400i.woff2' | asset_url }}') format('woff2');
+      font-weight: 400;
+      font-style: italic;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Archivo-fallback';
+      src: local('Helvetica Neue'), local('Arial');
+      size-adjust: 100%;
+    }
+    :root {
+      --paper: {{ settings.color_paper }};
+      --ink: {{ settings.color_ink }};
+      --cream: {{ settings.color_cream }};
+      --hairline: {{ settings.color_hairline }};
+      --mute: {{ settings.color_mute }};
+      {%- comment -%} --font-display uses Prata (serif) for display headings (.dxl/.dl/.dm
+      — hero, category typo-block, editorial captions, footer newsletter headline);
+      --font-ui and --font-prose stay Archivo (labels, buttons, nav, prose, bullets keep
+      the grotesque voice). {%- endcomment -%}
+      --font-display: 'Prata', 'Prata-fallback', Georgia, serif;
+      --font-ui: 'Archivo', 'Archivo-fallback', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      {%- comment -%} The only Prata holdout: the short italic tags under the product name
+      (.pdp__color, .pdp__descriptor, .pdp__rb-sub in theme.css). No other selector may
+      reference this var. {%- endcomment -%}
+      --font-accent-italic: 'Prata', 'Prata-fallback', Georgia, serif;
+      {%- comment -%} the only place a warm tone may appear, and only when settings.buy_color selects it {%- endcomment -%}
+      --buy-fill: {% if settings.buy_color == 'amber' %}{{ settings.color_amber }}{% else %}var(--ink){% endif %};
+      {%- comment -%} buy-text vs accent fill: check contrast against color_amber (WCAG >= 4.5) when customizing {%- endcomment -%}
+    --buy-text: {% if settings.buy_color == 'amber' %}var(--paper){% else %}var(--paper){% endif %};
+    }
+  </style>
+  {%- comment -%} The six *-extras.css files are combined into theme.css (in their
+  original load order — cascade unchanged). One stylesheet = one render-blocking
+  request instead of seven. New block styles can go into a separate extras file
+  linked here, then get combined into theme.css again afterward. {%- endcomment -%}
+  {{ 'theme.css' | asset_url | stylesheet_tag }}
+  <script>
+    /* .reveal starts at opacity 0 — scoped to html.js so a browser without
+       JavaScript (or with theme.js blocked) never gets a blank page. Set here,
+       in the head, so the class is present before first paint. */
+    document.documentElement.classList.add('js');
+    window.Theme = {
+      moneyFormat: {{ shop.money_format | json }},
+      cartAddUrl: '{{ routes.cart_add_url }}.js',
+      cartChangeUrl: '{{ routes.cart_change_url }}.js',
+      cartUrl: '{{ routes.cart_url }}.js',
+      searchUrl: '{{ routes.predictive_search_url }}',
+      recommendationsUrl: '{{ routes.product_recommendations_url }}',
+      t: {
+        optionColor: {{ 'product.option_color' | t | json }},
+        optionSize: {{ 'product.option_size' | t | json }},
+        selectSize: {{ 'product.atc.select_size' | t | json }},
+        unavailable: {{ 'product.atc.unavailable' | t | json }},
+        addToBag: {{ 'product.atc.add_to_bag' | t | json }},
+        soldOut: {{ 'product.atc.sold_out' | t | json }},
+        selectSizeAria: {{ 'product.atc.select_size_aria' | t | json }},
+        added: {{ 'product.atc.added' | t | json }},
+        cartError: {{ 'cart.errors.generic' | t | json }},
+        optionUnavailable: {{ 'cart.errors.option_unavailable' | t | json }},
+        chooseSize: {{ 'product.complete_look.choose_size' | t | json }},
+        optionSelect: {{ 'product.option_select' | t | json }},
+        addShort: {{ 'cart.cross.add_short' | t | json }}
+        {%- comment %} disabled: almostSoldOut/sellingFast/inStock backed S.scarcityFor/S.applyScarcity (id-modulo pseudo-scarcity); every caller is now disabled in snippets/pdp-scarcity.liquid, quick-view.liquid, cart-miniview.liquid, so this data only leaked unused strings into page source with nothing left to read it. Re-enable only with real inventory gating. {% endcomment -%}
+      }
+    };
+  </script>
+  <script src="{{ 'theme.js' | asset_url }}" type="module"></script>
+  {%- comment -%} New behaviour ships in its own module per block instead of growing theme.js,
+  so multiple contributors never touch the same JS file. theme.js keeps every cart invariant
+  and the PDP variant logic — these two only ADD. {%- endcomment -%}
+  <script src="{{ 'pdp-extras.js' | asset_url }}" type="module"></script>
+  <script src="{{ 'cart-extras.js' | asset_url }}" type="module"></script>
+  {%- comment -%} swatch → card image preview; purely additive, the swatch is a
+  working variant link without it {%- endcomment -%}
+  <script src="{{ 'card-extras.js' | asset_url }}" type="module"></script>
+  <script src="{{ 'standard-extras.js' | asset_url }}" type="module"></script>
+  {%- comment -%} Rendered from the layout, not from main-product: the snippet also holds the
+  Organization + WebSite blocks, which are gated on template.name == 'index'. {%- endcomment -%}
+  {% render 'jsonld' %}
+  {% render 'gtag' %}
+  {{ content_for_header }}
+  <script type="speculationrules">
+    {
+      "prefetch": [{
+        "where": {
+          "and": [
+            { "href_matches": "/*" },
+            { "not": { "href_matches": "/cart*" } },
+            { "not": { "href_matches": "/checkout*" } },
+            { "not": { "href_matches": "/account*" } }
+          ]
+        },
+        "eagerness": "moderate"
+      }]
+    }
+  </script>
+</head>
+<body class="template-{{ template.name | handle }}">
+  <a class="skip-link" href="#main">{{ 'layout.skip_to_content' | t }}</a>
+  {% sections 'header-group' %}
+  <main id="main" tabindex="-1">
+    {{ content_for_layout }}
+    {%- comment -%} No PDP breadcrumb anywhere. The layout copy was removed, and the
+    bottom .pdp__crumbs nav in sections/main-product.liquid was deleted along with its
+    styles. Do not reintroduce either one. {%- endcomment -%}
+  </main>
+  {% sections 'footer-group' %}
+  {%- comment -%} The floating search pill was removed. The header's search icon
+  and /search are the search entry points. Do not reintroduce snippets/search-bar.liquid. {%- endcomment -%}
+  {% render 'cart-drawer' %}
+  {% render 'quick-view' %}
+  {%- comment -%} Newsletter popup is toggle-owned via settings.newsletter_popup_enabled
+  so it can be switched on or off per store. theme.js guards on #nl-popup being absent,
+  so the toggle is safe. {%- endcomment -%}
+  {%- if settings.newsletter_popup_enabled -%}
+    {% render 'newsletter-popup' %}
+  {%- endif -%}
+</body>
+</html>

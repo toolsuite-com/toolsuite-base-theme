@@ -1,0 +1,25 @@
+{%- comment -%}
+  The USP trio, one component for all three places it appears (homepage proof
+  band, PDP under the info sections, PDP buy column). Before this existed each
+  surface printed its own bare <ul> of 10px grey text and every one of them read
+  as filler.
+
+  Icons are the thin line set from snippets/icon.liquid — shipping / dispatch
+  time / secure payment, in that order, matched to the three lines by position.
+  Copy stays a safe, verifiable fact: no guarantees, no invented delivery dates.
+
+  Params: one / two / three (strings) · layout: 'trio' (default, 3 across) or
+  'col' (stacked, for the narrow buy column).
+{%- endcomment -%}
+{%- assign usp_layout = layout | default: 'trio' -%}
+<ul class="usp usp--{{ usp_layout }}" aria-label="{{ 'usp.store_promises_aria' | t }}">
+  {%- if one != blank -%}
+    <li><span class="usp__ico" aria-hidden="true">{% render 'icon', name: 'truck', size: 20 %}</span><span class="lbl">{{ one | escape }}</span></li>
+  {%- endif -%}
+  {%- if two != blank -%}
+    <li><span class="usp__ico" aria-hidden="true">{% render 'icon', name: 'clock', size: 20 %}</span><span class="lbl">{{ two | escape }}</span></li>
+  {%- endif -%}
+  {%- if three != blank -%}
+    <li><span class="usp__ico" aria-hidden="true">{% render 'icon', name: 'lock', size: 20 %}</span><span class="lbl">{{ three | escape }}</span></li>
+  {%- endif -%}
+</ul>

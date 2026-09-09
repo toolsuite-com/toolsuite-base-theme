@@ -1,0 +1,410 @@
+{%- comment -%}
+  Announcement + header, one section (header-group): hamburger + search left
+  · wordmark centered · bag with count right. No account icon, no wishlist,
+  no mega menu — the full category list lives in one paper overlay. The bar
+  is fixed AND permanently frosted on every template and viewport (the base
+  stylesheet's .hdr-wrap), and every body carries --chrome-h padding, so no
+  content ever runs under it — a transparent-at-scroll-0 state and its
+  theme.js class toggle are intentionally NOT used here (it made trust links,
+  the hero caption and the PDP gallery unreadable/overlapping under the bar).
+  Do not reintroduce.
+
+  TWO-TIER: the top row shrinks to logo + search/bag + hamburger only; the
+  categories move to a second row underneath, still inside .hdr-wrap so they
+  stay part of the same fixed, frosted lid. `two_tier` is the kill switch
+  back to the original single row (default ON) — the single-row branch below
+  is the original markup, byte for byte, so turning it off is zero-risk.
+
+  Growing the bar for the second row (and the optional third, quick-line) can't
+  add a second hardcoded height number: the base stylesheet already computes
+  --chrome-h: calc(--ann-h + --hdr-h), and body's top padding runs off that. So
+  --hdr-h itself gets overridden from here, once, and --chrome-h just follows —
+  see the <style> tag below instead of a duplicate constant in header-extras.css.
+{%- endcomment -%}
+{%- assign menu = section.settings.menu | default: linklists['main-menu'] -%}
+{%- assign menu_secondary = section.settings.menu_secondary -%}
+{%- assign menu_trust = section.settings.menu_trust -%}
+{%- comment -%} Desktop nav menu: the DESKTOP bar splits the main menu around
+the logo (ceil(n/2) left, remainder right), while the mobile overlay keeps the
+category menu from `menu`. Setting empty = the previous behaviour (first 5 of
+`menu` left, trust links right), so the fallback path is byte-identical to
+before. Two-tier ON reuses the SAME setting for the second row, just no
+longer split around a logo that isn't in that row anymore — see the two_tier
+branch below. {%- endcomment -%}
+{%- assign menu_desktop = section.settings.menu_desktop -%}
+{%- comment -%} floor(n/2) left, remainder right (Track Your Order belongs on
+the right) — 5 links = Collections · Shop | Track Your Order · About us ·
+Contact. Only used by the single-row (two_tier off) branch. {%- endcomment -%}
+{%- assign desk_half = menu_desktop.links.size | divided_by: 2 -%}
+
+{%- assign two_tier = section.settings.two_tier -%}
+{%- assign menu_quickline = section.settings.menu_quickline -%}
+{%- comment -%} The extra rows have to grow the body's top padding, and --chrome-h is
+what the base stylesheet runs that padding off. But --chrome-h is NOT the thing to
+compute a new absolute value for, and --hdr-h is NOT the thing to overwrite:
+
+  --hdr-h: 56px          <- the TOP ROW's own height, not the total
+  .hdr { height: var(--hdr-h) }
+  --chrome-h: calc(var(--ann-h) + var(--hdr-h))
+  @media … { --hdr-h: 68px; --ann-h: 30px }   <- desktop values
+  (all defined in the base stylesheet)
+
+Overwriting --hdr-h with the SUM (56+40) therefore did two things at once: it made the
+top row itself 96px tall, and — because a plain :root rule in this section is later in
+document order than the base stylesheet — it beat the desktop media query too. Net effect
+at every width: real bar 32+96+40 = 168px, body padding only 32+96 = 128px, so 40px of
+every page sat under the frosted lid.
+
+So: leave --hdr-h alone, add ONLY the extra rows, and let --chrome-h keep deriving from
+whatever --hdr-h and --ann-h are at the current breakpoint. calc() re-resolves per
+breakpoint on its own, which is exactly why this stays one number in one place. {%- endcomment -%}
+{%- comment -%} DESKTOP ONLY: the row is hidden below 721px in
+header-extras.css, so its 40px must come out of the height budget at the same
+breakpoint — otherwise every phone page keeps a 40px gap under the frosted
+lid, which is the exact bug the comment above describes, just inverted. The
+quick-line keeps its 32px on both widths; only the .hdr2 row is
+desktop-bound. {%- endcomment -%}
+{%- assign hdr_extra = 0 -%}
+{%- assign hdr_extra_mobile = 0 -%}
+{%- if two_tier -%}
+  {%- assign hdr_extra = 40 -%}
+  {%- if menu_quickline != blank -%}
+    {%- assign hdr_extra = hdr_extra | plus: 32 -%}
+    {%- assign hdr_extra_mobile = 32 -%}
+  {%- endif -%}
+{%- endif -%}
+{%- if hdr_extra > 0 -%}
+  <style>:root{ --hdr-extra: {{ hdr_extra }}px; --chrome-h: calc(var(--ann-h) + var(--hdr-h) + var(--hdr-extra)); }
+@media (max-width: 720px){ :root{ --hdr-extra: {{ hdr_extra_mobile }}px; } }</style>
+{%- endif -%}
+
+<div class="hdr-wrap">
+  {%- comment -%} Non-primary locales read the localized key instead of the
+market-global setting — theme translations do not survive theme duplication,
+so the theme carries its own. {%- endcomment -%}
+{%- liquid
+  assign hdr_ann = section.settings.announcement
+  unless request.locale.primary
+    assign hdr_ann = 'home.announcement' | t
+  endunless
+-%}
+{%- if hdr_ann != blank -%}
+    {%- comment -%} ROTATING BAR: the same `·`-separated setting feeds one
+    slide per fact instead of one long line. That also retires a width
+    problem: the joined line can need 412px and wrap on a 390px phone — a
+    single fact needs ~150px and always fits, at full letter-spacing.
+
+    CSS-only, no JS: the track holds N slides and one keyframe animation steps it
+    through them. Each slide gets an equal share of the cycle, so N facts × the
+    per-slide dwell is the total duration; the Liquid below writes both numbers
+    into the element so the CSS can stay generic. `prefers-reduced-motion` stops
+    the animation on the first slide (see the base stylesheet) — the remaining
+    facts are still in the DOM for screen readers, which is why this is not
+    aria-hidden and not a live region: nothing is announced, the text is simply
+    all there.
+    {%- endcomment -%}
+    {%- comment -%} The bundle offer joins the rotation as its own slide.
+
+    GATED on settings.qty_tiers_enabled exactly like every other tier surface —
+    with the switch off nothing is added, because a bar promising 10% that the
+    checkout does not grant is the misrepresentation category that costs a
+    Merchant Center account. The wording is BUILT from the first rung of
+    settings.qty_tiers, so it can never drift from the ladder. Wording is a
+    translation key with qty/pct params so every storefront language renders
+    its own phrasing instead of hardcoded English. {%- endcomment -%}
+    {%- assign ann_source = hdr_ann -%}
+    {%- if settings.qty_tiers_enabled and settings.qty_tiers != blank -%}
+      {%- assign ann_first_tier = settings.qty_tiers | remove: ' ' | split: ',' | first | split: ':' -%}
+      {%- if ann_first_tier.size == 2 -%}
+        {%- capture ann_bundle_fact -%}{{ 'promo.bundle_slide' | t: qty: ann_first_tier[0], pct: ann_first_tier[1] }}{%- endcapture -%}
+        {%- assign ann_source = ann_source | append: ' · ' | append: ann_bundle_fact -%}
+      {%- endif -%}
+    {%- endif -%}
+    {%- assign ann_facts = ann_source | split: '·' -%}
+    {%- assign ann_count = ann_facts.size -%}
+    {%- assign ann_dwell = section.settings.announcement_dwell | default: 5 -%}
+    {%- if ann_count > 1 -%}
+      {%- assign ann_total = ann_dwell | times: ann_count -%}
+      {%- comment -%} One hold + one slide per fact. The share of the cycle each
+      fact owns is 100/N; it holds still for 82% of that share and travels during
+      the remaining 18%. Emitted here because N is only known at render time. {%- endcomment -%}
+      {%- assign ann_share = 100.0 | divided_by: ann_count -%}
+      {%- assign ann_hold = ann_share | times: 0.82 -%}
+      <style>
+        @keyframes ann-rotate {
+          {%- for fact in ann_facts -%}
+            {%- assign i = forloop.index0 -%}
+            {%- assign at_start = ann_share | times: i | round: 3 -%}
+            {%- assign at_hold = ann_share | times: i | plus: ann_hold | round: 3 -%}
+            {{ at_start }}%, {{ at_hold }}% { transform: translateY(calc(var(--ann-h) * -{{ i }})); }
+          {%- endfor -%}
+          100% { transform: translateY(calc(var(--ann-h) * -{{ ann_count }})); }
+        }
+      </style>
+      <div class="ann ann--rotating" style="--ann-slides: {{ ann_count }}; --ann-cycle: {{ ann_total }}s;">
+        <div class="ann__track">
+          {%- for fact in ann_facts -%}
+            <p class="ann__slide">{{ fact | strip | escape }}</p>
+          {%- endfor -%}
+          {%- comment -%} the first fact repeated as slide N+1 so the wrap-around
+          scrolls onward instead of snapping back {%- endcomment -%}
+          <p class="ann__slide" aria-hidden="true">{{ ann_facts.first | strip | escape }}</p>
+        </div>
+      </div>
+    {%- else -%}
+      <p class="ann">{{ hdr_ann | strip | escape }}</p>
+    {%- endif -%}
+  {%- endif -%}
+
+  {%- comment -%} no .wrap: the bar runs the FULL page width with only the gutter
+  as padding — the base stylesheet's .hdr owns the padding. {%- endcomment -%}
+  {%- if two_tier -%}
+    <header class="hdr">
+      <div class="hdr__side">
+        <button type="button" class="hdr__icon hdr__burger" data-open-nav aria-label="{{ 'header.nav.open_menu' | t }}" aria-haspopup="dialog">
+          {% render 'icon', name: 'menu', size: 22 %}
+        </button>
+      </div>
+
+      <a class="hdr__logo" href="{{ routes.root_url }}" aria-label="{{ shop.name | escape }} home">
+        {%- render 'logo-lockup' -%}
+      </a>
+
+      <div class="hdr__side hdr__side--end">
+        {%- render 'loc-switcher', style: 'header' -%}
+        <a class="hdr__icon" href="{{ routes.search_url }}" aria-label="{{ 'header.nav.search' | t }}">
+          {% render 'icon', name: 'search', size: 20 %}
+        </a>
+        <button type="button" class="hdr__icon hdr__cart" data-open-cart aria-label="{{ 'header.cart.open_bag' | t: count: cart.item_count }}">
+          {% render 'icon', name: 'cart', size: 20 %}
+          <span class="cart-count" {% if cart.item_count == 0 %}hidden{% endif %}>{{ cart.item_count }}</span>
+        </button>
+      </div>
+    </header>
+
+    {%- comment -%} Second row: categories/pages as a slim line under the logo
+    row, still inside .hdr-wrap so it's part of the same fixed frosted lid. Mobile
+    scrolls sideways, desktop centres (header-extras.css) — same content either
+    way, same fallback chain the old split-around-the-logo nav used, just no
+    longer split (there's no logo in this row to split around). {%- endcomment -%}
+    <nav class="hdr2 lbl" aria-label="{{ 'header.nav.primary' | t }}">
+      <div class="hdr2__scroll">
+        {%- if menu_desktop != blank -%}
+          {%- for link in menu_desktop.links -%}
+            <a href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+          {%- endfor -%}
+        {%- else -%}
+          {%- for link in menu.links limit: 5 -%}
+            <a href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+          {%- endfor -%}
+          {%- if menu_trust != blank -%}
+            {%- for link in menu_trust.links limit: 4 -%}
+              <a href="{{ link.url }}">{{ link.title | escape }}</a>
+            {%- endfor -%}
+          {%- else -%}
+            <a href="/pages/about-us">{{ 'header.nav.about_us' | t }}</a>
+            <a href="/pages/faq">{{ 'header.nav.faq' | t }}</a>
+            <a href="/pages/track-your-order">{{ 'header.nav.track_order' | t }}</a>
+          {%- endif -%}
+        {%- endif -%}
+      </div>
+    </nav>
+
+    {%- comment -%} Category quick-line — a third, flatter row of bestseller
+    categories. No setting = no row: --hdr-h above already didn't budget space
+    for it, so there's nothing to leave an empty gap. {%- endcomment -%}
+    {%- if menu_quickline != blank -%}
+      <nav class="hdr-quick lbl-sm mute" aria-label="{{ 'header.nav.popular_categories' | t }}">
+        <div class="hdr-quick__scroll">
+          {%- for link in menu_quickline.links -%}
+            <a href="{{ link.url }}">{{ link.title | escape }}</a>
+          {%- endfor -%}
+        </div>
+      </nav>
+    {%- endif -%}
+  {%- else -%}
+    {%- comment -%} Single-row fallback (two_tier off) — untouched original
+    markup, so switching the setting off is a zero-risk revert. {%- endcomment -%}
+    <header class="hdr">
+      <div class="hdr__side">
+        <button type="button" class="hdr__icon hdr__burger" data-open-nav aria-label="{{ 'header.nav.open_menu' | t }}" aria-haspopup="dialog">
+          {% render 'icon', name: 'menu', size: 22 %}
+        </button>
+        <a class="hdr__icon" href="{{ routes.search_url }}" aria-label="{{ 'header.nav.search' | t }}">
+          {% render 'icon', name: 'search', size: 20 %}
+        </a>
+        <nav class="hdr__nav lbl" aria-label="{{ 'header.nav.primary' | t }}">
+          {%- if menu_desktop != blank -%}
+            {%- for link in menu_desktop.links limit: desk_half -%}
+              <a href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+            {%- endfor -%}
+          {%- else -%}
+            {%- for link in menu.links limit: 5 -%}
+              <a href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+            {%- endfor -%}
+          {%- endif -%}
+        </nav>
+      </div>
+
+      <a class="hdr__logo" href="{{ routes.root_url }}" aria-label="{{ shop.name | escape }} home">
+        {%- render 'logo-lockup' -%}
+      </a>
+
+      <div class="hdr__side hdr__side--end">
+        {%- comment -%} Trust links right of the wordmark. A link_list is the
+        override, but the default is hardcoded on purpose: adding a menu is a
+        store-wide write, and this theme is read-only outside its own files. {%- endcomment -%}
+        <nav class="hdr__nav hdr__nav--end lbl" aria-label="{{ 'header.nav.support' | t }}">
+          {%- if menu_desktop != blank -%}
+            {%- for link in menu_desktop.links offset: desk_half -%}
+              <a href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+            {%- endfor -%}
+          {%- elsif menu_trust != blank -%}
+            {%- for link in menu_trust.links limit: 4 -%}
+              <a href="{{ link.url }}">{{ link.title | escape }}</a>
+            {%- endfor -%}
+          {%- else -%}
+            <a href="/pages/about-us">{{ 'header.nav.about_us' | t }}</a>
+            <a href="/pages/faq">{{ 'header.nav.faq' | t }}</a>
+            <a href="/pages/track-your-order">{{ 'header.nav.track_order' | t }}</a>
+          {%- endif -%}
+        </nav>
+        {%- render 'loc-switcher', style: 'header' -%}
+        <button type="button" class="hdr__icon hdr__cart" data-open-cart aria-label="{{ 'header.cart.open_bag' | t: count: cart.item_count }}">
+          {% render 'icon', name: 'cart', size: 20 %}
+          <span class="cart-count" {% if cart.item_count == 0 %}hidden{% endif %}>{{ cart.item_count }}</span>
+        </button>
+      </div>
+    </header>
+  {%- endif -%}
+</div>
+
+{%- comment -%} Mobile-nav overlay: PARTIAL-width slide-in drawer, not a
+full-bleed overlay. theme.js opens it unchanged from
+[data-open-nav]/[data-close-dialog] — it is still the same
+<dialog id="mobile-nav">, only header-extras.css draws it narrower and
+sliding in from the left instead of full-screen. See that file for the
+width/backdrop/animation overrides.
+
+MULTI-LEVEL: native <details>/<summary> per level, so it needs ZERO
+JavaScript and theme.js stays untouched.
+
+History that still matters (do not reintroduce): this overlay used to FLATTEN
+the whole tree into one directory list, because a "Shop" parent's children
+were simply the same top-level categories again, printing five links twice.
+The drill-down brings levels back, but keeps the anti-duplication rule that
+fixed that bug — recursively, one level at a time: before turning a link into
+an expander, check whether ITS children are themselves nothing but its own
+siblings at that same level. If so, expanding it would show you a row you
+already saw a second ago, so it renders as a plain link instead — never an
+expander whose first (and only) reveal is a duplicate. `top_urls` is the
+level-1 sibling set; `sib_urls` is the level-2 analogue, recomputed per parent
+from that parent's OWN children, so a grandchild is checked against its real
+siblings (the other children of the same parent) — not against level 1. {%- endcomment -%}
+<dialog id="mobile-nav" class="menu" aria-label="{{ 'header.mobile.menu_aria' | t }}">
+  <div class="menu__inner">
+    <div class="menu__head">
+      <span class="hdr__logo" aria-hidden="true">{%- render 'logo-lockup' -%}</span>
+      <button type="button" class="hdr__icon" data-close-dialog aria-label="{{ 'header.mobile.close_menu' | t }}">
+        {% render 'icon', name: 'close', size: 22 %}
+      </button>
+    </div>
+
+    <nav class="menu__list" aria-label="{{ 'header.mobile.categories' | t }}">
+      {%- assign top_urls = '' -%}
+      {%- for l in menu.links -%}
+        {%- assign top_urls = top_urls | append: '|' | append: l.url | append: '|' -%}
+      {%- endfor -%}
+
+      {%- for link in menu.links -%}
+        {%- assign link_has_unique = false -%}
+        {%- assign sib_urls = '' -%}
+        {%- for s in link.links -%}
+          {%- assign sib_urls = sib_urls | append: '|' | append: s.url | append: '|' -%}
+        {%- endfor -%}
+
+        {%- capture link_panel -%}
+          {%- for child in link.links -%}
+            {%- assign child_key = '|' | append: child.url | append: '|' -%}
+            {%- if top_urls contains child_key -%}
+              {%- continue -%}
+            {%- endif -%}
+            {%- assign link_has_unique = true -%}
+
+            {%- assign child_has_unique = false -%}
+            {%- capture child_panel -%}
+              {%- for gc in child.links -%}
+                {%- assign gc_key = '|' | append: gc.url | append: '|' -%}
+                {%- if sib_urls contains gc_key -%}
+                  {%- continue -%}
+                {%- endif -%}
+                {%- assign child_has_unique = true -%}
+                <a class="menu__sub-link" href="{{ gc.url }}">{{ gc.title | escape }}</a>
+              {%- endfor -%}
+            {%- endcapture -%}
+
+            {%- if child.links.size > 0 and child_has_unique -%}
+              <details class="menu__item menu__item--sub">
+                <summary class="menu__sub-link">
+                  <span>{{ child.title | escape }}</span>
+                  <span class="menu__expand" aria-hidden="true">{% render 'icon', name: 'plus', size: 16 %}</span>
+                </summary>
+                <div class="menu__sub-panel menu__sub-panel--deep">
+                  {%- comment -%} A parent that becomes a <summary> loses its own destination: the
+            shopper can open its children but can no longer reach the parent collection
+            itself. The "View all" row inside the panel gives it back, and it goes FIRST so
+            it reads as the broadest option rather than an afterthought. {%- endcomment -%}
+            <a class="menu__sub-link menu__view-all" href="{{ child.url }}">{{ 'header.mobile.view_all' | t: title: child.title }}</a>
+                  {{ child_panel }}
+                </div>
+              </details>
+            {%- else -%}
+              <a class="menu__sub-link" href="{{ child.url }}">{{ child.title | escape }}</a>
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endcapture -%}
+
+        {%- if link.links.size > 0 and link_has_unique -%}
+          <details class="menu__item">
+            <summary class="menu__link">
+              <span>{{ link.title | escape }}</span>
+              <span class="menu__expand" aria-hidden="true">{% render 'icon', name: 'plus', size: 18 %}</span>
+            </summary>
+            <div class="menu__sub-panel">
+              <a class="menu__sub-link menu__view-all" href="{{ link.url }}">{{ 'header.mobile.view_all' | t: title: link.title }}</a>
+              {{ link_panel }}
+            </div>
+          </details>
+        {%- else -%}
+          <a class="menu__link" href="{{ link.url }}">{{ link.title | escape }}</a>
+        {%- endif -%}
+      {%- endfor -%}
+    </nav>
+
+    <nav class="menu__sub lbl" aria-label="{{ 'header.mobile.secondary' | t }}">
+      <a href="{{ routes.search_url }}">{{ 'header.mobile.search_link' | t }}</a>
+      {%- if menu_secondary != blank -%}
+        {%- for link in menu_secondary.links -%}
+          <a href="{{ link.url }}">{{ link.title | escape }}</a>
+        {%- endfor -%}
+      {%- endif -%}
+    </nav>
+    {%- render 'loc-switcher', style: 'menu' -%}
+  </div>
+</dialog>
+
+{% schema %}
+{
+  "name": "Header",
+  "settings": [
+    { "type": "checkbox", "id": "two_tier", "label": "Two-tier header", "info": "Top row (logo + search + bag + hamburger) plus a second row for categories/pages. Off = the original single row.", "default": true },
+    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" },
+    { "type": "link_list", "id": "menu_desktop", "label": "Category row", "info": "Two-tier on: the second header row (mobile scrolls sideways, desktop centres). Two-tier off: split around the logo like before (first half left, rest right). Empty = first 5 links of Menu, then Trust links. The overlay menu always uses Menu and supports its full depth (category → subcategory → deeper)." },
+    { "type": "link_list", "id": "menu_quickline", "label": "Category quick-line", "info": "Two-tier only. A third, flatter row of bestseller categories under the category row (e.g. Dresses · Sandals · Blouses & Tops). Empty = the row does not render." },
+    { "type": "link_list", "id": "menu_secondary", "label": "Secondary menu (overlay footer)", "info": "Help / about / contact links, shown small under the category list." },
+    { "type": "link_list", "id": "menu_trust", "label": "Trust links", "info": "Fallback for the Category row when it's empty (two-tier), or the right-hand slot when two-tier is off. Empty = About us · FAQ · Track your order. Max 4 links." },
+    { "type": "text", "id": "announcement", "label": "Announcement line", "info": "Rendered uppercase. Separate facts with · — each fact becomes one slide and they rotate automatically. A single fact (no ·) renders static.", "default": "Ships 1–3 workdays · Free shipping · 30-day returns" },
+    { "type": "range", "id": "announcement_dwell", "label": "Seconds per announcement", "min": 3, "max": 10, "step": 1, "unit": "s", "default": 5 }
+  ]
+}
+{% endschema %}

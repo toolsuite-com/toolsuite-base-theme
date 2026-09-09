@@ -1,0 +1,68 @@
+{%- comment -%}
+  Right-of-withdrawal page for jurisdictions that require a dedicated online
+  withdrawal form.
+  Two-step: a native <details>/<summary> disclosure (same zero-JS mechanism as
+  the FAQ accordion in sections/faq-home.liquid, styled via the shared .acc
+  classes) reveals the Shopify contact form. The form is preset with a hidden
+  "Withdrawal" subject so submissions are identifiable in the inbox, and
+  posts through the same {% form 'contact' %} mechanism as sections/main-
+  contact.liquid — no new backend, no new JS.
+
+  Fields: name (required) · order number (required) · email (required) ·
+  reason (optional, explicitly labelled as such). Submit label and success
+  line are legal copy in the locale file — keep them precise.
+{%- endcomment -%}
+<section class="sec--tight">
+  <div class="wrap wrap--narrow page-head">
+    <h1 class="dl">{{ 'retractation.heading' | t }}</h1>
+    <p class="prose">{{ 'retractation.intro' | t }}</p>
+  </div>
+
+  <div class="wrap wrap--narrow page-body">
+    {%- comment -%}
+      This self-built two-step disclosure form is deactivated, replaced by
+      an app block declared in templates/page.retractation.json (added via
+      the Theme Editor's "apps" section). Kept here, gated behind `if false`,
+      so the built-in form can be restored if the app block is ever removed.
+    {%- endcomment -%}
+    {%- if false -%}
+    <details class="acc retractation__disclosure">
+      <summary class="bar retractation__trigger">{{ 'retractation.trigger' | t }}</summary>
+      <div class="retractation__form">
+        {%- form 'contact' -%}
+          {%- if form.posted_successfully? -%}
+            <p class="form-status" role="status">{{ 'retractation.form.success' | t }}</p>
+          {%- else -%}
+            {%- if form.errors -%}
+              <p class="form-status form-status--error" role="alert">{{ form.errors | default_errors }}</p>
+            {%- endif -%}
+            <input type="hidden" name="contact[subject]" value="{{ 'retractation.form.subject' | t }}">
+            <input type="hidden" name="contact[tags]" value="retractation">
+            <div>
+              <label for="retract-name">{{ 'contact.form.name' | t }}</label>
+              <input id="retract-name" class="field" type="text" name="contact[name]" value="{{ form.name }}" autocomplete="name" required>
+            </div>
+            <div>
+              <label for="retract-order">{{ 'retractation.form.order_number' | t }}</label>
+              <input id="retract-order" class="field" type="text" name="contact[order_number]" value="" required>
+            </div>
+            <div>
+              <label for="retract-email">{{ 'contact.email_label' | t }}</label>
+              <input id="retract-email" class="field" type="email" name="contact[email]" value="{{ form.email }}" autocomplete="email" required>
+            </div>
+            <div>
+              <label for="retract-reason">{{ 'retractation.form.reason' | t }}</label>
+              <textarea id="retract-reason" class="field" name="contact[body]" rows="4">{{ form.body }}</textarea>
+            </div>
+            <button type="submit" class="bar">{{ 'retractation.form.submit' | t }}</button>
+          {%- endif -%}
+        {%- endform -%}
+      </div>
+    </details>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Retractation page", "settings": [] }
+{% endschema %}

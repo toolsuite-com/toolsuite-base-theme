@@ -1,0 +1,54 @@
+{%- comment -%}
+  Theme-owned newsletter popup + after-dismiss reminder pill.
+
+  Why theme-owned and not the Shopify Forms app: the app popup's fixed overlay
+  broke under the iOS keyboard (visual-viewport pan + app autofocus). This one
+  is plain DOM — <dialog> top layer, no transform animation, no autofocus, 16px
+  input. The native customer form posts into the same subscriber list the footer
+  band uses (contact[tags]), so any store email automation is untouched.
+
+  Trigger + suppression logic lives in theme.js (initNewsletterPopup).
+  Styling uses this theme's own vocabulary: .bar CTA, .hdr__icon, .lbl, .mute.
+{%- endcomment -%}
+
+{%- comment -%}
+  Empty, permanently hidden teaser stub: initNewsletterPopup() in theme.js
+  requires a [data-nl-teaser] element and returns early without it, which
+  would disable the popup. Nothing renders inside.
+{%- endcomment -%}
+<div class="nl-teaser-wrap" data-nl-teaser hidden></div>
+
+<dialog id="nl-popup" class="nl-popup" aria-label="{{ 'newsletter.popup.aria' | t }}">
+  <button type="button" class="hdr__icon nl-popup__close" data-close-dialog aria-label="{{ 'newsletter.popup.close' | t }}">
+    {% render 'icon', name: 'close', size: 20 %}
+  </button>
+  {%- form 'customer', id: 'nl-form' -%}
+    {%- if form.posted_successfully? -%}
+      <span data-nl-posted hidden></span>
+      <p class="nl-popup__kicker lbl-sm">{{ 'newsletter.popup.kicker' | t }}</p>
+      <h2>{{ 'newsletter.popup.success_heading' | t }}</h2>
+      <p>{{ 'newsletter.popup.success_body' | t }}</p>
+      <button type="button" class="bar nl-popup__cta" data-close-dialog>{{ 'newsletter.popup.success_cta' | t }}</button>
+    {%- else -%}
+      <p class="nl-popup__kicker lbl-sm">{{ 'newsletter.popup.kicker' | t }}</p>
+      <h2>{{ 'newsletter.popup.heading' | t }}</h2>
+      <p>{{ 'newsletter.popup.body' | t }}</p>
+      {%- if form.errors -%}
+        <p class="form-status form-status--error nl-popup__error">{{ form.errors | default_errors }}</p>
+      {%- endif -%}
+      <input type="hidden" name="contact[tags]" value="newsletter,popup">
+      <label class="nl-popup__label lbl" for="nl-email">{{ 'newsletter.popup.email_label' | t }}</label>
+      <input
+        type="email"
+        id="nl-email"
+        name="contact[email]"
+        class="field nl-popup__input"
+        autocomplete="email"
+        autocapitalize="off"
+        required
+      >
+      <button type="submit" class="bar nl-popup__cta">{{ 'newsletter.popup.cta' | t }}</button>
+      <p class="nl-popup__legal">{{ 'newsletter.popup.legal_html' | t }}</p>
+    {%- endif -%}
+  {%- endform -%}
+</dialog>

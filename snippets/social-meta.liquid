@@ -1,0 +1,48 @@
+{%- comment -%}
+  Open Graph + Twitter cards. Image priority: product image > collection image > bundled og-default.jpg.
+  og-default.jpg is a 1200x630 crop of the site's hero image with the brand lockup on the
+  empty wall, generated as an asset. Do not hand-edit; regenerate it instead.
+{%- endcomment -%}
+{%- assign og_type = 'website' -%}
+{%- assign og_media = blank -%}
+{%- if request.page_type == 'product' and product.featured_image -%}
+  {%- assign og_type = 'product' -%}
+  {%- assign og_media = product.featured_image -%}
+{%- elsif request.page_type == 'collection' and collection.image -%}
+  {%- assign og_media = collection.image -%}
+{%- endif -%}
+{%- if og_media != blank -%}
+  {%- assign og_image_url = og_media | image_url: width: 1200 -%}
+{%- else -%}
+  {%- assign og_image_url = 'og-default.jpg' | asset_url -%}
+{%- endif -%}
+{%- unless og_image_url contains 'https:' -%}{%- assign og_image_url = og_image_url | prepend: 'https:' -%}{%- endunless -%}
+{%- assign og_title_out = page_title | default: shop.name -%}
+{%- if request.page_type == 'index' -%}
+  {%- if page_title == blank or page_title == 'BRAND-DOMAIN' -%}
+    {%- assign og_title_out = "BRAND | Women's Fashion" -%}
+  {%- endif -%}
+{%- endif -%}
+<meta property="og:site_name" content="{{ shop.name | escape }}">
+<meta property="og:type" content="{{ og_type }}">
+<meta property="og:title" content="{{ og_title_out | escape }}">
+{%- if page_description %}
+<meta property="og:description" content="{{ page_description | escape }}">
+{%- endif %}
+<meta property="og:url" content="{{ canonical_url }}">
+<meta property="og:image" content="{{ og_image_url }}">
+<meta property="og:image:secure_url" content="{{ og_image_url }}">
+{%- if og_media == blank %}
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+{%- endif %}
+{%- if request.page_type == 'product' %}
+<meta property="og:price:amount" content="{{ product.selected_or_first_available_variant.price | money_without_currency | strip_html }}">
+<meta property="og:price:currency" content="{{ cart.currency.iso_code }}">
+{%- endif %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ og_title_out | escape }}">
+{%- if page_description %}
+<meta name="twitter:description" content="{{ page_description | escape }}">
+{%- endif %}
+<meta name="twitter:image" content="{{ og_image_url }}">

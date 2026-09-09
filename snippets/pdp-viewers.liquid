@@ -1,0 +1,17 @@
+{%- comment %} Gated on settings.viewers_enabled (ships OFF by default) — the
+count is a deterministic pseudo-random number, not a real signal. {% endcomment -%}
+{%- assign viewers_min = settings.viewers_min | plus: 0 -%}
+{%- assign viewers_max = settings.viewers_max | plus: 0 -%}
+{%- if settings.viewers_enabled and viewers_min > 0 and viewers_max >= viewers_min -%}
+  <p
+    class="pdp-viewers stmt-sm mute"
+    data-pdp-viewers
+    data-product-id="{{ product.id }}"
+    data-viewers-min="{{ viewers_min }}"
+    data-viewers-max="{{ viewers_max }}"
+    aria-live="polite"
+  >
+    <span data-viewers-count>{{ product.id | modulo: viewers_max | at_least: viewers_min }}</span>
+    <span>{{ 'product.viewers.line' | t }}</span>
+  </p>
+{%- endif -%}

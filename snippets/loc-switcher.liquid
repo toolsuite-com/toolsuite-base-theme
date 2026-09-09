@@ -1,0 +1,45 @@
+{%- comment -%}
+  Market/language switcher, placed in the header. Two render styles, both the
+  same localization form the footer selector uses:
+    style: 'header' — compact "US · USD" details-dropdown for the header icon row
+    style: 'menu'   — inline country buttons for the mobile nav drawer
+  Renders only when more than one country is actually available. Styled controls,
+  never a native <select> (theme rule). The footer selector stays as a third
+  entry point.
+{%- endcomment -%}
+{%- if localization.available_countries.size > 1 -%}
+  {%- if style == 'menu' -%}
+    {%- form 'localization' -%}
+      <div class="menu-loc" aria-label="{{ localization.country.name | escape }}">
+        {%- for country in localization.available_countries -%}
+          <button
+            type="submit"
+            name="country_code"
+            value="{{ country.iso_code }}"
+            class="menu-loc__option"
+            {% if country.iso_code == localization.country.iso_code %}aria-current="true"{% endif %}
+          >{{ country.name }} ({{ country.currency.iso_code }})</button>
+        {%- endfor -%}
+      </div>
+    {%- endform -%}
+  {%- else -%}
+    {%- form 'localization' -%}
+      <details class="hdr-loc">
+        <summary class="hdr-loc__current lbl-sm" aria-label="{{ localization.country.name | escape }} ({{ localization.country.currency.iso_code }})">
+          {{ localization.country.iso_code }} &middot; {{ localization.country.currency.iso_code }}
+        </summary>
+        <div class="hdr-loc__panel">
+          {%- for country in localization.available_countries -%}
+            <button
+              type="submit"
+              name="country_code"
+              value="{{ country.iso_code }}"
+              class="ftr-loc__option lbl-sm"
+              {% if country.iso_code == localization.country.iso_code %}aria-current="true"{% endif %}
+            >{{ country.name }} ({{ country.currency.iso_code }})</button>
+          {%- endfor -%}
+        </div>
+      </details>
+    {%- endform -%}
+  {%- endif -%}
+{%- endif -%}

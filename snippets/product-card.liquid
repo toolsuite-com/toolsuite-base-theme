@@ -1,0 +1,260 @@
+{%- comment -%}
+  THE shared product card. Used by the homepage bestsellers row, the PLP +
+  related rows — so every change here is catalogue-wide.
+
+  Params:
+    product     required
+    card_index  optional, 1-based position in the calling grid. Card 1 gets
+                fetchpriority=high (it is the mobile LCP element on /collections/*),
+                cards 2–4 stay eager (browser default, first two mobile rows),
+                5+ lazy. No index passed = lazy, the safe default.
+
+  Anatomy: full-bleed 2:3 image → muted category line (only when the data
+  exists) → NAME → review line (settings.rating_value/rating_count, no
+  external widget, no link) → price block via the shared price-badge
+  component, plus a green "Save X%" line (red is reserved for the discount
+  itself, green for the savings — house style). Colour swatches + the
+  quick-add bag glyph and the on-image sale chrome sit ON the image or below
+  the price. Nothing is boxed, nothing is centered — the grid's 2px gaps do
+  the framing.
+
+  NAME = the full product.title, pipe included, shown as-is; uppercase comes
+  from .lbl, never from the data.
+
+  The on-image sale chrome is TWO independent flags so they never collide
+  with the existing "Sold out" flag (top-left) or the quick-add glyph
+  (bottom-right, unchanged):
+    - `.card__sale-flag` top-left, only when the product both has a real
+      discount AND is available — "Sold out" already owns that corner when
+      it is not, and a "Sale" tag on a product you cannot buy is noise.
+    - `.card__pct-flag` top-right, whenever there is a real discount,
+      regardless of availability — that corner is otherwise empty.
+  Both print the SAME percentage the price-badge prints below: a real number
+  reads as credible; two different numbers on one card would read as a bug.
+
+  theme.js contract (do not rename): [data-quick-add-root] wraps the card so the
+  pointerover prefetch finds [data-quick-view]; [data-quick-add] carries either
+  data-single-variant (adds straight to the bag) or data-quick-view=<handle>
+  (opens the quick-view dialog); [data-swatch] dots are painted from
+  qvSwatchMap by paintSwatches(), which runs once against the whole document
+  on load and again against just the injected grid on the related row — it
+  finds every dot here regardless of where in the card markup it lives.
+{%- endcomment -%}
+{%- liquid
+  assign card_name = product.title
+
+  assign has_discount = false
+  if product.compare_at_price > product.price
+    assign has_discount = true
+    assign card_pct = product.compare_at_price | minus: product.price | times: 100.0 | divided_by: product.compare_at_price | round
+  endif
+
+  assign card_cat = product.type
+  if card_cat == blank and product.collections.size > 0
+    assign card_cat = product.collections.first.title
+  endif
+
+  assign card_swatch_option = null
+  assign card_swatch_index = -1
+  for option in product.options_with_values
+    assign opt_name = option.name | downcase
+    if opt_name == 'color' or opt_name == 'colour'
+      assign card_swatch_option = option
+      comment
+        index is needed by the swatch photo fallback below (variant.options[i]) —
+        same lookup main-product.liquid does for the PDP colour picker.
+      endcomment
+      assign card_swatch_index = forloop.index0
+    endif
+  endfor
+-%}
+<article class="card" data-quick-add-root>
+  <div class="card__media">
+    <a class="card__art" href="{{ product.url }}" aria-label="{{ product.title | escape }}" tabindex="-1">
+      {%- if product.featured_image -%}
+        <img
+          src="{{ product.featured_image | image_url: width: 640 }}"
+          srcset="{{ product.featured_image | image_url: width: 420 }} 420w, {{ product.featured_image | image_url: width: 640 }} 640w, {{ product.featured_image | image_url: width: 900 }} 900w"
+          sizes="(max-width: 720px) 50vw, 25vw"
+          width="600" height="900"
+          alt="{{ product.featured_image.alt | default: product.title | escape }}"
+          {%- if card_index == 1 %}
+            fetchpriority="high"
+          {%- elsif card_index and card_index <= 4 %}
+          {%- else %}
+            loading="lazy"
+          {%- endif %}
+        >
+        {%- comment -%} The hover image is decoration for pointer devices only, so
+        the card stylesheet sets `display:none` under (hover: none) — a lazy image
+        with no box never intersects and is therefore never fetched on a phone at
+        all. It also carries the SAME srcset/sizes as the lead image, to avoid
+        shipping a flat, oversized image to every card on a mobile PLP. {%- endcomment -%}
+        {%- if product.images[1] -%}
+          <img
+            class="card__alt"
+            src="{{ product.images[1] | image_url: width: 640 }}"
+            srcset="{{ product.images[1] | image_url: width: 420 }} 420w, {{ product.images[1] | image_url: width: 640 }} 640w, {{ product.images[1] | image_url: width: 900 }} 900w"
+            sizes="(max-width: 720px) 50vw, 25vw"
+            width="600" height="900" alt="" loading="lazy" aria-hidden="true">
+        {%- endif -%}
+      {%- else -%}
+        {%- assign ph = product.id | modulo: 6 | plus: 1 -%}
+        {{ 'product-' | append: ph | placeholder_svg_tag }}
+      {%- endif -%}
+    </a>
+
+    {%- comment -%} ONE sale signal on the image, one in the price line — not three:
+    a red SALE flag on the photograph, and the real percentage inside the price
+    block below. Do not add a third duplicate signal (e.g. a separate "Save N%"
+    line next to the price) — it just repeats the same number a third time. {%- endcomment -%}
+    {%- if has_discount and product.available -%}
+      <span class="card__sale-flag lbl-sm">{{ 'product_card.sale_flag' | t }}</span>
+    {%- endif -%}
+
+    {%- if product.available -%}
+      <button
+        type="button"
+        class="card__qa"
+        data-quick-add
+        {% if product.variants.size == 1 %}data-single-variant="{{ product.variants.first.id }}"{% else %}data-quick-view="{{ product.handle }}"{% endif %}
+        aria-label="{{ 'product_card.quick_add_aria' | t: title: product.title }}"
+      >
+        {% render 'icon', name: 'cart', size: 19 %}
+      </button>
+    {%- else -%}
+      <span class="card__flag lbl-sm">{{ 'product.atc.sold_out' | t }}</span>
+    {%- endif -%}
+  </div>
+
+  <a class="card__info" href="{{ product.url }}">
+    {%- comment -%} NO CATEGORY LINE: the card is title · price · swatches.
+    card_cat stays assigned above and the .card__cat CSS stays — restoring is
+    one <p> again. {%- endcomment -%}
+    <h3 class="card__name lbl">{{ card_name | escape }}</h3>
+    {%- comment -%} NO RATING ON THE CARD: settings.rating_value/rating_count
+    are ONE store-wide pair, so printing them on every card would claim a
+    per-product rating that does not exist — the same number under twenty
+    different products reads as filler the moment anyone notices. It stays
+    where it is true as a shop-level figure: the product page, the drawer and
+    the homepage. The card keeps category · name · price.
+
+    The CSS (.card__rating) stays in card-extras.css if this is ever
+    restored. {%- endcomment -%}
+    <p class="card__price lbl mute">
+      {%- render 'price-badge', price: product.price, compare: product.compare_at_price, layout: 'card' -%}
+    </p>
+  </a>
+
+  {%- comment -%} Swatches live OUTSIDE `.card__info`'s anchor on purpose: the
+  "+N" overflow is a real control — a checkbox/label pair that reveals the
+  rest of the dots in place, CSS-only, no theme.js change. A checkbox inside a
+  same-page <a> fights the browser's own navigation on click, so the whole
+  swatch row is a sibling of the info link instead of a child of it. Dots
+  ship colourless with data-swatch; see the file header for why. {%- endcomment -%}
+  {%- if card_swatch_option and card_swatch_option.values.size > 1 -%}
+    {%- comment -%} No id/for pair here, deliberately. The obvious `<input id>` +
+    `<label for>` version breaks the moment the SAME product is rendered twice on one
+    page (a piece that sits in the bestsellers row and in a second homepage row, or in
+    a related row on its own PDP): both cards emit the same id, and every browser
+    resolves `for` against the FIRST one — so tapping "+3" on the second card silently
+    expands the first. Wrapping the checkbox in its label needs no id at all and cannot
+    collide. The reveal then hangs off `:has()` (Safari 15.4+, the same floor
+    showModal() already sets for this theme). Where `:has()` is missing the extras just
+    stay collapsed — degraded, never broken.
+
+    aria-hidden sits on the individual dots, NOT on the row: the row now contains a
+    real focusable control, and a focusable element inside an aria-hidden subtree is
+    the classic screen-reader trap. {%- endcomment -%}
+    {%- comment -%} REAL PHOTOGRAPHS, NOT COLOUR DOTS: a dot can only ever be an
+    approximation of a printed floral or a two-tone knit, and a dot palette has
+    to be maintained by hand besides. This uses the SAME source of truth the PDP
+    already uses for its colour picker: the first product image whose alt text
+    is tagged " in <Colour>," / " in <Colour>-", with the colour's own variant
+    featured image as the fallback. Same rule, same result, no second list to
+    keep in sync.
+
+    ONE loop over all values, instead of a separate limit:4 / offset:4 pair —
+    the lookup is not cheap enough to write twice, and the "+N" label is simply
+    emitted after the fourth entry. {%- endcomment -%}
+    <span class="card__swatches">
+      {%- assign card_more_count = card_swatch_option.values.size | minus: 4 -%}
+      {%- for value in card_swatch_option.values -%}
+        {%- assign sw_i = forloop.index0 -%}
+
+        {%- if sw_i == 4 -%}
+          {%- comment -%} Both states are in the markup and CSS shows one. The first
+          version hid the whole label once checked, which meant a keyboard user who
+          opened the row lost focus into nowhere and had no way to close it again —
+          the control deleted itself on use. {%- endcomment -%}
+          {%- comment -%} No close state: the control is replaced by what it
+          revealed — once the remaining colours are on screen the "+N" has
+          nothing left to say, and the swatches it uncovered are links, so
+          keyboard focus lands on real targets rather than nowhere. A reload
+          collapses the row again. {%- endcomment -%}
+          <label class="card__more lbl-sm">
+            <input type="checkbox" class="card__more-toggle">
+            <span class="card__more-open" aria-hidden="true">+{{ card_more_count }}</span>
+            <span class="visually-hidden">{{ 'product_card.more_colours' | t: count: card_more_count, title: product.title }}</span>
+          </label>
+        {%- endif -%}
+
+        {%- assign sw_down = value | downcase -%}
+        {%- assign sw_needle = ' in ' | append: sw_down | append: ',' -%}
+        {%- assign sw_needle2 = ' in ' | append: sw_down | append: '-' -%}
+        {%- assign sw_needle3 = ' i ' | append: sw_down | append: ',' -%}
+        {%- assign sw_needle4 = ' i ' | append: sw_down | append: '-' -%}
+        {%- assign sw_img = nil -%}
+        {%- for m in product.media -%}
+          {%- if m.media_type != 'image' -%}{%- continue -%}{%- endif -%}
+          {%- assign sw_alt = m.alt | default: '' | downcase -%}
+          {%- if sw_alt contains sw_needle or sw_alt contains sw_needle2 or sw_alt contains sw_needle3 or sw_alt contains sw_needle4 -%}
+            {%- assign sw_img = m -%}
+            {%- break -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- if sw_img == nil -%}
+          {%- for pv in product.variants -%}
+            {%- if pv.options[card_swatch_index] == value and pv.featured_media -%}
+              {%- assign sw_img = pv.featured_media -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+
+        {%- comment -%} SELECT IN PLACE, NAVIGATE FROM THE IMAGE: tapping a
+        swatch shows that colour inline on the card image; tapping the image
+        then navigates to that colour's product page.
+
+        The swatch stays an <a> to ?variant=<id> — with JS off it still works as
+        a plain link. card-extras.js intercepts the click: it paints the swatch's
+        data-card-swap photo into the card's lead image, keeps it (hover-restore
+        returns to the SELECTED colour, not the shipped one), and repoints
+        .card__art / .card__info at the variant URL — so the follow-up click on
+        the image or title lands on that colour's product page. {%- endcomment -%}
+        {%- assign sw_variant_id = '' -%}
+        {%- for pv in product.variants -%}
+          {%- if pv.options[card_swatch_index] == value -%}
+            {%- assign sw_variant_id = pv.id -%}
+            {%- if pv.available -%}{%- break -%}{%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+        <a
+          class="card__swatch{% if sw_i > 3 %} card__swatch--extra{% endif %}"
+          href="{{ product.url }}{% if sw_variant_id != blank %}?variant={{ sw_variant_id }}{% endif %}"
+          title="{{ value | escape }}"
+          aria-label="{{ product.title | escape }} in {{ value | escape }}"
+          {% if sw_img %}data-card-swap="{{ sw_img | image_url: width: 600 }}"{% endif %}
+        >
+          {%- if sw_img -%}
+            <img src="{{ sw_img | image_url: width: 96, height: 128, crop: 'center' }}" width="48" height="64" alt="" loading="lazy" decoding="async">
+          {%- else -%}
+            {%- comment -%} no photograph tagged for this colour yet — fall back to
+            the old dot so the row never shows a hole {%- endcomment -%}
+            <span class="card__swatch-dot" data-swatch="{{ value | escape }}"></span>
+          {%- endif -%}
+        </a>
+      {%- endfor -%}
+    </span>
+  {%- endif -%}
+</article>

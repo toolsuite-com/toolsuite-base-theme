@@ -1,0 +1,208 @@
+{%- comment -%}
+  PLP. Toolbar = FILTER · count · SORT on one hairline row, label
+  system throughout; the grid is .grid-4 (2 columns mobile / 4 desktop, 2px
+  gaps, edge to edge) built from snippets/product-card.liquid, so the homepage
+  row and this page can never drift apart.
+
+  Toolbar/filter plumbing notes (proven logic):
+  · Sort label — the trigger prints the EXACT string the panel shows for the
+    active sort, resolved from collection.sort_options, instead of a
+    hand-titlecased handle (the two can disagree: "Title ascending" vs the
+    panel's "Alphabetically, A-Z"). Handle-derived form stays as the fallback
+    for a sort with no matching option. The default sort itself is Search &
+    Discovery config, i.e. store-wide → merchant item, not a theme write.
+  · Duplicate-entry guard — the generated "All <parent>" link is gated on
+    the parent URL containing '/collections/'. A menu parent named "Shop"
+    pointing to /collections (the list page, not a PLP) would otherwise
+    collide with a "Shop All" link pointing to /collections/all.
+  · Pagination — classic numbered pages. A load-more button was rejected: it
+    needs JS, loses the scroll position on a back navigation and gives page
+    2+ no URL of its own. paginate.parts renders the whole pager server-side
+    and every link carries the active filter/sort query.
+
+  Search & Discovery note: the size / colour groups below come from
+  `collection.filters`, which is only populated when S&D filters are configured
+  on the STORE. That config is store-wide (hard rule: read-only), so on a store
+  without it this panel shows the category group alone — by design, not a bug.
+{%- endcomment -%}
+{%- paginate collection.products by 24 -%}
+<section class="sec--tight">
+  <div class="wrap plp-head">
+    <h1 class="dl">{{ collection.title | escape }}</h1>
+    {%- if collection.description != blank -%}
+      <p class="prose mute">{{ collection.description | strip_html | truncate: 180 }}</p>
+    {%- endif -%}
+  </div>
+
+  {%- comment -%} Resolve this collection's nav parent so the filter panel can offer its siblings. {%- endcomment -%}
+  {%- assign cats_menu = linklists[section.settings.tabs_menu] -%}
+  {%- assign cat_parent = false -%}
+  {%- if cats_menu -%}
+    {%- for top in cats_menu.links -%}
+      {%- if top.url == collection.url -%}
+        {%- assign cat_parent = top -%}
+      {%- else -%}
+        {%- for child in top.links -%}
+          {%- if child.url == collection.url -%}{%- assign cat_parent = top -%}{%- endif -%}
+        {%- endfor -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+
+  <div class="wrap">
+    <div class="toolbar lbl">
+      <div class="toolbar__filter">
+        {%- if collection.filters.size > 0 or cats_menu -%}
+          <button type="button" class="toolbar__trigger" data-panel-trigger aria-controls="filter-panel" aria-expanded="false">
+            {{ 'collection.filter.trigger' | t }} {% render 'icon', name: 'chevron', size: 14 %}
+          </button>
+          <form class="filter-panel lbl" id="filter-panel" method="get">
+            {%- if collection.sort_by != blank -%}
+              <input type="hidden" name="sort_by" value="{{ collection.sort_by }}">
+            {%- endif -%}
+
+            {%- if cat_parent and cat_parent.links.size > 0 -%}
+              <div class="filter-group">
+                <h2>{{ 'collection.filter.category_heading' | t }}</h2>
+                {%- comment -%} Only when the nav parent is itself a collection {%- endcomment -%}
+                {%- if cat_parent.url contains '/collections/' -%}
+                  <a href="{{ cat_parent.url }}" {% if collection.url == cat_parent.url %}aria-current="page"{% endif %}>{{ 'collection.filter.all_prefix' | t: title: cat_parent.title }}</a>
+                {%- endif -%}
+                {%- for child in cat_parent.links -%}
+                  <a href="{{ child.url }}" {% if collection.url == child.url %}aria-current="page"{% endif %}>{{ child.title | escape }}</a>
+                {%- endfor -%}
+              </div>
+            {%- elsif cats_menu -%}
+              <div class="filter-group">
+                <h2>{{ 'collection.filter.category_heading' | t }}</h2>
+                {%- for top in cats_menu.links -%}
+                  {%- if top.links.size > 0 and top.url contains '/collections/' -%}
+                    <a href="{{ top.url }}" {% if collection.url == top.url %}aria-current="page"{% endif %}>{{ top.title | escape }}</a>
+                  {%- endif -%}
+                {%- endfor -%}
+              </div>
+            {%- endif -%}
+
+            {%- for filter in collection.filters -%}
+              {%- comment -%} Search & Discovery stores the availability/price
+              labels in whatever admin language they were saved in — map the
+              two built-in filters to locale keys by param_name, keep app
+              labels for the rest. {%- endcomment -%}
+              {%- assign f_label = filter.label -%}
+              {%- if filter.param_name == 'filter.v.availability' -%}
+                {%- assign f_label = 'collection.filter.availability' | t -%}
+              {%- elsif filter.param_name == 'filter.v.price' -%}
+                {%- assign f_label = 'collection.filter.price' | t -%}
+              {%- endif -%}
+              {%- if filter.type == 'list' -%}
+                <div class="filter-group">
+                  <h2>{{ f_label | escape }}</h2>
+                  {%- for value in filter.values -%}
+                    <label>
+                      <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}" {% if value.active %}checked{% endif %} {% if value.count == 0 and value.active == false %}disabled{% endif %}>
+                      {{ value.label | escape }} ({{ value.count }})
+                    </label>
+                  {%- endfor -%}
+                </div>
+              {%- elsif filter.type == 'price_range' -%}
+                <div class="filter-group">
+                  <h2>{{ f_label | escape }}</h2>
+                  <div class="filter-group__range">
+                    <label>{{ 'collection.filter.from' | t }}
+                      <input name="{{ filter.min_value.param_name }}" type="number" min="0" placeholder="0" value="{% if filter.min_value.value %}{{ filter.min_value.value | money_without_currency | replace: ',', '' }}{% endif %}">
+                    </label>
+                    <label>{{ 'collection.filter.to' | t }}
+                      <input name="{{ filter.max_value.param_name }}" type="number" min="0" placeholder="{{ filter.range_max | money_without_currency | replace: ',', '' }}" value="{% if filter.max_value.value %}{{ filter.max_value.value | money_without_currency | replace: ',', '' }}{% endif %}">
+                    </label>
+                  </div>
+                </div>
+              {%- endif -%}
+            {%- endfor -%}
+
+            {%- if collection.filters.size > 0 -%}
+              <div class="filter-panel__foot">
+                <button type="submit" class="bar">{{ 'collection.filter.apply' | t }}</button>
+                <a href="{{ collection.url }}" class="tlink">{{ 'collection.filter.clear_all' | t }}</a>
+              </div>
+            {%- endif -%}
+          </form>
+        {%- endif -%}
+      </div>
+
+      <p class="toolbar__count">{{ collection.products_count }} {% if collection.products_count == 1 %}{{ 'collection.count.piece_singular' | t }}{% else %}{{ 'collection.count.piece_plural' | t }}{% endif %}</p>
+
+      {%- comment -%} Trigger label resolved from collection.sort_options {%- endcomment -%}
+      {%- assign current_sort = collection.sort_by | default: collection.default_sort_by -%}
+      {%- assign current_sort_label = current_sort | replace: '-', ' ' | capitalize -%}
+      {%- for option in collection.sort_options -%}
+        {%- if option.value == current_sort -%}{%- assign current_sort_label = option.name -%}{%- endif -%}
+      {%- endfor -%}
+      <div class="toolbar__sort">
+        <button type="button" class="toolbar__trigger" data-panel-trigger aria-controls="sort-panel" aria-expanded="false">
+          {%- comment -%} the "Sort:" prefix is desktop-only: at the larger toolbar
+          type "SORT: ALPHABETICALLY, A-Z" wraps to three lines inside a 390px
+          toolbar. The chevron and the panel already say what the control is.
+          {%- endcomment -%}
+          {%- comment -%} …and on a phone the VALUE goes too: "Most relevant" and
+          "Date, new to old" both wrap the trigger onto two lines inside the
+          390px toolbar. The panel underlines the active sort, so nothing is
+          lost by naming the control instead. {%- endcomment -%}
+          <span class="toolbar__sort-pre">{{ 'collection.sort.prefix' | t }}</span><span class="toolbar__sort-val">{{ current_sort_label | replace: 'Best selling', 'Bestselling' }}</span><span class="toolbar__sort-mob">{{ 'collection.sort.mobile' | t }}</span> {% render 'icon', name: 'chevron', size: 14 %}
+        </button>
+        <div class="sort-panel lbl" id="sort-panel">
+          {%- for option in collection.sort_options -%}
+            <button type="button" data-sort-value="{{ option.value }}" aria-pressed="{% if option.value == current_sort %}true{% else %}false{% endif %}">{{ option.name | replace: 'Best selling', 'Bestselling' }}</button>
+          {%- endfor -%}
+        </div>
+      </div>
+    </div>
+
+    {%- assign has_active = false -%}
+    {%- for filter in collection.filters -%}
+      {%- if filter.active_values.size > 0 or filter.min_value.value or filter.max_value.value -%}{%- assign has_active = true -%}{%- endif -%}
+    {%- endfor -%}
+    {%- if has_active -%}
+      <div class="active-filters lbl">
+        {%- for filter in collection.filters -%}
+          {%- for value in filter.active_values -%}
+            <a class="chip" href="{{ value.url_to_remove }}">{{ value.label | escape }} {% render 'icon', name: 'close', size: 12 %}</a>
+          {%- endfor -%}
+          {%- comment -%} price_range carries min/max instead of active_values — chip it too {%- endcomment -%}
+          {%- if filter.type == 'price_range' -%}
+            {%- if filter.min_value.value or filter.max_value.value -%}
+              <a class="chip" href="{{ filter.url_to_remove }}">{{ filter.min_value.value | default: 0 | money_without_trailing_zeros }} – {{ filter.max_value.value | default: filter.range_max | money_without_trailing_zeros }} {% render 'icon', name: 'close', size: 12 %}</a>
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+        <a class="chip" href="{{ collection.url }}">{{ 'collection.filter.clear_all' | t }}</a>
+      </div>
+    {%- endif -%}
+  </div>
+
+  {%- if collection.products.size > 0 -%}
+    <div class="grid-4">
+      {%- for product in collection.products -%}
+        {% render 'product-card', product: product, card_index: forloop.index %}
+      {%- endfor -%}
+    </div>
+    {% render 'pagination', paginate: paginate %}
+  {%- else -%}
+    <div class="wrap wrap--narrow plp-empty">
+      <h2 class="dl">{{ section.settings.empty_heading | escape }}</h2>
+      <p class="prose mute">{{ section.settings.empty_text | escape }}</p>
+      <a href="{{ routes.all_products_collection_url }}" class="bar">{{ 'general.shop_all' | t }}</a>
+    </div>
+  {%- endif -%}
+</section>
+{%- endpaginate -%}
+
+{% schema %}
+{
+  "name": "Collection page",
+  "settings": [
+    { "type": "text", "id": "tabs_menu", "label": "Category filter menu handle", "default": "main-menu", "info": "Menu whose sub-links render as the Category group inside the Filter panel." },
+    { "type": "text", "id": "empty_heading", "label": "Empty-state heading", "default": "New pieces are on the way" },
+    { "type": "text", "id": "empty_text", "label": "Empty-state text", "default": "This edit is being stocked right now. Check back in a few days." }
+  ]
+}
+{% endschema %}

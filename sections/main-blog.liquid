@@ -1,0 +1,44 @@
+{%- comment -%}
+  Blog index — minimal by intent: a store driven by Google Shopping rather
+  than content still needs this template to exist so a blog route can never
+  404. Card = image,
+  title in the label system, date in mute. Prev/next are plain text links; there
+  is no numbered pager anywhere in this theme.
+{%- endcomment -%}
+{%- paginate blog.articles by 12 -%}
+<section class="sec--tight">
+  <div class="wrap page-head">
+    <h1 class="dl">{{ blog.title | escape }}</h1>
+  </div>
+  <div class="wrap">
+    {%- if blog.articles.size > 0 -%}
+      <div class="post-list">
+        {%- for article in blog.articles -%}
+          <a class="post-card" href="{{ article.url }}">
+            {%- if article.image -%}
+              <img src="{{ article.image | image_url: width: 700 }}" width="700" height="467" alt="{{ article.image.alt | default: article.title | escape }}" loading="lazy">
+            {%- endif -%}
+            <h2 class="lbl">{{ article.title | escape }}</h2>
+            <span class="lbl-sm mute">{{ article.published_at | date: '%B %d, %Y' }}</span>
+          </a>
+        {%- endfor -%}
+      </div>
+      {%- if paginate.pages > 1 -%}
+        <nav class="post-nav lbl" aria-label="{{ 'general.pagination_aria' | t }}">
+          {%- if paginate.previous -%}<a class="tlink" href="{{ paginate.previous.url }}" rel="prev">{{ 'blog.prev' | t }}</a>{%- else -%}<span></span>{%- endif -%}
+          {%- if paginate.next -%}<a class="tlink" href="{{ paginate.next.url }}" rel="next">{{ 'blog.next' | t }}</a>{%- endif -%}
+        </nav>
+      {%- endif -%}
+    {%- else -%}
+      <div class="plp-empty">
+        <h2 class="dl">{{ 'blog.empty_heading' | t }}</h2>
+        <a href="{{ routes.all_products_collection_url }}" class="tlink">{{ 'general.shop_all' | t }}</a>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+{%- endpaginate -%}
+
+{% schema %}
+{ "name": "Blog", "settings": [] }
+{% endschema %}

@@ -1,0 +1,26 @@
+{%- comment -%}
+  NOT A LINK: this aggregate is a statement, not navigation. A previous
+  version pointed at #shop-reviews, an id that exists nowhere in this theme,
+  and leaned on a [data-scroll-reviews] hook with no handler in theme.js — a
+  dead link for its whole life. Rather than fix the target it simply stops
+  being a link; the review section sits a screen further down anyway. These
+  values are theme settings.
+{%- endcomment -%}
+{%- comment %} Guards unverified social proof (single shared snippet — rendered by
+main-product.liquid, quick-view.liquid and cart-miniview.liquid, so this one guard
+covers all three call sites). settings.rating_enabled ships OFF by default — flip it
+only once a real review base backs rating_value/rating_count. {% endcomment -%}
+{%- if settings.rating_enabled and settings.rating_value != blank and settings.rating_count != blank -%}
+  {%- comment -%} Stars sized 17px, value semibold — still NOT a link (see above). {%- endcomment -%}
+  <p class="pdp-rating stmt-sm" aria-label="{{ 'product.rating.aria' | t: value: settings.rating_value, count: settings.rating_count | escape }}">
+    {%- comment -%} 17px→15px: measured at 390px the line sat at exactly
+    container width (stars 92 + value 20 + text 226 + gaps 12 = 350/350) and
+    wrapped. With 15px stars + 13px text the line holds ~320px. {%- endcomment -%}
+    {%- render 'stars', value: settings.rating_value, size: 15 -%}
+    <span class="pdp-rating__value">{{ settings.rating_value | escape }}</span>
+    {%- comment -%} Personalized: names the demographic, not just a count. {%- endcomment -%}
+    {%- comment -%} No "·" separator — the longer emotional wording wraps to
+    a second line at 390px and the dot hung at that line's start. {%- endcomment -%}
+    <span class="mute">{{ settings.rating_count | escape }} {{ 'product.rating.reviews_by' | t }}</span>
+  </p>
+{%- endif -%}

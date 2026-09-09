@@ -1,0 +1,31 @@
+{%- comment -%}
+  price-badge — the shared price/discount badge component. Signature is
+  frozen:
+
+    {%- render 'price-badge', price: <cents>, compare: <cents>, layout: 'card' | 'pdp' -%}
+
+  Badge only when compare > price. Percentage = (compare − price) × 100 /
+  compare, integer-rounded — computed from THIS product's own compareAtPrice,
+  never a storewide constant, so the number is always real and therefore
+  looks credible (an odd "−36%" rather than a round marketing number). No
+  anchor → plain price, no strikethrough, no badge — nothing invented.
+
+  Card styles `.pb--card` in card-extras.css. PDP styles `.pb--pdp` in
+  pdp-extras.css. Never add rules for the other layout's class from here.
+{%- endcomment -%}
+{%- liquid
+  assign has_discount = false
+  if compare and compare > price
+    assign has_discount = true
+    assign pct = compare | minus: price | times: 100.0 | divided_by: compare | round
+  endif
+-%}
+<span class="pb pb--{{ layout }}">
+  {%- if has_discount -%}
+    <s>{{ compare | money_without_trailing_zeros }}</s>
+    <span class="price--sale">{{ price | money_without_trailing_zeros }}</span>
+    <span class="pb__badge">&minus;{{ pct }}%</span>
+  {%- else -%}
+    {{ price | money_without_trailing_zeros }}
+  {%- endif -%}
+</span>

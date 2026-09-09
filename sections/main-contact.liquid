@@ -1,0 +1,106 @@
+{%- comment -%}
+  Contact page: the page's own content, then the real Shopify contact form —
+  GMC wants a reachable seller, so the email, the phone and the response window
+  are stated as facts, not as a promise. Form fields are the theme's
+  underline-only .field; the send button is the black bar.
+
+  Facts come from the theme's Business information settings so they can never
+  drift from the footer and the policies.
+
+  info_heading/info_text/info_phone_note/info_response come from locale keys
+  under contact.info.* rather than section-setting defaults, so a translated
+  storefront never shows English text here. The phone note should never
+  claim 24/7 availability unless support truly runs around the clock — state
+  the real published hours, with e-mail as the primary channel if support
+  hours are limited.
+
+  A contact page that legally identifies the seller (an Impressum-style
+  requirement in some jurisdictions) needs that line to reuse the footer's
+  own footer.business.store_label + footer.business.company_line keys
+  verbatim, so it can never drift from the footer/legal-notice/privacy-policy/
+  terms-of-service wording.
+{%- endcomment -%}
+<section class="sec--tight">
+  {%- comment -%} full-width wrap, not wrap--narrow: the two columns below are
+  full width, so a 720px centred title would print off their left edge.
+  {%- endcomment -%}
+  <div class="wrap page-head">
+    <h1 class="dl">{{ page.title | escape }}</h1>
+    {%- if page.content != blank -%}
+      <div class="prose">{{ page.content }}</div>
+    {%- endif -%}
+  </div>
+
+  <div class="wrap contact">
+    <aside class="contact__info">
+      <h2 class="lbl mute">{{ 'contact.info.heading' | t }}</h2>
+      <p class="prose">{{ 'contact.info.text' | t }}</p>
+      <dl class="contact__facts">
+        <div>
+          <dt>{{ 'footer.business.store_label' | t }}</dt>
+          {%- assign _biz_owner = settings.biz_owner | escape -%}
+          {%- assign _biz_status = 'footer.business.sole_proprietorship' | t -%}
+          {%- assign _biz_name = settings.biz_name | escape -%}
+          <dd>{{ 'footer.business.company_line' | t: owner: _biz_owner, status: _biz_status, name: _biz_name }}</dd>
+        </div>
+        <div>
+          <dt>{{ 'contact.email_label' | t }}</dt>
+          <dd><a href="mailto:{{ settings.biz_email }}">{{ settings.biz_email }}</a></dd>
+          <p class="contact__note">{{ 'contact.email_note' | t }}</p>
+        </div>
+        {%- if settings.biz_phone != blank -%}
+          <div>
+            <dt>{{ 'contact.phone_label' | t }}</dt>
+            {%- assign tel_digits = settings.biz_phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' -%}
+            <dd><a href="tel:{{ tel_digits }}">{{ settings.biz_phone }}</a></dd>
+            <p class="contact__note">{{ 'contact.info.phone_note' | t }}</p>
+          </div>
+        {%- endif -%}
+        <div>
+          <dt>{{ 'contact.response_time_label' | t }}</dt>
+          <dd>{{ 'contact.info.response' | t }}</dd>
+          {%- if settings.biz_hours != blank -%}
+            <p class="contact__note">{{ settings.biz_hours }} &middot; {{ settings.biz_hours_weekend }}</p>
+          {%- endif -%}
+        </div>
+      </dl>
+    </aside>
+
+    <div class="contact__form">
+      {%- form 'contact' -%}
+        {%- if form.posted_successfully? -%}
+          <p class="form-status" role="status">{{ 'contact.form.success' | t }}</p>
+        {%- endif -%}
+        {%- if form.errors -%}
+          <p class="form-status form-status--error" role="alert">{{ form.errors | default_errors }}</p>
+        {%- endif -%}
+        <div class="contact__row">
+          <div>
+            <label for="contact-name">{{ 'contact.form.name' | t }}</label>
+            <input id="contact-name" class="field" type="text" name="contact[name]" value="{{ form.name }}" autocomplete="name" required>
+          </div>
+          <div>
+            <label for="contact-email">{{ 'contact.email_label' | t }}</label>
+            <input id="contact-email" class="field" type="email" name="contact[email]" value="{{ form.email }}" autocomplete="email" required>
+          </div>
+        </div>
+        <div>
+          <label for="contact-order">{{ 'contact.form.order_number' | t }}</label>
+          <input id="contact-order" class="field" type="text" name="contact[order_number]" value="">
+        </div>
+        <div>
+          <label for="contact-body">{{ 'contact.form.message' | t }}</label>
+          <textarea id="contact-body" class="field" name="contact[body]" rows="6" required>{{ form.body }}</textarea>
+        </div>
+        <button type="submit" class="bar">{{ 'contact.form.send' | t }}</button>
+      {%- endform -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Contact page",
+  "settings": []
+}
+{% endschema %}

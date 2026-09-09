@@ -1,0 +1,397 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "ToolSuite Base Theme",
+    "theme_version": "1.0.0",
+    "theme_author": "ToolSuite",
+    "theme_documentation_url": "https://example.com",
+    "theme_support_url": "https://example.com"
+  },
+  {
+    "name": "Colors",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Ink on paper. All color in the store comes from photography — there is no accent color in the UI."
+      },
+      {
+        "type": "color",
+        "id": "color_paper",
+        "label": "Paper (ground)",
+        "default": "#FAF8F4"
+      },
+      {
+        "type": "color",
+        "id": "color_ink",
+        "label": "Ink (text + buttons)",
+        "default": "#141310"
+      },
+      {
+        "type": "color",
+        "id": "color_cream",
+        "label": "Cream (editorial blocks, packshot ground)",
+        "default": "#F1EDE6"
+      },
+      {
+        "type": "color",
+        "id": "color_hairline",
+        "label": "Hairline",
+        "default": "#E3DED5"
+      },
+      {
+        "type": "color",
+        "id": "color_mute",
+        "label": "Secondary label",
+        "default": "#8A857C"
+      },
+      {
+        "type": "select",
+        "id": "buy_color",
+        "label": "Buy bar color",
+        "options": [
+          {
+            "value": "ink",
+            "label": "Ink (black)"
+          },
+          {
+            "value": "amber",
+            "label": "Amber"
+          }
+        ],
+        "default": "ink",
+        "info": "Amber is the ONLY place a warm tone may appear. Checkout Pay button follows at go-live (manual checkout editor)."
+      },
+      {
+        "type": "color",
+        "id": "color_amber",
+        "label": "Amber (buy bar only)",
+        "default": "#A88652",
+        "info": "Used only when the buy bar is set to Amber. Never a UI accent."
+      }
+    ]
+  },
+  {
+    "name": "Business information",
+    "settings": [
+      {
+        "type": "text",
+        "id": "biz_name",
+        "label": "Business name"
+      },
+      {
+        "type": "text",
+        "id": "biz_owner",
+        "label": "Owner"
+      },
+      {
+        "type": "text",
+        "id": "biz_vat",
+        "label": "VAT ID",
+        "info": "Printed in the footer seller block. Empty = line hidden."
+      },
+      {
+        "type": "text",
+        "id": "biz_address1",
+        "label": "Address line"
+      },
+      {
+        "type": "text",
+        "id": "biz_city",
+        "label": "Postal code + city"
+      },
+      {
+        "type": "text",
+        "id": "biz_country",
+        "label": "Country"
+      },
+      {
+        "type": "text",
+        "id": "biz_wh_line1",
+        "label": "Warehouse address line"
+      },
+      {
+        "type": "text",
+        "id": "biz_wh_line2",
+        "label": "Warehouse city + ZIP"
+      },
+      {
+        "type": "text",
+        "id": "biz_wh_country",
+        "label": "Warehouse country"
+      },
+      {
+        "type": "text",
+        "id": "biz_phone",
+        "label": "Support phone"
+      },
+      {
+        "type": "text",
+        "id": "biz_email",
+        "label": "Support email"
+      },
+      {
+        "type": "text",
+        "id": "biz_hours",
+        "label": "Business hours (weekdays)"
+      },
+      {
+        "type": "text",
+        "id": "biz_hours_weekend",
+        "label": "Business hours (weekend)"
+      },
+      {
+        "type": "text",
+        "id": "biz_returns_note",
+        "label": "Returns note (footer)",
+        "info": "Empty = line hidden."
+      }
+    ]
+  },
+  {
+    "name": "Shipping facts",
+    "settings": [
+      {
+        "type": "text",
+        "id": "ship_free_line",
+        "label": "Free shipping line",
+        "info": "Back it with a $0 rate in your delivery profiles.",
+        "default": "Free shipping on every order"
+      },
+      {
+        "type": "text",
+        "id": "ship_processing",
+        "label": "Processing time",
+        "default": "Ships within 1–3 business days"
+      }
+    ]
+  },
+  {
+    "name": "Tracking",
+    "settings": [
+      {
+        "type": "text",
+        "id": "ga4_id",
+        "label": "GA4 Measurement ID",
+        "info": "Leave blank to disable. Example: G-XXXXXXXXXX"
+      },
+      {
+        "type": "text",
+        "id": "ads_id",
+        "label": "Google Ads Conversion ID",
+        "info": "Example: AW-XXXXXXXXX"
+      }
+    ]
+  },
+  {
+    "name": "Cart",
+    "settings": [
+      {
+        "type": "collection",
+        "id": "cart_cross_sell",
+        "label": "Cart cross-sell collection"
+      },
+      {
+        "type": "paragraph",
+        "content": "Cart add-ons. Each must be an UNLISTED product with 'requires shipping' off, published to the Online Store only — never to Google & YouTube, or it enters the Shopping feed as a product."
+      },
+      {
+        "type": "text",
+        "id": "upsell_1_handle",
+        "label": "Cart add-on 1 (product handle)",
+        "info": "e.g. shipping-protection. A handle, not a picker: unlisted products are invisible to a product picker in Liquid. Empty = row hidden."
+      },
+      {
+        "type": "text",
+        "id": "upsell_2_handle",
+        "label": "Cart add-on 2 (product handle)",
+        "info": "e.g. priority-shipping. Empty = row hidden."
+      },
+      {
+        "type": "paragraph",
+        "content": "Add-ons must not be pre-selected by default: a pre-ticked paid add-on is an additional payment under Art. 22 Consumer Rights Directive 2011/83/EU and requires the shopper's express opt-in before checkout — pre-selection may only be enabled for markets where it is lawful. Each add-on must stay a clearly labelled, separately priced cart line the shopper can add in one click — that is what keeps an opt-in add-on from being a hidden fee."
+      },
+      {
+        "type": "checkbox",
+        "id": "upsell_preselect",
+        "label": "Pre-select cart add-ons",
+        "default": false,
+        "info": "A pre-ticked paid add-on is not valid consent for an additional payment under Art. 22 Consumer Rights Directive 2011/83/EU, and carries similar risk under other consumer-protection regimes (e.g. FTC). Adds both add-ons the first time a real product enters the bag, if turned on; a shopper who unticks or removes one is never asked again in that session. Both stay visible, priced and removable above the total — keep it that way, a hidden pre-ticked paid add-on is a chargeback and compliance risk."
+      },
+      {
+        "type": "range",
+        "id": "cart_countdown_min",
+        "label": "Cart reservation countdown (minutes)",
+        "min": 0,
+        "max": 30,
+        "step": 1,
+        "default": 0,
+        "info": "0 = no countdown. Nothing is actually reserved (inventory is untracked). A fabricated reservation countdown is a fake-urgency dark pattern under consumer-protection law in many jurisdictions, the same class as the id-modulo scarcity line. Re-enable only if the countdown is backed by genuine inventory-hold logic."
+      }
+    ]
+  },
+  {
+    "name": "Storefront proof",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Rating shown above the product title and under the checkout button. These are hand-entered numbers — the theme never links to or scrapes an external review profile."
+      },
+      {
+        "type": "text",
+        "id": "rating_value",
+        "label": "Rating value",
+        "default": "4.7",
+        "info": "Printed as-is next to the stars. Empty = the whole rating row is hidden everywhere."
+      },
+      {
+        "type": "text",
+        "id": "rating_count",
+        "label": "Review count",
+        "default": "1,284",
+        "info": "Printed as-is, e.g. \"1,284\". Empty = only the value shows."
+      },
+      {
+        "type": "paragraph",
+        "content": "Urgency + social-proof lines. These are NOT read from live inventory (inventory is untracked, policy CONTINUE) — they are fixed copy by design. Empty = the line does not render."
+      },
+      {
+        "type": "text",
+        "id": "low_stock_line",
+        "label": "Low-stock line",
+        "default": "Almost sold out, only a few left in stock"
+      },
+      {
+        "type": "text",
+        "id": "few_left_line",
+        "label": "\"Few items left\" line (animated dot)",
+        "default": "Few items left"
+      },
+      {
+        "type": "text",
+        "id": "stack_save_line",
+        "label": "Stack & save line",
+        "default": "Stack & save — buy more, get a bigger discount"
+      },
+      {
+        "type": "range",
+        "id": "viewers_min",
+        "label": "Live viewers — lowest number",
+        "min": 3,
+        "max": 40,
+        "step": 1,
+        "default": 8
+      },
+      {
+        "type": "range",
+        "id": "viewers_max",
+        "label": "Live viewers — highest number",
+        "min": 4,
+        "max": 80,
+        "step": 1,
+        "default": 23
+      },
+      {
+        "type": "paragraph",
+        "content": "Trust box under the add button, and the ✔ promise lines. Copy stays GMC-safe fact — no guarantee we do not actually honour."
+      },
+      {
+        "type": "text",
+        "id": "trust_returns_line",
+        "label": "Returns line",
+        "default": "Easy 30-day returns"
+      },
+      {
+        "type": "text",
+        "id": "trust_customers_line",
+        "label": "Customers line",
+        "default": "Over 1,000+ happy customers"
+      },
+      {
+        "type": "text",
+        "id": "guarantee_line",
+        "label": "Money-back line (green)",
+        "default": "30-Day Money Back Guarantee"
+      }
+    ]
+  },
+  {
+    "name": "Conversion toggles",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Central on/off switches for every urgency, proof and helper element. Each element also hides when its text setting is emptied. The urgency switches ship OFF and stay off by default."
+      },
+      {
+        "type": "checkbox",
+        "id": "fit_scale_enabled",
+        "label": "Fit scale (PDP)",
+        "default": true,
+        "info": "Runs small / true to size / runs large marker, derived from custom.fit_note (override: custom.fit_scale). Renders nothing when no verdict can be derived."
+      },
+      {
+        "type": "checkbox",
+        "id": "newsletter_popup_enabled",
+        "label": "Newsletter popup",
+        "default": false,
+        "info": "Theme-owned newsletter popup (8s trigger, 30-day dismiss memory). ⚠️ Any discount promise in the popup copy REQUIRES a matching real discount in the store (fake-signal rule). Ships off by default: known issue where mobile lets you scroll it away — fix scroll-lock before re-enabling."
+      },
+      {
+        "type": "checkbox",
+        "id": "upsell_hide_lines",
+        "label": "Hide cart add-on lines",
+        "default": true,
+        "info": "The paid add-on (shipping protection) then appears ONLY as its toggle row, never as a cart line. Its price stays visible on the toggle and in the total."
+      },
+      {
+        "type": "paragraph",
+        "content": "⚠️ URGENCY SWITCHES. Everything below fakes a live signal (inventory is untracked). Turning any of these on without a real data basis is a GMC-misrepresentation and dark-pattern risk under consumer-protection law in many jurisdictions. They exist as switches so each store can be configured individually; they are NOT meant to be enabled by default."
+      },
+      {
+        "type": "checkbox",
+        "id": "scarcity_enabled",
+        "label": "Scarcity line (PDP) — ⚠️ fake urgency",
+        "default": false,
+        "info": "id-modulo pseudo scarcity (red/amber/green). Off by default: enable only with real inventory gating."
+      },
+      {
+        "type": "checkbox",
+        "id": "viewers_enabled",
+        "label": "Live-viewers line (PDP) — ⚠️ fake signal",
+        "default": false,
+        "info": "Deterministic pseudo-random count, no real data behind it."
+      },
+      {
+        "type": "checkbox",
+        "id": "rating_enabled",
+        "label": "Star rating (PDP + cart) — ⚠️ needs a real source",
+        "default": false,
+        "info": "Prints the hand-entered rating_value/rating_count from Storefront proof. OFF until a genuine review base backs the numbers — fabricated ratings breach consumer-protection law (e.g. DSA Art. 25, FTC)."
+      },
+      {
+        "type": "checkbox",
+        "id": "cart_express_enabled",
+        "label": "Cart drawer: express wallets",
+        "default": false,
+        "info": "Shows Shop Pay / Google Pay express buttons under the checkout button in the cart drawer. Off = calmer drawer, wallets still available in checkout."
+      }
+    ]
+  },
+  {
+    "name": "Bundle discounts",
+    "settings": [
+      {
+        "type": "checkbox",
+        "id": "qty_tiers_enabled",
+        "label": "Enable bundle-discount bar",
+        "default": false,
+        "info": "Shows the tier bar in the cart drawer + cart page and the ladder on the PDP. ONLY enable after the matching Shopify automatic discounts are live — the bar is display-only and must mirror what checkout actually grants, or it is misrepresentation (GMC suspension risk)."
+      },
+      {
+        "type": "text",
+        "id": "qty_tiers",
+        "label": "Tiers (quantity:percent, comma-separated)",
+        "default": "2:10,3:15,4:20,5:25"
+      }
+    ]
+  }
+]

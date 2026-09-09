@@ -1,0 +1,443 @@
+{%- comment -%}
+  Size-recommendation widget. Renders below the option pickers in the PDP buy-box.
+  Gate (Liquid, no render at all unless every condition holds):
+    - product.metafields.custom.size_table present
+    - section.settings.enable_size_recommendation is true
+    - product has a "Size" option
+  A second, JS-side gate stays hidden until the chart actually parses with a
+  Bust or Hip column (see parseChart below) — no metafield ever gets guessed at.
+  Applying the recommendation does NOT duplicate variant-selection logic: it
+  finds the real size button/select already rendered by this section and
+  fires a native click/change on it, which theme.js#initPDP already listens
+  for via its delegated `[data-opt-btn]` / `[data-opt-select]` handlers.
+{%- endcomment -%}
+{%- assign size_opt_index = -1 -%}
+{%- for option in product.options_with_values -%}
+  {%- assign so_down = option.name | downcase -%}
+  {%- if so_down == 'size' -%}{%- assign size_opt_index = forloop.index0 -%}{%- endif -%}
+{%- endfor -%}
+{%- if product.metafields.custom.size_table != blank and section.settings.enable_size_recommendation and size_opt_index > -1 -%}
+<div class="size-rec" data-size-rec hidden>
+  <button type="button" class="size-rec__toggle" data-size-rec-toggle aria-expanded="false" aria-controls="size-rec-panel-{{ product.id }}">
+    {{ 'product.size_finder.toggle' | t }}<span class="size-rec__chev">{% render 'icon', name: 'plus', size: 12 %}</span>
+  </button>
+  <div class="size-rec__panel" id="size-rec-panel-{{ product.id }}" data-size-rec-panel>
+    <div class="size-rec__panel-inner">
+    {%- comment -%} Unit system follows the locale: metric-unit locales get a
+    cm/kg pair, the imperial pair only renders for locales whose
+    product.size_finder.unit_system says "imperial". The JS converts metric
+    input to inches/lbs before the underlying model runs. {%- endcomment -%}
+    {%- assign sr_units = 'product.size_finder.unit_system' | t -%}
+    <div class="size-rec__row">
+      {%- if sr_units == 'metric' -%}
+      <label class="size-rec__field">
+        <span class="size-rec__field-label">{{ 'product.size_finder.height' | t }}</span>
+        <span class="size-rec__input-wrap">
+          <input type="number" inputmode="numeric" class="size-rec__input size-rec__input--ft" data-size-rec-cm placeholder="168" min="120" max="220" aria-label="{{ 'product.size_finder.height_cm_aria' | t }}">
+          <span class="size-rec__unit" aria-hidden="true">cm</span>
+        </span>
+      </label>
+      <label class="size-rec__field">
+        <span class="size-rec__field-label">{{ 'product.size_finder.weight' | t }}</span>
+        <span class="size-rec__input-wrap">
+          <input type="number" inputmode="numeric" class="size-rec__input size-rec__input--lbs" data-size-rec-kg placeholder="65" min="30" max="200" aria-label="{{ 'product.size_finder.weight_kg_aria' | t }}">
+          <span class="size-rec__unit" aria-hidden="true">kg</span>
+        </span>
+      </label>
+      {%- else -%}
+      <fieldset class="size-rec__field size-rec__fieldset">
+        <legend class="size-rec__field-label">{{ 'product.size_finder.height' | t }}</legend>
+        <span class="size-rec__pair">
+          <span class="size-rec__input-wrap">
+            <input type="number" inputmode="numeric" class="size-rec__input size-rec__input--ft" data-size-rec-ft placeholder="5" min="3" max="7" aria-label="{{ 'product.size_finder.height_feet_aria' | t }}">
+            <span class="size-rec__unit" aria-hidden="true">ft</span>
+          </span>
+          <span class="size-rec__input-wrap">
+            <input type="number" inputmode="numeric" class="size-rec__input size-rec__input--in" data-size-rec-in placeholder="6" min="0" max="11" aria-label="{{ 'product.size_finder.height_inches_aria' | t }}">
+            <span class="size-rec__unit" aria-hidden="true">in</span>
+          </span>
+        </span>
+      </fieldset>
+      <label class="size-rec__field">
+        <span class="size-rec__field-label">{{ 'product.size_finder.weight' | t }}</span>
+        <span class="size-rec__input-wrap">
+          <input type="number" inputmode="numeric" class="size-rec__input size-rec__input--lbs" data-size-rec-lbs placeholder="140" min="60" max="400" aria-label="{{ 'product.size_finder.weight_lbs_aria' | t }}">
+          <span class="size-rec__unit" aria-hidden="true">lbs</span>
+        </span>
+      </label>
+      {%- endif -%}
+      <button type="button" class="size-rec__submit" data-size-rec-submit>{{ 'product.size.find_my_size' | t }}</button>
+    </div>
+    <p class="size-rec__result" data-size-rec-result role="status" aria-live="polite" hidden></p>
+    </div>
+  </div>
+</div>
+<script type="application/json" data-size-rec-config>
+  { "sizeOptIndex": {{ size_opt_index }}, "chartHtml": {{ product.metafields.custom.size_table.value | json }},
+    "i18n": {
+      "recommend": {{ 'product.size_finder.result_recommend' | t | json }},
+      "between": {{ 'product.size_finder.result_between' | t | json }},
+      "note_tall": {{ 'product.size_finder.note_tall' | t | json }},
+      "note_petite": {{ 'product.size_finder.note_petite' | t | json }},
+      "sold_out": {{ 'product.size_finder.sold_out' | t | json }},
+      "sold_out_closest": {{ 'product.size_finder.sold_out_closest' | t | json }},
+      "select_above": {{ 'product.size_finder.select_above' | t | json }},
+      "below_range": {{ 'product.size_finder.below_range' | t | json }},
+      "above_range": {{ 'product.size_finder.above_range' | t | json }},
+      "err_height": {{ 'product.size_finder.err_height' | t | json }},
+      "err_weight": {{ 'product.size_finder.err_weight' | t | json }}
+    } }
+</script>
+<script>
+(function () {
+  /* The widget renders BEFORE the size buttons inside the option row, so this
+     inline script runs mid-parse while the buttons don't exist yet —
+     collectRealSizeLabels() would come back empty and a chart with several
+     Size-like columns would silently kill the widget. Defer the whole init
+     until the DOM is complete. */
+  function initSizeRec() {
+  /* scoped to THIS product's widget instance; PDP is a one-product page but
+     the quick-view drawer can also render a product, so scope defensively */
+  var containers = document.querySelectorAll('[data-size-rec]');
+  containers.forEach(function (root) {
+    var cfgEl = root.nextElementSibling;
+    if (!cfgEl || !cfgEl.matches('script[data-size-rec-config]')) return;
+    var cfg;
+    try { cfg = JSON.parse(cfgEl.textContent); } catch (e) { return; }
+
+    /* size-label canonicalization: chart may say XXL/XXXL where the real
+       Shopify option values say 2XL/3XL (seen across the catalog sample) */
+    function canon(label) {
+      var s = (label || '').trim().toUpperCase();
+      var xMatch = s.match(/^(X+)(S|L)$/);
+      if (xMatch) {
+        var n = xMatch[1].length;
+        return (n === 1 ? 'X' : n + 'X') + xMatch[2];
+      }
+      return s;
+    }
+
+    /* real Shopify variant labels for the Size option, already on the page —
+       used only to disambiguate a chart with more than one "Size"-like
+       column (AU/US/UK layouts); see tryTable below. */
+    function collectRealSizeLabels() {
+      var out = [];
+      document.querySelectorAll('[data-opt-btn]:not([data-opt-dup])[data-opt-index="' + cfg.sizeOptIndex + '"]').forEach(function (b) { out.push(b.dataset.optValue); });
+      if (!out.length) {
+        var sel = document.querySelector('[data-opt-select][data-opt-index="' + cfg.sizeOptIndex + '"]');
+        if (sel) Array.prototype.forEach.call(sel.options, function (o) { out.push(o.value); });
+      }
+      return out;
+    }
+
+    /* ---------------- chart parsing ----------------
+       Column keyword match is case/paren-insensitive ("Bust (in)", "BUST",
+       "Chest" all resolve to the same column). Requires Bust or Hip to
+       render anything — Waist-only charts (or charts with none of the
+       three, e.g. a sleeve/length/shoulder-only cardigan chart) never
+       reach the DOM: no bodyweight-only fallback, no guessing. */
+    function stripUnitWords(s) {
+      return s.replace(/\(.*?\)/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+    }
+    function parseMeasure(text, colIsCm) {
+      var t = (text || '').trim();
+      var hasCm = /cm/i.test(t);
+      var hasIn = /"|in\b/i.test(t);
+      if (hasCm && hasIn) {
+        /* mixed-unit cell, e.g. "80cm / 31.5\"" — take the inch value
+           exactly rather than averaging cm and inch numbers together */
+        var inMatch = t.match(/([\d.]+)\s*(?:"|in\b)/i);
+        return inMatch ? Math.round(Number(inMatch[1]) * 10) / 10 : null;
+      }
+      var isCm = colIsCm || hasCm; // cm ONLY on explicit "cm" (column header or cell) — never a magnitude guess
+      var nums = t.match(/[\d.]+/g);
+      if (!nums || !nums.length) return null;
+      var vals = nums.map(Number);
+      var avg = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length; // range "a - b" -> midpoint
+      if (isCm) avg = avg / 2.54;
+      return Math.round(avg * 10) / 10;
+    }
+    /* every step (not just the average) must be a positive, finite climb —
+       used both to pick the critical column (Bust, else Hip) and to reject
+       a flat/reversed chart outright */
+    function ascendingValues(rows, key) {
+      var vals = rows.map(function (r) { return r[key]; }).filter(function (v) { return v != null && isFinite(v); });
+      if (vals.length < 2) return null;
+      for (var i = 1; i < vals.length; i++) if (!(vals[i] > vals[i - 1])) return null;
+      return vals;
+    }
+    function tryTable(table, realSizeLabels) {
+      var trs = table.querySelectorAll('tr');
+      if (trs.length < 3) return null; // header + at least 2 sizes
+      var headCells = trs[0].querySelectorAll('th, td');
+      var sizeCols = [], colBust = -1, colWaist = -1, colHip = -1;
+      var colIsCm = {}; // column index -> header text explicitly says "cm"
+      headCells.forEach(function (c, i) {
+        colIsCm[i] = /cm/i.test(c.textContent);
+        var h = stripUnitWords(c.textContent);
+        /* Chart headers may be written in another language (e.g. Danish
+           "Størrelse/Bryst/Talje/Hofte") rather than English only — matching
+           only the English column names would leave the widget hidden on
+           those charts. STR\.? covers the abbreviated "Str." header form. */
+        if (/SIZE|STØRRELSE|^STR\.?$|^STR\.?\s/.test(h)) sizeCols.push(i);
+        else if (/BUST|CHEST|BRYST/.test(h)) colBust = i;
+        else if (/WAIST|TALJE/.test(h)) colWaist = i;
+        else if (/HIP|HOFTE/.test(h)) colHip = i;
+      });
+      if (colBust === -1 && colHip === -1) return null; // gate: need Bust or Hip
+      var colSize = sizeCols.length ? sizeCols[0] : 0;
+      var rows = [];
+      for (var r = 1; r < trs.length; r++) {
+        var cells = trs[r].querySelectorAll('td, th');
+        if (!cells.length) continue;
+        var label = (cells[colSize] ? cells[colSize].textContent : '').trim();
+        if (!label || /^(one[\s-]?size|os|o\/s)$/i.test(label)) return null; // one-size chart: no recommendation possible
+        rows.push({
+          label: label,
+          bust: colBust > -1 && cells[colBust] ? parseMeasure(cells[colBust].textContent, colIsCm[colBust]) : null,
+          waist: colWaist > -1 && cells[colWaist] ? parseMeasure(cells[colWaist].textContent, colIsCm[colWaist]) : null,
+          hip: colHip > -1 && cells[colHip] ? parseMeasure(cells[colHip].textContent, colIsCm[colHip]) : null,
+        });
+      }
+      if (rows.length < 2) return null;
+
+      /* multiple "Size"-like columns (AU/US/UK layouts): the first one wins
+         ONLY if its labels match the real Shopify variant values already on
+         the page — otherwise we can't tell which column the picker actually
+         uses, so the chart is ambiguous and the widget stays hidden. */
+      if (sizeCols.length > 1) {
+        if (!realSizeLabels || !realSizeLabels.length) return null;
+        var parsed = rows.map(function (row) { return canon(row.label); });
+        var real = realSizeLabels.map(canon);
+        var matches = real.every(function (l) { return parsed.indexOf(l) > -1; })
+          && parsed.every(function (l) { return real.indexOf(l) > -1; });
+        if (!matches) return null;
+      }
+
+      /* pick the critical column only once it actually has >=2 usable,
+         strictly ascending values — a Bust column full of text garbage
+         falls through to Hip instead of silently winning by priority alone */
+      var critical = ascendingValues(rows, 'bust') ? 'bust' : (ascendingValues(rows, 'hip') ? 'hip' : null);
+      if (!critical) return null;
+
+      var critRows = rows.filter(function (row) { return row[critical] != null; });
+      var diffs = [];
+      for (var d = 1; d < critRows.length; d++) diffs.push(critRows[d][critical] - critRows[d - 1][critical]);
+      /* chartStep: this chart's OWN average inches-per-size-step in the
+         critical column. Normalizes away the product's measurement scale
+         (garment flat-lay vs body circumference, stretch leggings vs a
+         structured coat) — we never compare a body estimate to the chart's
+         absolute inches, only to its own step size. */
+      var step = diffs.reduce(function (a, b) { return a + b; }, 0) / diffs.length;
+      var midIndex = (critRows.length - 1) / 2; // the chart's own middle row anchors the reference person
+      return { critical: critical, critRows: critRows, step: step, midIndex: midIndex };
+    }
+    function parseChart(html, realSizeLabels) {
+      /* inert document: DOMParser never fetches images/scripts or runs
+         handlers while parsing merchant-supplied HTML (no innerHTML on a
+         live node) */
+      var doc = new DOMParser().parseFromString(html || '', 'text/html');
+      var tables = doc.querySelectorAll('table');
+      for (var t = 0; t < tables.length; t++) {
+        var result = tryTable(tables[t], realSizeLabels);
+        if (result) return result; // first table that yields Size + (Bust|Hip) wins
+      }
+      return null;
+    }
+
+    var chart = parseChart(cfg.chartHtml, collectRealSizeLabels());
+    if (!chart) return; // stays hidden — never guesses
+
+    /* cm charts without an explicit "cm" header/cell (the unit sometimes
+       lives in a size_unit_note line under the table, not in the headers).
+       A bust/hip of >60 cannot be inches (a 60in bust is a 5XL+ outlier; cm
+       charts sit at 80–130), so >60 on the FIRST critical row is a safe cm
+       signal, not a magnitude guess.
+       ponytail: threshold heuristic — if a genuinely mixed catalog appears,
+       move the unit into the chart headers instead of tuning this. */
+    var i18n = cfg.i18n || {};
+    (function normalizeCm() {
+      var first = chart.critRows[0] && chart.critRows[0][chart.critical];
+      if (first > 60) {
+        chart.critRows.forEach(function (r) {
+          if (r[chart.critical] != null) r[chart.critical] = r[chart.critical] / 2.54;
+        });
+        chart.step = chart.step / 2.54;
+      }
+    })();
+
+    /* ---------------- BMI-anchored relative size index ----------------
+       A simpler fixed-weight linear model treated "taller = slimmer girth"
+       (a 6'4" shopper got a SMALLER size than a 4'11" one at the same
+       weight) and hard height clamps sent 4'5"/140lb to the smallest size
+       with a "runs smaller" note. Girth follows weight RELATIVE to height
+       (BMI), not weight alone — so the index is BMI-driven, handles any
+       height/weight combination without contradiction branches, and height
+       adds an honest garment-length NOTE instead of shifting girth the wrong
+       way. Anchor: the chart row labeled M when present (S..2XL charts skew
+       upward, their middle row is L), else the chart's middle row. Still
+       scaled by the chart's own step. Tunables — retune against real
+       exchange/return data once that signal exists. */
+    /* WEIGHT-PRIMARY: weight is the girth proxy; height is only a small
+       positive tie-breaker capped at +/-6in around 5'4" (max +/-0.15 chart
+       inches end-to-end), so a taller shopper NEVER gets a smaller size and
+       equal weight reads consistently. Height otherwise only drives the
+       honest garment-length notes. Monotonicity holds in both inputs by
+       construction. */
+    var REF_WEIGHT_LB = 145;
+    var WEIGHT_DELTA_IN_PER_LB = 0.070;      // inches of critical girth per lb away from reference
+    var REF_HEIGHT_IN = 64;                  // 5'4"
+    var HEIGHT_OFFSET_CAP_IN = 6;            // height matters only within 4'10"..5'10"
+    var HEIGHT_TIEBREAKER_IN_PER_IN = 0.025; // tiny, strictly positive: taller never means smaller
+    var BETWEEN_BAND_FRAC = 0.15; // fractional distance from the exact midpoint between two adjacent sizes that still reads as "between"
+    var NOTE_TALL_IN = 70;    // 5'10" and up: piece may run short
+    var NOTE_PETITE_IN = 58;  // 4'10" and under: piece may run long
+
+    function anchorIndex() {
+      for (var i = 0; i < chart.critRows.length; i++) {
+        if (canon(chart.critRows[i].label) === 'M') return i;
+      }
+      return chart.midIndex;
+    }
+
+    function recommend(heightIn, weightLb) {
+      var heightOffset = Math.max(-HEIGHT_OFFSET_CAP_IN, Math.min(HEIGHT_OFFSET_CAP_IN, heightIn - REF_HEIGHT_IN));
+      var delta = WEIGHT_DELTA_IN_PER_LB * (weightLb - REF_WEIGHT_LB) + HEIGHT_TIEBREAKER_IN_PER_IN * heightOffset;
+      var idxFloat = anchorIndex() + delta / chart.step;
+      var n = chart.critRows.length;
+      var idxClamped = Math.max(0, Math.min(n - 1, idxFloat));
+      var idxFloor = Math.floor(idxClamped);
+      var frac = idxClamped - idxFloor;
+      var belowRange = idxFloat < -0.5, aboveRange = idxFloat > n - 0.5;
+      var lengthNote = heightIn >= NOTE_TALL_IN ? ' ' + i18n.note_tall
+                     : heightIn <= NOTE_PETITE_IN ? ' ' + i18n.note_petite : '';
+      if (!belowRange && !aboveRange && idxFloor < n - 1 && frac > (0.5 - BETWEEN_BAND_FRAC) && frac < (0.5 + BETWEEN_BAND_FRAC)) {
+        var lo = chart.critRows[idxFloor], hi = chart.critRows[idxFloor + 1];
+        return { label: hi.label, text: i18n.between.replace('[lo]', lo.label).replace(/\[hi\]/g, hi.label) + lengthNote, belowRange: false, aboveRange: false };
+      }
+      var row = chart.critRows[Math.round(idxClamped)];
+      return { label: row.label, text: i18n.recommend.replace('[size]', row.label) + lengthNote, belowRange: belowRange, aboveRange: aboveRange };
+    }
+
+    /* ---------------- apply: click the REAL picker control ----------------
+       No variant-selection logic is duplicated — theme.js#initPDP already
+       binds a delegated click/change listener for these selectors. */
+    function findControl(label) {
+      var target = canon(label);
+      var btns = document.querySelectorAll('[data-opt-btn]:not([data-opt-dup])[data-opt-index="' + cfg.sizeOptIndex + '"]');
+      var match = null;
+      btns.forEach(function (b) { if (canon(b.dataset.optValue) === target) match = b; });
+      if (match) return { kind: 'button', el: match, available: !match.disabled };
+      var sel = document.querySelector('[data-opt-select][data-opt-index="' + cfg.sizeOptIndex + '"]');
+      if (sel) {
+        var opt = Array.prototype.find.call(sel.options, function (o) { return canon(o.value) === target; });
+        if (opt) return { kind: 'select', el: sel, value: opt.value, available: true }; // dropdown = A/B surface only, no per-option availability signal
+      }
+      return null;
+    }
+    function apply(label) {
+      var ctrl = findControl(label);
+      if (!ctrl) return { applied: false, label: label };
+      if (ctrl.kind === 'button') {
+        if (ctrl.available) { ctrl.el.click(); return { applied: true, label: label }; }
+        /* sold out in the current color: walk outward for the nearest available size button */
+        var all = Array.prototype.slice.call(document.querySelectorAll('[data-opt-btn]:not([data-opt-dup])[data-opt-index="' + cfg.sizeOptIndex + '"]'));
+        var recIdx = all.indexOf(ctrl.el);
+        for (var d = 1; d < all.length; d++) {
+          var down = all[recIdx - d], up = all[recIdx + d];
+          if (down && !down.disabled) { down.click(); return { applied: true, label: label, soldOutFallback: down.dataset.optValue }; }
+          if (up && !up.disabled) { up.click(); return { applied: true, label: label, soldOutFallback: up.dataset.optValue }; }
+        }
+        return { applied: false, label: label, soldOutAll: true };
+      }
+      ctrl.el.value = ctrl.value;
+      ctrl.el.dispatchEvent(new Event('change', { bubbles: true }));
+      return { applied: true, label: label };
+    }
+
+    /* ---------------- wire up ---------------- */
+    root.hidden = false; // chart parsed OK — reveal the (still collapsed) toggle
+    var toggle = root.querySelector('[data-size-rec-toggle]');
+    var panel = root.querySelector('[data-size-rec-panel]');
+    toggle.addEventListener('click', function () {
+      var open = !panel.classList.contains('is-open');
+      panel.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+    /* "Find my size" link (Size & fit tab): the widget lives inside the
+       size-guide dialog — opening it means opening that dialog with the
+       panel expanded. apply() still clicks the real size buttons behind it. */
+    /* delegated: the tab markup renders AFTER this inline script runs, so a
+       direct querySelectorAll here would bind to nothing */
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('[data-open-size-rec]')) return;
+      if (root.hidden) return;
+      var dlg = root.closest('dialog');
+      if (dlg && !dlg.open) dlg.showModal();
+      if (!panel.classList.contains('is-open')) toggle.click();
+    });
+    /* metric pair (cm/kg) renders for metric locales, imperial (ft/in/lbs)
+       otherwise — whichever exists drives the input path; the underlying
+       model always runs in inches/lbs. */
+    var cmEl = root.querySelector('[data-size-rec-cm]');
+    var kgEl = root.querySelector('[data-size-rec-kg]');
+    var ftEl = root.querySelector('[data-size-rec-ft]');
+    var inEl = root.querySelector('[data-size-rec-in]');
+    var lbsEl = root.querySelector('[data-size-rec-lbs]');
+    [cmEl, kgEl, ftEl, inEl, lbsEl].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); root.querySelector('[data-size-rec-submit]').click(); }
+      });
+    });
+    root.querySelector('[data-size-rec-submit]').addEventListener('click', function () {
+      var resultEl = root.querySelector('[data-size-rec-result]');
+      var heightIn, weightLb;
+      if (cmEl) {
+        var cm = Number(cmEl.value);
+        var kg = Number(kgEl.value);
+        if (!cm || cm < 120 || cm > 220) {
+          resultEl.textContent = i18n.err_height; resultEl.hidden = false; return;
+        }
+        heightIn = cm / 2.54;
+        if (!kg || kg < 30 || kg > 200) {
+          resultEl.textContent = i18n.err_weight; resultEl.hidden = false; return;
+        }
+        weightLb = kg * 2.20462;
+      } else {
+        var ft = Number(ftEl.value);
+        var inch = inEl.value === '' ? 0 : Number(inEl.value); // empty inches = exact feet
+        var lbs = Number(lbsEl.value);
+        if (!ft || ft < 3 || ft > 7 || inch < 0 || inch > 11 || inch !== Math.floor(inch)) {
+          resultEl.textContent = i18n.err_height; resultEl.hidden = false; return;
+        }
+        heightIn = ft * 12 + inch;
+        if (!lbs || lbs < 60 || lbs > 400) {
+          resultEl.textContent = i18n.err_weight; resultEl.hidden = false; return;
+        }
+        weightLb = lbs;
+      }
+      var rec = recommend(heightIn, weightLb);
+      if (rec.noMatch) {
+        resultEl.textContent = rec.text; // no control to click, no stock/range caveat to add — the message is already the full honest answer
+        resultEl.hidden = false;
+        return;
+      }
+      var res = apply(rec.label);
+      var msg = rec.text;
+      if (res.soldOutAll) msg = i18n.sold_out.replace('[size]', rec.label);
+      else if (res.soldOutFallback) msg = i18n.sold_out_closest.replace('[size]', rec.label).replace('[alt]', res.soldOutFallback);
+      else if (!res.applied) msg += ' ' + i18n.select_above;
+      /* exactly one range caveat, never two — below/above are mutually exclusive by construction */
+      if (rec.belowRange) msg += ' ' + i18n.below_range;
+      else if (rec.aboveRange) msg += ' ' + i18n.above_range;
+      resultEl.textContent = msg;
+      resultEl.hidden = false;
+    });
+  });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSizeRec);
+  else initSizeRec();
+})();
+</script>
+{%- endif -%}

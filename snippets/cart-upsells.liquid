@@ -1,0 +1,32 @@
+{%- comment -%}
+  Real cart add-ons, resolved by handle because Shopify product pickers cannot
+  see unlisted products. The data shell lets cart-extras.js preselect each one
+  once, without mistaking either add-on for a shopper-selected product.
+{%- endcomment -%}
+{%- assign up1 = all_products[settings.upsell_1_handle] -%}
+{%- assign up2 = all_products[settings.upsell_2_handle] -%}
+{%- if up1 != blank or up2 != blank -%}
+  {%- assign up1_id = up1.variants.first.id | default: 0 -%}
+  {%- assign up2_id = up2.variants.first.id | default: 0 -%}
+  {%- assign real_count = cart.item_count -%}
+  {%- for line in cart.items -%}
+    {%- if line.variant_id == up1_id or line.variant_id == up2_id -%}
+      {%- assign real_count = real_count | minus: line.quantity -%}
+    {%- endif -%}
+  {%- endfor -%}
+  <div
+    class="cart-upsells"
+    data-cart-upsells-config
+    data-upsell-preselect="{{ settings.upsell_preselect }}"
+    data-real-count="{{ real_count }}"
+  >
+    {%- comment -%} ONE combined add-on, preselected: multiple paid add-on
+    products can be merged into a single upsell (settings.upsell_1_handle);
+    if the second handle points at a draft/unpublished product its row simply
+    renders blank. A shopper's decline still wins for the session. Preselecting
+    a paid add-on can hurt checkout rate — watch it, since this is a deliberate
+    trade against a no-preselect default. {%- endcomment -%}
+    {% render 'cart-upsell-row', up: up1, preselect: true %}
+    {% render 'cart-upsell-row', up: up2, preselect: true %}
+  </div>
+{%- endif -%}

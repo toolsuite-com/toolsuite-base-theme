@@ -1,0 +1,49 @@
+{%- comment -%}
+  Mini product page rendered inside the cart drawer rather than as a second
+  modal. Product, media and variant controls are filled by cart-extras.js.
+{%- endcomment -%}
+<section class="cart-miniview" data-cart-miniview role="dialog" aria-modal="true" aria-label="{{ 'cart.mini.product_details_aria' | t }}" aria-hidden="true" hidden>
+  <div class="cart-miniview__head">
+    <p class="lbl">{{ 'quick_view.head_label' | t }}</p>
+    <button type="button" class="hdr__icon" data-cart-miniview-close aria-label="{{ 'cart.mini.close' | t }}">
+      {% render 'icon', name: 'close', size: 20 %}
+    </button>
+  </div>
+  <div class="cart-miniview__body">
+    <div class="cart-miniview__media"><img data-cart-mv-img src="" alt="" width="600" height="800"></div>
+    <div class="cart-miniview__buy">
+      {%- comment -%} SAME TYPE AS THE QUICK VIEW AND THE PDP: .dm is the serif
+      display face at up to 34px — in a 430px drawer that headline alone pushed
+      the size picker and the buy button below the fold. {%- endcomment -%}
+      {%- comment -%} THE PDP'S OWN ORDER AND ITS OWN COMPONENTS: the rating
+      used the cart's `.cart-rating`, which is centre-aligned for the drawer
+      footer — under a left-aligned price it looked misplaced rather than
+      styled. It is now the same snippet the product page renders, above the
+      title, where it belongs. {%- endcomment -%}
+      {%- render 'pdp-rating' -%}
+      <h3 class="pdp__name lbl" data-cart-mv-title></h3>
+      <div class="cart-miniview__price pdp__price lbl" data-cart-mv-price></div>
+      <div class="cart-miniview__options" data-cart-mv-options></div>
+      {%- comment -%} per-product scarcity, painted by cart-extras.js via
+      S.applyScarcity — the panel serves many products (see pdp-scarcity.liquid) {%- endcomment -%}
+      {%- comment %} disabled: id-modulo pseudo-scarcity can read as fake urgency without real inventory gating; re-enable only once that exists {% endcomment -%}
+      {%- if false -%}
+      {%- if settings.low_stock_line != blank -%}
+        <p class="pdp-low-stock stmt-sm" data-cart-mv-scarcity hidden></p>
+      {%- endif -%}
+      {%- endif -%}
+      <button type="button" class="bar cart-miniview__atc" data-cart-mv-atc disabled>
+        <span data-cart-mv-atc-label>{{ 'product.atc.add_to_bag' | t }}</span>
+      </button>
+      {%- if settings.ship_free_line != blank or settings.trust_returns_line != blank or settings.trust_customers_line != blank -%}
+        <div class="cart-miniview__trust lbl-sm">
+          {%- if settings.ship_free_line != blank -%}<span>{{ settings.ship_free_line | escape }}</span>{%- endif -%}
+          {%- if settings.trust_returns_line != blank -%}<span>{{ settings.trust_returns_line | escape }}</span>{%- endif -%}
+          {%- comment %} disabled: unverified social proof — enable once backed by real customer counts {% endcomment -%}
+          {%- if false and settings.trust_customers_line != blank -%}<span>{{ settings.trust_customers_line | escape }}</span>{%- endif -%}
+        </div>
+      {%- endif -%}
+      <a class="tlink" data-cart-mv-link href="#">{{ 'quick_view.view_all_details' | t }}</a>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,96 @@
+{%- comment -%}
+  Category tiles. Full-bleed photographs, category name in Prata
+  uppercase CENTERED ON the image, stacked full-width on mobile, 2×2 on
+  desktop, 2px gaps. No cards, no captions under the image.
+
+  Contrast: category photographs run bright (pale limestone, white gravel,
+  ivory garments), so plain white type would fail on parts of every tile. Each
+  label sits on a soft radial ink veil that only darkens the type's own patch of
+  photograph — and a per-tile "Label colour" setting lets the merchant flip a tile
+  to ink where the image is brightest. Both are in the label element only; the
+  photograph itself is never dimmed as a whole.
+
+  Images are Shopify Files, referenced from templates/index.json with an
+  empty default so each store starts with its own picks.
+{%- endcomment -%}
+<section class="sec--tight bleed reveal">
+  <div class="home-cats">
+    {%- for block in section.blocks -%}
+      {%- liquid
+        assign col = block.settings.collection
+        assign url = block.settings.link
+        if url == blank and col != blank
+          assign url = col.url
+        endif
+        assign label = block.settings.label | default: col.title
+        unless request.locale.primary
+          assign label = col.title | default: block.settings.label
+        endunless
+      -%}
+      <a class="home-cat{% if block.settings.label_color == 'ink' %} home-cat--ink{% endif %}" href="{{ url | default: routes.all_products_collection_url }}" {{ block.shopify_attributes }}>
+        {%- if block.settings.image != blank -%}
+          {%- comment -%} PERFORMANCE: at a flat width ladder a
+          phone downloaded FOUR tiles at 780w / ~330 KB each — 1.3 MB of
+          navigation furniture, one of the largest avoidable page-weight
+          costs on this template. A <picture> caps the ceiling per viewport (640w phone / 900w
+          desktop) instead of under-declaring `sizes`, so the browser still gets
+          honest layout information. These tiles carry a type label over a soft
+          background; ~1.5× device pixels is invisible on them. {%- endcomment -%}
+          <picture>
+            <source
+              media="(min-width: 721px)"
+              srcset="{{ block.settings.image | image_url: width: 600 }} 600w, {{ block.settings.image | image_url: width: 760 }} 760w, {{ block.settings.image | image_url: width: 900 }} 900w"
+              sizes="50vw">
+            <img
+              src="{{ block.settings.image | image_url: width: 560 }}"
+              srcset="{{ block.settings.image | image_url: width: 400 }} 400w, {{ block.settings.image | image_url: width: 560 }} 560w, {{ block.settings.image | image_url: width: 640 }} 640w"
+              sizes="100vw"
+              width="{{ block.settings.image.width }}" height="{{ block.settings.image.height }}"
+              alt="" loading="{% if forloop.index <= 2 %}eager{% else %}lazy{% endif %}" decoding="async">
+          </picture>
+        {%- else -%}
+          {{ 'collection-1' | placeholder_svg_tag }}
+        {%- endif -%}
+        <span class="home-cat__label"><span class="dl">{{ label | escape }}</span></span>
+      </a>
+    {%- endfor -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Category tiles",
+  "max_blocks": 8,
+  "blocks": [
+    {
+      "type": "category",
+      "name": "Category",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Label", "info": "Rendered uppercase. Falls back to the collection title." },
+        { "type": "image_picker", "id": "image", "label": "Image", "info": "Shopify Files: brand-cat-*.webp (portrait 2:3)." },
+        { "type": "collection", "id": "collection", "label": "Collection" },
+        { "type": "url", "id": "link", "label": "Link override", "info": "Leave empty to link to the collection." },
+        {
+          "type": "select", "id": "label_color", "label": "Label colour", "default": "white",
+          "info": "Ink for very bright images.",
+          "options": [
+            { "value": "white", "label": "White" },
+            { "value": "ink", "label": "Ink" }
+          ]
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Category tiles",
+      "blocks": [
+        { "type": "category", "settings": { "label": "Dresses", "image": "", "collection": "womens-dresses" } },
+        { "type": "category", "settings": { "label": "Coats", "image": "", "collection": "womens-coats-jackets" } },
+        { "type": "category", "settings": { "label": "Knitwear", "image": "", "collection": "womens-knitwear" } },
+        { "type": "category", "settings": { "label": "Tops", "image": "", "collection": "womens-tops-blouses" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

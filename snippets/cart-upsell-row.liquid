@@ -1,0 +1,32 @@
+{%- comment -%}
+  One add-on toggle. Liquid remains the source of truth after every wholesale
+  cart render. cart-extras.js only remembers a shopper's explicit decline for
+  the session so preselection can never undo their choice.
+{%- endcomment -%}
+{%- if up != blank -%}
+  {%- assign uv = up.variants.first -%}
+  {%- if uv -%}
+    {%- assign in_cart = false -%}
+    {%- for line in cart.items -%}
+      {%- if line.variant_id == uv.id -%}{%- assign in_cart = true -%}{%- endif -%}
+    {%- endfor -%}
+    <button
+      type="button"
+      class="cart-upsell{% if in_cart %} is-on{% endif %}"
+      aria-pressed="{% if in_cart %}true{% else %}false{% endif %}"
+      data-addon-variant="{{ uv.id }}"
+      data-addon-present="{{ in_cart }}"
+      data-addon-preselect="{{ preselect | default: false }}"
+      {% if in_cart %}data-qty-change="0" data-variant-id="{{ uv.id }}" data-addon-decline="{{ uv.id }}"{% else %}data-upsell-add="{{ uv.id }}"{% endif %}
+    >
+      <span class="cart-upsell__box" aria-hidden="true">{% if in_cart %}&#10003;{% endif %}</span>
+      <span class="cart-upsell__text">
+        <span class="cart-upsell__title lbl">{{ up.title | escape }}</span>
+        {%- if up.description != blank -%}
+          <span class="cart-upsell__desc lbl-sm mute">{{ up.description | strip_html | truncate: 90 }}</span>
+        {%- endif -%}
+      </span>
+      <span class="cart-upsell__price lbl">{{ uv.price | money_without_trailing_zeros }}</span>
+    </button>
+  {%- endif -%}
+{%- endif -%}

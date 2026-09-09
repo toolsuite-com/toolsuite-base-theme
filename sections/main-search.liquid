@@ -1,0 +1,87 @@
+{%- comment -%}
+  Search page. Underline-only input, count in the label system,
+  results in the same .grid-4 the PLP uses (2 columns mobile / 4 desktop, 2px
+  gaps) from snippets/product-card.liquid.
+
+  The [data-predictive] wrapper + .predictive__panel that theme.js fills from
+  sections/predictive-search.liquid uses a catalog-true placeholder: example
+  search terms should point at categories that actually exist in the store,
+  not arbitrary examples that might match nothing. The suggestion row shows
+  before a search and on zero results. Pagination is the shared numbered
+  pager (snippets/pagination.liquid) — one behaviour across PLP and search.
+
+  The head is centred: title, input and result count on the page's centre line,
+  matching the collection head.
+{%- endcomment -%}
+{%- paginate search.results by 24 -%}
+<section class="sec--tight">
+  <div class="wrap search-head">
+    <h1 class="dl">{% if search.performed %}{{ 'search.title_results' | t }}{% else %}{{ 'search.label' | t }}{% endif %}</h1>
+    <div class="predictive" data-predictive>
+      <form action="{{ routes.search_url }}" method="get" class="search-form" role="search">
+        <label class="visually-hidden" for="search-q">{{ 'search.label' | t }}</label>
+        <input id="search-q" class="field" type="search" name="q" value="{{ search.terms | escape }}"
+          placeholder="{{ 'search.placeholder' | t }}" autocomplete="off">
+        <button type="submit">{{ 'search.label' | t }}</button>
+      </form>
+      <div class="predictive__panel" hidden></div>
+    </div>
+    {%- if search.performed -%}
+      <p class="lbl mute">{{ search.results_count }} {% if search.results_count == 1 %}{{ 'search.result_singular' | t }}{% else %}{{ 'search.result_plural' | t }}{% endif %} for &ldquo;{{ search.terms | escape }}&rdquo;</p>
+    {%- endif -%}
+  </div>
+
+  {%- if search.performed -%}
+    {%- if search.results_count > 0 -%}
+      <div class="grid-4">
+        {%- for item in search.results -%}
+          {%- if item.object_type == 'product' -%}
+            {% render 'product-card', product: item, card_index: forloop.index %}
+          {%- else -%}
+            <article class="card">
+              <a class="search-other" href="{{ item.url }}">
+                <h3 class="lbl">{{ item.title | escape }}</h3>
+                <p class="prose mute">{{ item.content | strip_html | truncate: 120 }}</p>
+              </a>
+            </article>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+      {% render 'pagination', paginate: paginate %}
+    {%- else -%}
+      <div class="wrap wrap--narrow plp-empty">
+        <h2 class="dl">{{ 'search.empty_heading' | t }}</h2>
+        <p class="prose mute">{{ 'search.empty_text' | t }}</p>
+        <a href="{{ routes.all_products_collection_url }}" class="bar">{{ 'general.shop_all' | t }}</a>
+      </div>
+    {%- endif -%}
+  {%- endif -%}
+
+  {%- comment -%} suggestions: before a search and on zero results {%- endcomment -%}
+  {%- unless search.performed and search.results_count > 0 -%}
+    {%- assign sug_col = section.settings.suggest_collection | default: collections.all -%}
+    {%- if sug_col.products.size > 0 -%}
+      <div class="wrap sec-head sec-head--center">
+        <h2 class="dl">{{ section.settings.suggest_heading | escape }}</h2>
+        <a class="tlink" href="{{ routes.all_products_collection_url }}">{{ 'general.shop_all' | t }}</a>
+      </div>
+      <div class="grid-4">
+        {%- for p in sug_col.products limit: section.settings.suggest_limit -%}
+          {% render 'product-card', product: p, card_index: forloop.index %}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  {%- endunless -%}
+</section>
+{%- endpaginate -%}
+
+{% schema %}
+{
+  "name": "Search page",
+  "settings": [
+    { "type": "collection", "id": "suggest_collection", "label": "Suggestions collection", "info": "Products shown before a search and when nothing matches. Defaults to all products." },
+    { "type": "text", "id": "suggest_heading", "label": "Suggestions heading", "default": "Popular right now" },
+    { "type": "range", "id": "suggest_limit", "label": "Number of suggestions", "min": 4, "max": 12, "step": 2, "default": 8 }
+  ]
+}
+{% endschema %}

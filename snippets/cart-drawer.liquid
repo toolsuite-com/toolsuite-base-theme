@@ -1,0 +1,42 @@
+<dialog id="cart-drawer" class="cart-drawer" aria-label="{{ 'cart.drawer.aria' | t }}">
+  {%- comment -%} Shopify wraps the section render below in an invisible
+  .shopify-section div that is NOT a flex item by default — it swallowed the
+  inner's `flex: 1 1 0%` grow instruction, so the content stayed content-height
+  and the checkout block hung mid-drawer with dead space below. This rule
+  passes the drawer height through the wrapper so the existing layout applies
+  again: items grow + scroll, foot sits at the bottom. {%- endcomment -%}
+  <style>
+    #cart-drawer > .shopify-section {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0%;
+      min-height: 0;
+      height: 100%;
+    }
+  </style>
+  {% section 'cart-drawer-content' %}
+  {%- comment -%} Express wallets in the drawer. They live in
+  the dialog SHELL, not in .cart-drawer__inner: the inner is swapped wholesale by
+  refreshCartDrawer() and the wallet buttons are script-initialised once per page
+  load — an innerHTML swap would leave dead buttons. The shell survives every
+  refresh; the buttons read the server cart at click time, so they never go stale.
+  content_for_additional_checkout_buttons may render only ONCE per page and
+  main-cart.liquid already renders it on /cart — hence the template guard.
+  Visibility on cart changes is toggled by refreshCartDrawer() via
+  [data-cart-express].
+
+  KNOWN LIMIT, left alone on purpose: Shopify's <shopify-accelerated-checkout-cart>
+  upgrades once at page load and paints nothing if the cart was empty at that
+  moment, so on the very first page a visitor loads with an empty bag the wallet
+  block can stay 0px tall until the next page view. Two fixes were tried and both
+  made it worse — re-assigning innerHTML loses the <shopify-google-pay-button>
+  child outright. Do not attempt a third without reproducing the empty-bag case
+  first: with anything already in the bag the wallets render correctly. {%- endcomment -%}
+  {%- unless template == 'cart' -%}
+    {%- if settings.cart_express_enabled and additional_checkout_buttons -%}
+      <div class="cart-drawer__express" data-cart-express{% if cart.item_count == 0 %} hidden{% endif %}>
+        <div class="additional-checkout-buttons">{{ content_for_additional_checkout_buttons }}</div>
+      </div>
+    {%- endif -%}
+  {%- endunless -%}
+</dialog>

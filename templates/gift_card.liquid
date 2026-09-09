@@ -1,0 +1,57 @@
+{% layout none %}
+{%- comment -%}
+  Gift card — a standalone page (no theme layout, per Shopify), so it carries its
+  own minimal copy of the ink-on-paper system: paper ground, Prata amount, the
+  label system for the code, hairline rules, zero radius. Self-contained on
+  purpose: it is printed and screenshotted more than it is browsed.
+{%- endcomment -%}
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ 'gift_card.title_prefix' | t }} | {{ shop.name }}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ 'brand-favicon.svg' | asset_url }}">
+  <style>
+    {%- comment -%} The gift card page carries no PDP tags, so it is Archivo top to
+    bottom, same as the rest of the theme. Prata is not used in this standalone template. {%- endcomment -%}
+    @font-face { font-family: 'Archivo'; src: url('{{ 'archivo-var.woff2' | asset_url }}') format('woff2'); font-weight: 400 700; font-display: swap; }
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      background: {{ settings.color_paper | default: '#FAF8F4' }};
+      color: {{ settings.color_ink | default: '#141310' }};
+      font-family: 'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      display: grid; place-items: center; min-height: 100svh; padding: 32px; text-align: center;
+    }
+    .gc { display: grid; gap: 20px; justify-items: center; max-width: 420px; width: 100%; }
+    .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; font-weight: 500; }
+    .amount { font-family: 'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 52px; line-height: 1; letter-spacing: -.02em; }
+    .code {
+      width: 100%; padding: 16px 12px;
+      border-top: 1px solid {{ settings.color_hairline | default: '#E3DED5' }};
+      border-bottom: 1px solid {{ settings.color_hairline | default: '#E3DED5' }};
+      font-size: 15px; letter-spacing: .22em;
+    }
+    .mute { color: {{ settings.color_mute | default: '#8A857C' }}; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
+    a.bar {
+      display: block; width: 100%; padding: 17px 20px;
+      background: {{ settings.color_ink | default: '#141310' }}; color: {{ settings.color_paper | default: '#FAF8F4' }};
+      text-decoration: none; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; font-weight: 500;
+    }
+    img { display: block; max-width: 100%; }
+  </style>
+</head>
+<body>
+  <main class="gc">
+    <p class="lbl">{{ 'gift_card.label' | t: shop: shop.name }}</p>
+    <p class="amount">{{ gift_card.initial_value | money_without_trailing_zeros }}</p>
+    <p class="code">{{ gift_card.code | format_code }}</p>
+    {%- if gift_card.enabled == false or gift_card.expired -%}
+      <p class="mute">{{ 'gift_card.expired' | t }}</p>
+    {%- else -%}
+      <p class="mute">{{ 'gift_card.balance_label' | t }} {{ gift_card.balance | money_without_trailing_zeros }}{% if gift_card.expires_on %} &middot; {{ 'gift_card.valid_until' | t }} {{ gift_card.expires_on | date: '%B %d, %Y' }}{% endif %}</p>
+    {%- endif -%}
+    <a class="bar" href="{{ shop.url }}">{{ 'gift_card.shop_button' | t: shop: shop.name }}</a>
+  </main>
+</body>
+</html>

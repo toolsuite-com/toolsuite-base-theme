@@ -1,0 +1,54 @@
+{%- comment -%}
+  Star rating, drawn as real stars rather than a bare "★" text glyph — at
+  small sizes a text glyph reads as punctuation, not a rating, and it
+  inherits whatever tracking the surrounding label class carries. This draws
+  stars as one inline SVG and supports a PARTIAL last star, so 4.7 shows as
+  four and seven-tenths instead of rounding up to five (rounding up a rating
+  is exactly the kind of small lie this theme is careful to avoid elsewhere).
+
+  NO THIRD-PARTY REVIEW-PLATFORM MARK. When the aggregate figures are the
+  store's own rather than pulled from a third-party review platform, using
+  that platform's wordmark and colour tiles would claim a verification that
+  does not exist, plus a trademark the store has no licence to. Same job,
+  brand colours, no borrowed credibility.
+
+  Usage:
+    {%- render 'stars', value: 4.7 -%}
+    {%- render 'stars', value: block.settings.stars, size: 15 -%}
+
+  value : number 0–5 (accepts "4.7" strings too)
+  size  : px, optional, default 16
+  label : optional aria-label override; omit inside an element that already
+          names the rating, and this renders aria-hidden instead.
+{%- endcomment -%}
+{%- liquid
+  assign star_value = value | times: 1.0
+  if star_value > 5
+    assign star_value = 5
+  endif
+  if star_value < 0
+    assign star_value = 0
+  endif
+  assign star_size = size | default: 16
+  comment
+    percentage of the row that is filled — one gradient stop across all five
+    stars is cheaper and smoother than per-star maths
+  endcomment
+  assign star_pct = star_value | times: 20.0
+  assign star_uid = star_value | times: 100 | round | append: '-' | append: star_size
+-%}
+<span class="stars"
+  style="--stars-size: {{ star_size }}px; --stars-fill: {{ star_pct }}%;"
+  {% if label != blank %}role="img" aria-label="{{ label | escape }}"{% else %}aria-hidden="true"{% endif %}
+>
+  <span class="stars__track" aria-hidden="true">
+    {%- for i in (1..5) -%}
+      <svg class="stars__ico" viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M10 1.6l2.47 5.28 5.53.72-4.06 3.9 1.04 5.66L10 14.4l-4.98 2.76 1.04-5.66L2 7.6l5.53-.72z"/></svg>
+    {%- endfor -%}
+  </span>
+  <span class="stars__on" aria-hidden="true">
+    {%- for i in (1..5) -%}
+      <svg class="stars__ico" viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M10 1.6l2.47 5.28 5.53.72-4.06 3.9 1.04 5.66L10 14.4l-4.98 2.76 1.04-5.66L2 7.6l5.53-.72z"/></svg>
+    {%- endfor -%}
+  </span>
+</span>

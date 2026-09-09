@@ -1,0 +1,67 @@
+{%- comment -%}
+  Initial page render ships only the shell. pdp-extras.js asks Shopify's native
+  Recommendations API to render this section again with intent=complementary,
+  then transplants [data-complete-look-ready]. Adds always use Theme.addToCart
+  so they share theme.js's queue, freeze and stale-cart recovery path.
+{%- endcomment -%}
+<section
+  class="pdp-complete-look"
+  data-complete-look
+  data-section-id="{{ section.id }}"
+  data-product-id="{{ product.id }}"
+  hidden
+>
+  <div class="pdp-complete-look__head">
+    <h2 class="lbl">{{ 'product.complete_look.heading' | t }}</h2>
+  </div>
+  <div data-complete-look-target>
+    {%- if recommendations.performed and recommendations.products_count > 0 -%}
+      <div class="pdp-complete-look__list" data-complete-look-ready>
+        {%- for complete_product in recommendations.products limit: 3 -%}
+          {%- assign complete_variant = complete_product.selected_or_first_available_variant -%}
+          <article class="pdp-complete-look__item">
+            <a class="pdp-complete-look__image" href="{{ complete_product.url }}" aria-label="{{ 'product.complete_look.view_aria' | t: title: complete_product.title }}">
+              {%- if complete_product.featured_media != blank -%}
+                <img src="{{ complete_product.featured_media | image_url: width: 180, height: 270, crop: 'center' }}" width="60" height="90" alt="" loading="lazy">
+              {%- endif -%}
+            </a>
+            <div class="pdp-complete-look__copy">
+              <a class="stmt-sm" href="{{ complete_product.url }}">{{ complete_product.title | escape }}</a>
+              <div class="pdp-complete-look__price stmt-sm">
+                {%- render 'price-badge', price: complete_variant.price, compare: complete_variant.compare_at_price, layout: 'pdp' -%}
+              </div>
+            </div>
+            {%- comment -%} NEVER add a size nobody picked. selected_or_first_available_variant
+            just takes whatever comes first, so a one-tap "Add" here would post an unchosen
+            size — the exact thing this theme forbids on the PDP and in the quick view.
+            Returns are the cost.
+
+            For anything with a real choice to make, the button therefore opens the existing
+            QUICK VIEW instead of adding: [data-quick-add] + data-quick-view is theme.js's
+            own hook (initQuickView), so this needs no new dialog, no new JS and no second
+            variant picker to keep in sync. Single-variant products keep the direct add —
+            there is nothing to choose. {%- endcomment -%}
+            {%- if complete_product.variants.size > 1 -%}
+              <button
+                type="button"
+                class="tlink pdp-complete-look__add"
+                data-quick-add
+                data-quick-view="{{ complete_product.handle }}"
+                aria-label="{{ 'product.complete_look.choose_size_aria' | t: title: complete_product.title }}"
+                {% unless complete_product.available %}disabled{% endunless %}
+              ><span data-atc-label>{% if complete_product.available %}{{ 'product.complete_look.choose_size' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span></button>
+            {%- else -%}
+              <button
+                type="button"
+                class="tlink pdp-complete-look__add"
+                data-complete-look-add
+                data-variant-id="{{ complete_variant.id }}"
+                {% unless complete_variant.available %}disabled{% endunless %}
+              ><span data-atc-label>{% if complete_variant.available %}{{ 'product.complete_look.add' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span></button>
+            {%- endif -%}
+          </article>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
