@@ -117,6 +117,19 @@
   request instead of seven. New block styles can go into a separate extras file
   linked here, then get combined into theme.css again afterward. {%- endcomment -%}
   {{ 'theme.css' | asset_url | stylesheet_tag }}
+  {%- comment -%} theme.css keeps standalone colour fallbacks in :root; because it
+  loads AFTER the inline block above, those fallbacks would otherwise override the
+  merchant's colour settings. Re-inject the settings-driven tokens here, after
+  theme.css, so the theme's Colors settings actually take effect. {%- endcomment -%}
+  <style>
+    :root {
+      --paper: {{ settings.color_paper }};
+      --ink: {{ settings.color_ink }};
+      --cream: {{ settings.color_cream }};
+      --hairline: {{ settings.color_hairline }};
+      --mute: {{ settings.color_mute }};
+    }
+  </style>
   <script>
     /* .reveal starts at opacity 0 — scoped to html.js so a browser without
        JavaScript (or with theme.js blocked) never gets a blank page. Set here,
