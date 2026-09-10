@@ -4,6 +4,9 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.2.2 — 2026-09-10
+- Fixed: the licensing notice's 'Manage license' link now points to the Obsidian app (obsidian.toolsuite.com/dashboard), where theme + membership management moved. The old link (toolsuite.com/dashboard/resources) no longer exists.
+
 ## 1.2.1 — 2026-09-10
 - Fixed: the theme's Colors settings (paper, ink, cream, hairline, mute) now actually take effect. theme.css kept standalone fallback tokens that loaded after the settings-injected values and silently overrode them; the settings-driven colours are now re-injected after theme.css so your palette applies on the storefront and in the editor.
 
