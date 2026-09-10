@@ -1,0 +1,56 @@
+{%- comment -%}
+  Popup. An optional, quiet modal — one offer, dismissable, remembered. Off by
+  default (enabled setting). Shown once per visitor after a short delay when
+  "show once" is on. Ink on paper, serif heading; no scrims on imagery here —
+  this is chrome, not content, so a soft scrim over the page is allowed.
+{%- endcomment -%}
+{%- if section.settings.enabled -%}
+<div id="ts-popup-{{ section.id }}" class="ts-popup" data-delay="{{ section.settings.delay | default: 3 }}" data-once="{{ section.settings.show_once }}" data-key="ts-popup-{{ section.id }}" hidden>
+  <div class="ts-popup__scrim" data-close></div>
+  <div class="ts-popup__card" role="dialog" aria-modal="true">
+    <button class="ts-popup__x" data-close aria-label="Close">&times;</button>
+    {%- if section.settings.heading != blank -%}<h2 class="ts-popup__h">{{ section.settings.heading | escape }}</h2>{%- endif -%}
+    {%- if section.settings.body != blank -%}<p class="ts-popup__b">{{ section.settings.body | escape }}</p>{%- endif -%}
+    {%- if section.settings.cta_label != blank -%}<a class="ts-popup__cta" href="{{ section.settings.cta_link | default: '#' }}">{{ section.settings.cta_label | escape }}</a>{%- endif -%}
+  </div>
+</div>
+<style>
+  #ts-popup-{{ section.id }}{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center}
+  #ts-popup-{{ section.id }} .ts-popup__scrim{position:absolute;inset:0;background:rgba(20,19,16,.5)}
+  #ts-popup-{{ section.id }} .ts-popup__card{position:relative;background:var(--paper,#FAF8F4);color:var(--ink,#141310);max-width:420px;width:calc(100% - 40px);padding:40px 36px;border-radius:14px;text-align:center;box-shadow:0 30px 70px rgba(0,0,0,.3)}
+  #ts-popup-{{ section.id }} .ts-popup__x{position:absolute;top:12px;right:14px;background:none;border:0;font-size:24px;line-height:1;color:var(--mute,#8A857C);cursor:pointer}
+  #ts-popup-{{ section.id }} .ts-popup__h{font-family:var(--font-display,Georgia,serif);font-size:26px;margin:0 0 10px}
+  #ts-popup-{{ section.id }} .ts-popup__b{color:var(--mute,#8A857C);line-height:1.6;font-size:15px;margin:0 0 18px}
+  #ts-popup-{{ section.id }} .ts-popup__cta{display:inline-block;background:var(--ink,#141310);color:var(--paper,#FAF8F4);text-decoration:none;padding:12px 26px;border-radius:9px;font-size:14px}
+</style>
+<script>
+  (function(){
+    var el=document.getElementById('ts-popup-{{ section.id }}'); if(!el) return;
+    var key=el.getAttribute('data-key'), once=el.getAttribute('data-once')==='true';
+    function seen(){try{return once && localStorage.getItem(key)==='1'}catch(e){return false}}
+    function mark(){try{if(once)localStorage.setItem(key,'1')}catch(e){}}
+    function close(){el.setAttribute('hidden','');mark()}
+    el.querySelectorAll('[data-close]').forEach(function(b){b.addEventListener('click',close)});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')close()});
+    if(window.Shopify && window.Shopify.designMode){el.removeAttribute('hidden');return;} // always show in the editor
+    if(seen()) return;
+    setTimeout(function(){el.removeAttribute('hidden')}, (parseFloat(el.getAttribute('data-delay'))||3)*1000);
+  })();
+</script>
+{%- endif -%}
+{% schema %}
+{
+  "name": "Popup",
+  "settings": [
+    { "type": "checkbox", "id": "enabled", "label": "Enable popup", "default": false },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Join the list" },
+    { "type": "textarea", "id": "body", "label": "Body", "default": "First look at new arrivals, and a little off your first order." },
+    { "type": "text", "id": "cta_label", "label": "Button label", "default": "Shop new in" },
+    { "type": "url", "id": "cta_link", "label": "Button link" },
+    { "type": "range", "id": "delay", "label": "Delay", "unit": "s", "min": 0, "max": 20, "step": 1, "default": 3 },
+    { "type": "checkbox", "id": "show_once", "label": "Show once per visitor", "default": true }
+  ],
+  "presets": [{ "name": "Popup" }],
+  "enabled_on": { "templates": ["*"] }
+}
+{% endschema %}

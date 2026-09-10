@@ -4,6 +4,9 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.2.3 — 2026-09-10
+- Added an optional Popup section (one quiet offer — heading, body, button, delay, show-once). Off by default; add it from any template and enable it. On-brand (ink on paper, serif heading), dismissable, and remembered per visitor.
+
 ## 1.2.2 — 2026-09-10
 - Fixed: the licensing notice's 'Manage license' link now points to the Obsidian app (obsidian.toolsuite.com/dashboard), where theme + membership management moved. The old link (toolsuite.com/dashboard/resources) no longer exists.
 
