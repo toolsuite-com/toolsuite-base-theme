@@ -10,7 +10,6 @@ rm -f toolsuite-base-theme*.zip
 
 zip -r -X "$OUT" \
   assets config layout locales sections snippets templates \
-  -x "config/settings_data.json" \
   -x "*.DS_Store" -x "__MACOSX/*" >/dev/null
 
 {

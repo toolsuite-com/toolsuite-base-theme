@@ -2,7 +2,7 @@
   {
     "name": "theme_info",
     "theme_name": "ToolSuite Base Theme",
-    "theme_version": "1.1.1",
+    "theme_version": "1.2.0",
     "theme_author": "ToolSuite",
     "theme_documentation_url": "https://example.com",
     "theme_support_url": "https://example.com"
@@ -391,6 +391,21 @@
         "id": "qty_tiers",
         "label": "Tiers (quantity:percent, comma-separated)",
         "default": "2:10,3:15,4:20,5:25"
+      }
+    ]
+  },
+  {
+    "name": "License",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Your ToolSuite membership license. This is pre-filled when you download the theme from your ToolSuite dashboard. Manage it at toolsuite.com/dashboard/resources."
+      },
+      {
+        "type": "text",
+        "id": "license_key",
+        "label": "License key",
+        "info": "Format: TS-…  — keep this filled to use the theme with your active ToolSuite membership."
       }
     ]
   }

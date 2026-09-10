@@ -1,0 +1,79 @@
+{%- comment -%}
+  ToolSuite theme license — verifies the store's ToolSuite membership is active.
+  The hub (toolsuite.com) is the single source of truth; this only asks.
+  Runs client-side (Liquid has no server HTTP), caches 1h, and FAILS OPEN on a
+  network error so a transient hiccup never breaks a live store. Enforcement:
+  blocking overlay in the theme editor (the owner sees it); a dismissible-free
+  banner on the live storefront — never disables storefront functionality.
+{%- endcomment -%}
+<script>
+(function () {
+  'use strict';
+  var KEY = {{ settings.license_key | default: '' | json }};
+  var STORE = (typeof Shopify !== 'undefined' && Shopify.shop) ? Shopify.shop : window.location.hostname;
+  var ENDPOINT = 'https://toolsuite.com/api/theme/verify';
+  var CACHE = 'ts_theme_license';
+  var TTL = 3600000; // 1h
+
+  function cached() {
+    try {
+      var d = JSON.parse(localStorage.getItem(CACHE) || 'null');
+      if (d && d.key === KEY && d.store === STORE && (Date.now() - d.t) < TTL) return d.ok;
+    } catch (e) {}
+    return null;
+  }
+  function store(ok) {
+    try { localStorage.setItem(CACHE, JSON.stringify({ ok: ok, key: KEY, store: STORE, t: Date.now() })); } catch (e) {}
+  }
+
+  function editorOverlay() {
+    if (document.getElementById('ts-license-overlay')) return;
+    var o = document.createElement('div');
+    o.id = 'ts-license-overlay';
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,12,.88);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:-apple-system,Segoe UI,Roboto,sans-serif';
+    o.innerHTML = '<div style="background:#fff;max-width:460px;padding:36px;border-radius:16px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35)">'
+      + '<div style="font-size:44px;margin-bottom:14px">\u{1F512}</div>'
+      + '<h2 style="margin:0 0 12px;font-size:22px;color:#0a0a0a">Membership required</h2>'
+      + '<p style="margin:0 0 18px;color:#555;line-height:1.6;font-size:15px">This theme needs an active ToolSuite membership. Your license key is missing or your membership is inactive.</p>'
+      + '<a href="https://toolsuite.com/dashboard/resources" target="_blank" style="display:inline-block;background:#0a0a0a;color:#fff;text-decoration:none;padding:11px 20px;border-radius:10px;font-weight:600;font-size:14px">Manage license</a>'
+      + '</div>';
+    (document.body || document.documentElement).appendChild(o);
+  }
+
+  function storefrontBanner() {
+    if (document.getElementById('ts-license-banner')) return;
+    var b = document.createElement('div');
+    b.id = 'ts-license-banner';
+    b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#7a1420;color:#fff;padding:11px 18px;text-align:center;font:14px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;z-index:2147483646';
+    b.innerHTML = 'This store’s ToolSuite theme license is inactive. Store owner: renew your membership at '
+      + '<a href="https://toolsuite.com/dashboard/resources" target="_blank" style="color:#fff;text-decoration:underline">toolsuite.com</a>.';
+    var add = function () { if (document.body && !document.getElementById('ts-license-banner')) document.body.appendChild(b); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
+  }
+
+  function enforce() {
+    if (typeof Shopify !== 'undefined' && Shopify.designMode) editorOverlay();
+    else storefrontBanner();
+  }
+
+  function verify() {
+    if (!KEY) { store(false); enforce(); return; }
+    var c = cached();
+    if (c === true) return;
+    if (c === false) { enforce(); return; }
+    fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: KEY, store: STORE })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.success) { store(true); }
+      else { store(false); enforce(); }
+    }).catch(function () {
+      // Network error → fail open unless we already know it's invalid.
+      if (cached() === false) enforce();
+    });
+  }
+
+  verify();
+})();
+</script>
