@@ -4,6 +4,9 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.1.1 — 2026-09-10
+- Release announcements now post to the #releases Discord channel.
+
 ## 1.1.0 — 2026-09-10
 - Versioning pipeline verified end-to-end (git → release → hub).
 - Members now see the version, changelog and update date on Dashboard → Resources.
