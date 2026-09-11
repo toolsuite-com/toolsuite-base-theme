@@ -2,7 +2,7 @@
   {
     "name": "theme_info",
     "theme_name": "ToolSuite Base Theme",
-    "theme_version": "1.2.4",
+    "theme_version": "1.3.0",
     "theme_author": "ToolSuite",
     "theme_documentation_url": "https://example.com",
     "theme_support_url": "https://example.com"
@@ -68,6 +68,227 @@
         "label": "Amber (buy bar only)",
         "default": "#A88652",
         "info": "Used only when the buy bar is set to Amber. Never a UI accent."
+      },
+      {
+        "type": "paragraph",
+        "content": "The buy bar picks its own label colour: the theme measures the contrast of your amber against both ink and paper and prints whichever wins. The shipped amber gives 3.19:1 with paper (below the 4.5:1 minimum for the bar's 14px label) and 5.48:1 with ink, so it is labelled in ink. Pick a darker amber and the label flips back to paper on its own — you cannot land on an illegible buy bar from this field."
+      },
+      {
+        "type": "paragraph",
+        "content": "Surface tones. These two are structural, not decorative: they give the page a chapter rhythm and a second voice for prose, which is the difference between a long page and a long scroll."
+      },
+      {
+        "type": "color",
+        "id": "color_limestone",
+        "label": "Limestone (alternating section band)",
+        "default": "#F2EFE8",
+        "info": "Backs every other section so the page reads as chapters instead of one flat sheet. Deliberately only 1.08:1 against paper — a band you notice at arm's length and not up close. Ink holds 16.2:1 on it and the secondary label 4.75:1, so no text needs re-checking. Going darker than roughly #EDE9E0 stops reading as the same paper and starts reading as a coloured block."
+      },
+      {
+        "type": "color",
+        "id": "color_ink_soft",
+        "label": "Ink soft (secondary prose)",
+        "default": "#4A473E",
+        "info": "For running prose that is not the primary voice — descriptions, captions, editorial body. Distinct from the Secondary label above: this is for sentences, that is for 14px uppercase chrome. The default holds 8.75:1 on paper, 8.08:1 on limestone and 7.96:1 on cream, so it clears WCAG AAA (7:1) on all three grounds and stays a real prose colour rather than grey filler."
+      }
+    ]
+  },
+  {
+    "name": "Typography",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "The theme ships Prata (display) and Archivo (everything else) as its own font files, preloaded before the stylesheet is even parsed. LEAVE BOTH PICKERS ALONE and those local files keep being used — the store makes no request to Shopify's font service at all, which is the fastest of the two paths. Pick any other family and that role moves over to Shopify's fonts, costing one extra connection on first paint. Both are correct; the default is faster."
+      },
+      {
+        "type": "font_picker",
+        "id": "font_display",
+        "label": "Display font",
+        "default": "dm_serif_display_n4",
+        "info": "Headlines only: hero, section headings, editorial captions, product title, and the short italic tags under the product name. NOTE: Prata is no longer offered in Shopify's font list, so this picker sits on DM Serif Display — the nearest match — to mean \"the theme's own Prata\". At that setting your headlines render in Prata. Change it to anything else and you get exactly the family you picked. The one quirk: choosing DM Serif Display on purpose also gives you Prata. A high-contrast serif is what makes this store read as editorial rather than as a storefront — if you swap it, swap it for another serif."
+      },
+      {
+        "type": "font_picker",
+        "id": "font_body",
+        "label": "Body + interface font",
+        "default": "archivo_n4",
+        "info": "Everything else: the uppercase label system, buttons, navigation, prices and body copy. Left on Archivo this uses the theme's own file. A grotesque with a true italic and a real bold works best — the theme asks for regular, bold and italic cuts, and a single-weight family will have its bold synthesised by the browser."
+      },
+      {
+        "type": "select",
+        "id": "type_scale",
+        "label": "Type scale",
+        "options": [
+          {
+            "value": "compact",
+            "label": "Compact"
+          },
+          {
+            "value": "default",
+            "label": "Default"
+          },
+          {
+            "value": "generous",
+            "label": "Generous"
+          }
+        ],
+        "default": "default",
+        "info": "Scales every display step together (-8% / +8%), so the relationship between the hero, section headings and captions is preserved — it moves the whole scale, it does not resize one heading. Generous suits short catalogues with big photography; Compact suits dense category pages."
+      },
+      {
+        "type": "range",
+        "id": "heading_tracking",
+        "label": "Heading letter-spacing",
+        "min": -3,
+        "max": 1,
+        "step": 0.5,
+        "default": -0.5,
+        "info": "In hundredths of an em. -0.5 is the -0.005em the display steps ship with. Serif display faces need negative tracking at hero size (96px) and roughly none at caption size; if you have chosen a geometric or condensed display font, opening this up to 0 or 0.5 is usually the fix. Past 1 the word shapes come apart at hero size."
+      },
+      {
+        "type": "range",
+        "id": "body_size",
+        "label": "Body text size",
+        "min": 15,
+        "max": 18,
+        "step": 1,
+        "unit": "px",
+        "default": 17,
+        "info": "17px is the shipped default and is deliberately one step above the usual 16: the theme's readership skews older, and larger body type costs a younger reader nothing. Drop to 15 only if you have chosen a body font that runs wide."
+      }
+    ]
+  },
+  {
+    "name": "Layout & rhythm",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "These three settings control the page's structure: how wide it gets, how much air sits between sections, and whether corners are sharp. They are the settings that make one store look like a different store."
+      },
+      {
+        "type": "range",
+        "id": "page_width",
+        "label": "Page width",
+        "min": 1200,
+        "max": 1600,
+        "step": 20,
+        "unit": "px",
+        "default": 1320,
+        "info": "The maximum width of contained content. Full-bleed rows (hero, category mosaic) ignore it by design. Wider is not better: past about 1400 a four-up product row starts showing cards larger than the photography was shot for."
+      },
+      {
+        "type": "select",
+        "id": "section_spacing",
+        "label": "Section spacing",
+        "options": [
+          {
+            "value": "tight",
+            "label": "Tight"
+          },
+          {
+            "value": "default",
+            "label": "Default"
+          },
+          {
+            "value": "airy",
+            "label": "Airy"
+          }
+        ],
+        "default": "default",
+        "info": "Sets the whole spacing system at once — page gutters, the gaps inside grids, and the space between sections — as one proportional set, so nothing has to be nudged individually. Every value scales with the viewport, so Airy does not mean an empty phone screen."
+      },
+      {
+        "type": "select",
+        "id": "corner_style",
+        "label": "Corners",
+        "options": [
+          {
+            "value": "sharp",
+            "label": "Sharp"
+          },
+          {
+            "value": "soft",
+            "label": "Soft (4px)"
+          },
+          {
+            "value": "round",
+            "label": "Round (10px)"
+          }
+        ],
+        "default": "sharp",
+        "info": "Sharp is the theme's signal — square corners are what a serif display face and a hairline rule system are built around, and it is why the store reads as print rather than as an app. Soft and Round are here because a preset may want them; they apply to cards and media, never to the uppercase label chrome."
+      }
+    ]
+  },
+  {
+    "name": "Product cards",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "The product card appears on the homepage, every collection, search, the cart cross-sell and the related row — it is the most-repeated object in the store, so these settings change more of it than anything else here."
+      },
+      {
+        "type": "select",
+        "id": "card_image_ratio",
+        "label": "Image shape",
+        "options": [
+          {
+            "value": "portrait",
+            "label": "Portrait (2:3)"
+          },
+          {
+            "value": "tall",
+            "label": "Tall (3:4)"
+          },
+          {
+            "value": "square",
+            "label": "Square (1:1)"
+          }
+        ],
+        "default": "portrait",
+        "info": "Every card is cropped to the same shape so a grid reads as a grid — mixed source ratios are the single biggest thing that makes a catalogue look unfinished. Choose the one closest to how your photography was actually shot: cropping a square packshot to 2:3 cuts the garment."
+      },
+      {
+        "type": "select",
+        "id": "card_hover",
+        "label": "Hover behaviour",
+        "options": [
+          {
+            "value": "none",
+            "label": "None"
+          },
+          {
+            "value": "second",
+            "label": "Second image"
+          },
+          {
+            "value": "zoom",
+            "label": "Zoom"
+          }
+        ],
+        "default": "second",
+        "info": "Second image cross-fades to the product's second photo and falls back to no effect on products that only have one — it is the most useful of the three because it answers \"what does the back look like\" without a click. Zoom is the safe choice for a catalogue with inconsistent second shots. None is correct on touch-only storefronts."
+      },
+      {
+        "type": "checkbox",
+        "id": "card_show_vendor",
+        "label": "Show vendor on cards",
+        "default": false,
+        "info": "Off by default: in a single-brand store the vendor is the same word under every card, which adds a line of type and no information. Turn it on for a multi-brand or stockist catalogue, where it is the first thing a shopper scans for."
+      },
+      {
+        "type": "checkbox",
+        "id": "card_quick_add",
+        "label": "Quick add on cards",
+        "default": true,
+        "info": "Adds a one-tap add control to the card. For a product with sizes it opens the size choice rather than guessing a variant — a quick-add that silently picks a size is a returns problem."
+      },
+      {
+        "type": "checkbox",
+        "id": "price_show_cents",
+        "label": "Show cents in prices",
+        "default": false,
+        "info": "Drives EVERY price in the theme — cards, product page, cart, drawer, totals — so the store cannot print $240.00 in one place and $240 in another. Off shows whole amounts where the price has no cents and keeps them where it does (so $19.99 is never truncated). On always shows two decimals, which is the right choice for a market that expects them."
       }
     ]
   },

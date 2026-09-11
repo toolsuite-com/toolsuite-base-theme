@@ -1,20 +1,35 @@
 {%- comment -%}
-  Category tiles. Full-bleed photographs, category name in Prata
-  uppercase CENTERED ON the image, stacked full-width on mobile, 2×2 on
-  desktop, 2px gaps. No cards, no captions under the image.
+  Category tiles — a FULL-BLEED MOSAIC, committed to.
 
-  Contrast: category photographs run bright (pale limestone, white gravel,
-  ivory garments), so plain white type would fail on parts of every tile. Each
-  label sits on a soft radial ink veil that only darkens the type's own patch of
-  photograph — and a per-tile "Label colour" setting lets the merchant flip a tile
-  to ink where the image is brightest. Both are in the label element only; the
-  photograph itself is never dimmed as a whole.
+  The gap is now exactly 0, not the theme's 2px --gap. 1-2px between
+  photographs does not read as a deliberate mosaic: at any device pixel ratio
+  it reads as a CSS bug — a hairline of page ground showing through where the
+  images failed to meet. Either the tiles touch or they sit in a real grid with
+  a real gutter. This section touches. --gap is overridden LOCALLY on the grid
+  element only (theme.css styles this grid as `gap: var(--gap)`), so the global
+  2px keeps doing its job everywhere else in the theme.
+
+  Labels: `label_position` per block. "Over image" is the mosaic default and
+  keeps the ink veil + per-tile "Label colour" escape hatch. "Below image" is
+  the real fix for pale product photography — a label under the frame needs no
+  veil at all, so nothing is painted over the photograph. Category shots run
+  bright (pale limestone, white gravel, ivory garments) and a merchant who
+  shoots on white should be able to opt out of overlay text entirely rather
+  than tune a gradient.
+
+  Labels sit on a left baseline rather than dead centre: centred type over a
+  photograph has no edge to align to, so four tiles read as four unrelated
+  compositions. A shared inline-start edge is what makes a row read as one row.
 
   Images are Shopify Files, referenced from templates/index.json with an
   empty default so each store starts with its own picks.
 {%- endcomment -%}
 <section class="sec--tight bleed reveal">
-  <div class="home-cats">
+  {%- comment -%} --gap: 0px is set here, in markup, on purpose: it is the one
+  declaration that decides whether this section reads as a mosaic or as a bug,
+  and setting the variable (not `gap`) leaves any `gap` rule the stylesheet
+  writes for .home-cats still able to win. {%- endcomment -%}
+  <div class="home-cats home-cats--flush" style="--gap: 0px;">
     {%- for block in section.blocks -%}
       {%- liquid
         assign col = block.settings.collection
@@ -28,32 +43,55 @@
           flip on non-primary locales, which discarded the typed label there.
         endcomment
         assign label = block.settings.label | default: col.title
+        assign label_pos = block.settings.label_position | default: 'over'
       -%}
-      <a class="home-cat{% if block.settings.label_color == 'ink' %} home-cat--ink{% endif %}" href="{{ url | default: routes.all_products_collection_url }}" {{ block.shopify_attributes }}>
-        {%- if block.settings.image != blank -%}
-          {%- comment -%} PERFORMANCE: at a flat width ladder a
-          phone downloaded FOUR tiles at 780w / ~330 KB each — 1.3 MB of
-          navigation furniture, one of the largest avoidable page-weight
-          costs on this template. A <picture> caps the ceiling per viewport (640w phone / 900w
-          desktop) instead of under-declaring `sizes`, so the browser still gets
-          honest layout information. These tiles carry a type label over a soft
-          background; ~1.5× device pixels is invisible on them. {%- endcomment -%}
-          <picture>
-            <source
-              media="(min-width: 721px)"
-              srcset="{{ block.settings.image | image_url: width: 600 }} 600w, {{ block.settings.image | image_url: width: 760 }} 760w, {{ block.settings.image | image_url: width: 900 }} 900w"
-              sizes="50vw">
-            <img
-              src="{{ block.settings.image | image_url: width: 560 }}"
-              srcset="{{ block.settings.image | image_url: width: 400 }} 400w, {{ block.settings.image | image_url: width: 560 }} 560w, {{ block.settings.image | image_url: width: 640 }} 640w"
-              sizes="100vw"
-              width="{{ block.settings.image.width }}" height="{{ block.settings.image.height }}"
-              alt="" loading="{% if forloop.index <= 2 %}eager{% else %}lazy{% endif %}" decoding="async">
-          </picture>
-        {%- else -%}
-          {{ 'collection-1' | placeholder_svg_tag }}
-        {%- endif -%}
-        <span class="home-cat__label"><span class="dl">{{ label | escape }}</span></span>
+      <a
+        class="home-cat{% if block.settings.label_color == 'ink' %} home-cat--ink{% endif %}"
+        data-label="{{ label_pos }}"
+        href="{{ url | default: routes.all_products_collection_url }}"
+        {{ block.shopify_attributes }}
+      >
+        <span class="home-cat__frame">
+          {%- if block.settings.image != blank -%}
+            {%- comment -%} PERFORMANCE: at a flat width ladder a
+            phone downloaded FOUR tiles at 780w / ~330 KB each — 1.3 MB of
+            navigation furniture, one of the largest avoidable page-weight
+            costs on this template. A <picture> caps the ceiling per viewport (640w phone / 900w
+            desktop) instead of under-declaring `sizes`, so the browser still gets
+            honest layout information. These tiles carry a type label over a soft
+            background; ~1.5× device pixels is invisible on them. {%- endcomment -%}
+            <picture>
+              <source
+                media="(min-width: 721px)"
+                srcset="{{ block.settings.image | image_url: width: 600 }} 600w, {{ block.settings.image | image_url: width: 760 }} 760w, {{ block.settings.image | image_url: width: 900 }} 900w"
+                sizes="50vw">
+              <img
+                src="{{ block.settings.image | image_url: width: 560 }}"
+                srcset="{{ block.settings.image | image_url: width: 400 }} 400w, {{ block.settings.image | image_url: width: 560 }} 560w, {{ block.settings.image | image_url: width: 640 }} 640w"
+                sizes="100vw"
+                width="{{ block.settings.image.width }}" height="{{ block.settings.image.height }}"
+                alt="" loading="{% if forloop.index <= 2 %}eager{% else %}lazy{% endif %}" decoding="async">
+            </picture>
+          {%- else -%}
+            {{ 'collection-1' | placeholder_svg_tag }}
+          {%- endif -%}
+
+          {%- comment -%} Bottom scrim, only under an overlay label — a tile whose
+          label sits below the frame has nothing to protect and must not be
+          darkened. Its own element rather than a background on the label, so the
+          veil can run the full width of the tile while the type stays on the
+          gutter edge: a veil sized to the word is exactly the "dark smudge behind
+          one word" look the radial version had. {%- endcomment -%}
+          {%- if label_pos == 'over' -%}
+            <span class="home-cat__scrim" aria-hidden="true"></span>
+          {%- endif -%}
+
+          {%- comment -%} The label is inside the frame for BOTH positions so the
+          two layouts share one box: over the image it is absolutely positioned
+          against this frame, below it flows after the picture. Nothing moves in
+          the DOM when a merchant flips the setting. {%- endcomment -%}
+          <span class="home-cat__label"><span class="dl home-cat__name">{{ label | escape }}</span></span>
+        </span>
       </a>
     {%- endfor -%}
   </div>
@@ -73,8 +111,16 @@
         { "type": "collection", "id": "collection", "label": "Collection" },
         { "type": "url", "id": "link", "label": "Link override", "info": "Leave empty to link to the collection." },
         {
+          "type": "select", "id": "label_position", "label": "Label position", "default": "over",
+          "info": "Below the image if the photograph is too pale to carry type — no shading is painted over it at all.",
+          "options": [
+            { "value": "over", "label": "Over image" },
+            { "value": "below", "label": "Below image" }
+          ]
+        },
+        {
           "type": "select", "id": "label_color", "label": "Label colour", "default": "white",
-          "info": "Ink for very bright images.",
+          "info": "Ink for very bright images. Only applies when the label sits over the image.",
           "options": [
             { "value": "white", "label": "White" },
             { "value": "ink", "label": "Ink" }
@@ -87,10 +133,10 @@
     {
       "name": "Category tiles",
       "blocks": [
-        { "type": "category", "settings": { "label": "Dresses", "image": "", "collection": "womens-dresses" } },
-        { "type": "category", "settings": { "label": "Coats", "image": "", "collection": "womens-coats-jackets" } },
-        { "type": "category", "settings": { "label": "Knitwear", "image": "", "collection": "womens-knitwear" } },
-        { "type": "category", "settings": { "label": "Tops", "image": "", "collection": "womens-tops-blouses" } }
+        { "type": "category", "settings": { "label": "Dresses", "image": "", "collection": "womens-dresses", "label_position": "over" } },
+        { "type": "category", "settings": { "label": "Coats", "image": "", "collection": "womens-coats-jackets", "label_position": "over" } },
+        { "type": "category", "settings": { "label": "Knitwear", "image": "", "collection": "womens-knitwear", "label_position": "over" } },
+        { "type": "category", "settings": { "label": "Tops", "image": "", "collection": "womens-tops-blouses", "label_position": "over" } }
       ]
     }
   ]

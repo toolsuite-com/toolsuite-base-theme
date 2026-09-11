@@ -1,0 +1,56 @@
+{%- comment -%}
+  The trust row under the accordions.
+
+  It was hard-wired to exactly two cards in a `1fr 1fr` grid, so the third
+  merchant-owned promise the rest of the theme already prints (the cart page
+  shows returns + shipping + money-back) had nowhere to go, and adding it by
+  hand dropped a lone card onto a second row. The row is now count-driven:
+  it renders however many of the three lines the merchant actually filled in,
+  and publishes the number as data-trust-count so the stylesheet can set the
+  column count from one attribute instead of a media-query guess.
+
+  EVERY LINE IS MERCHANT-OWNED AND PRINTS VERBATIM. Empty stays empty — the
+  settings document "empty = the line does not render", and the theme must not
+  substitute a locale default here: a translated storefront would then advertise
+  a money-back guarantee the merchant never wrote. No claim is invented and
+  nothing is timed, counted down or framed as running out.
+
+  The audit found second lines clipped. The markup fix is here — each claim is
+  its own element with nothing forcing it onto one line — and the rest is the
+  stylesheet's: the cards must size to their tallest content, never to a fixed
+  height, and the count must not squeeze three cards into two columns.
+
+  Params: none (reads settings directly, like the pair it replaces)
+{%- endcomment -%}
+{%- liquid
+  assign tr_back = settings.guarantee_line
+  assign tr_ship = settings.ship_free_line
+  assign tr_ret = settings.trust_returns_line
+
+  assign tr_count = 0
+  if tr_back != blank
+    assign tr_count = tr_count | plus: 1
+  endif
+  if tr_ship != blank
+    assign tr_count = tr_count | plus: 1
+  endif
+  if tr_ret != blank
+    assign tr_count = tr_count | plus: 1
+  endif
+-%}
+{%- if tr_count > 0 -%}
+  {%- comment -%} .pdp-trust-duo is kept alongside the new name: it is the class the
+  shipped stylesheet already paints, and dropping it would strip the cards bare on
+  any store that updates the theme before the stylesheet. {%- endcomment -%}
+  <div class="pdp-trust-duo pdp-trust-row lbl-sm" data-trust-count="{{ tr_count }}">
+    {%- if tr_back != blank -%}
+      <span class="pdp-trust-row__item">{% render 'icon', name: 'returns', size: 20 %}<em>{{ tr_back | escape }}</em></span>
+    {%- endif -%}
+    {%- if tr_ship != blank -%}
+      <span class="pdp-trust-row__item">{% render 'icon', name: 'truck', size: 20 %}<em>{{ tr_ship | escape }}</em></span>
+    {%- endif -%}
+    {%- if tr_ret != blank -%}
+      <span class="pdp-trust-row__item">{% render 'icon', name: 'check', size: 20 %}<em>{{ tr_ret | escape }}</em></span>
+    {%- endif -%}
+  </div>
+{%- endif -%}

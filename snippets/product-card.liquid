@@ -9,28 +9,49 @@
                 cards 2–4 stay eager (browser default, first two mobile rows),
                 5+ lazy. No index passed = lazy, the safe default.
 
-  Anatomy: full-bleed 2:3 image → muted category line (only when the data
-  exists) → NAME → review line (settings.rating_value/rating_count, no
-  external widget, no link) → price block via the shared price-badge
-  component, plus a green "Save X%" line (red is reserved for the discount
-  itself, green for the savings — house style). Colour swatches + the
-  quick-add bag glyph and the on-image sale chrome sit ON the image or below
-  the price. Nothing is boxed, nothing is centered — the grid's 2px gaps do
-  the framing.
+  Anatomy:
+    .card__media  the photograph, the hover second shot, and the two text tags
+                  (sale / sold out). NOTHING ELSE SITS ON THE PHOTOGRAPH.
+    .card__body   vendor (optional) → NAME → price → quick-add → swatches.
+
+  QUICK-ADD IS OFF THE PHOTOGRAPH. It used to be a bare 19px bag glyph pinned
+  bottom-right INSIDE the image, drawn in ink with no plate behind it. On this
+  catalogue — ivory garments shot on limestone — the glyph landed on near-white
+  for most of the grid and simply was not there. A control a shopper cannot see
+  is not a control. It is now `.card__add` in `.card__body`, a real labelled
+  target on paper, which the stylesheet can pin, reveal on hover or show
+  permanently without ever having to guess the brightness of a photograph.
+
+  THE TAGS ARE TEXT, NOT BOXES. A solid red chip is the visual language of a
+  discount marketplace; it is the single fastest way to make a considered label
+  look like a clearance rail. Same information, set as small tracked type:
+  `.card__tag--sale` top-left when the product has a REAL discount and is
+  buyable, `.card__tag--sold` in the same corner when it is not (they can never
+  collide — a "Sale" tag on a piece you cannot buy is noise). The percentage
+  is NOT repeated up there; it prints once, in the price line.
 
   NAME = the full product.title, pipe included, shown as-is; uppercase comes
-  from .lbl, never from the data.
+  from the stylesheet, never from the data.
 
-  The on-image sale chrome is TWO independent flags so they never collide
-  with the existing "Sold out" flag (top-left) or the quick-add glyph
-  (bottom-right, unchanged):
-    - `.card__sale-flag` top-left, only when the product both has a real
-      discount AND is available — "Sold out" already owns that corner when
-      it is not, and a "Sale" tag on a product you cannot buy is noise.
-    - `.card__pct-flag` top-right, whenever there is a real discount,
-      regardless of availability — that corner is otherwise empty.
-  Both print the SAME percentage the price-badge prints below: a real number
-  reads as credible; two different numbers on one card would read as a bug.
+  PRICE: one formatting rule for the whole theme, `snippets/price.liquid`,
+  driven by settings.price_show_cents (price-badge and the PDP go through it
+  too now, and money() in theme.js/cart-extras.js reads the same setting via
+  Theme.showCents — so the server-rendered and JS-repainted halves of the store
+  agree). The card still does not render the shared `price-badge` component:
+  its markup is shared with the PDP, which is why the card could never give the
+  name and the price separate weights. The three parts are now named elements
+  (.card__price-was / -now / -off) so hierarchy is a stylesheet decision.
+
+  GLOBAL SETTINGS this card reads (all via `| default:`, so the card renders
+  correctly on a store whose settings_data.json predates them):
+    card_image_ratio  portrait/2:3 (default) · tall/3:4 · square/1:1 ·
+                      4:5 · natural — the schema ships the word forms
+    card_hover        'second' (default) shows product.images[1] on hover
+    card_show_vendor  off by default — vendor is inconsistently filled on most
+                      catalogues, and a wrong-looking line under every name is
+                      worse than no line
+    card_quick_add    off hides .card__add entirely
+    price_show_cents  see snippets/price.liquid
 
   theme.js contract (do not rename): [data-quick-add-root] wraps the card so the
   pointerover prefetch finds [data-quick-view]; [data-quick-add] carries either
@@ -39,6 +60,11 @@
   qvSwatchMap by paintSwatches(), which runs once against the whole document
   on load and again against just the injected grid on the related row — it
   finds every dot here regardless of where in the card markup it lives.
+
+  card-extras.js contract (do not rename): `.card__media` must contain
+  `.card__art img` (the lead photograph it swaps on swatch preview), and
+  `.card__art` and `.card__info` must both stay <a> elements — it repoints both
+  hrefs at the selected variant.
 {%- endcomment -%}
 {%- liquid
   assign card_name = product.title
@@ -52,6 +78,69 @@
   assign card_cat = product.type
   if card_cat == blank and product.collections.size > 0
     assign card_cat = product.collections.first.title
+  endif
+
+  comment
+    ---- global card settings, each with a fallback ----
+    The ratio is handed to the stylesheet BOTH ways: `data-ratio` for the
+    per-value rules, and `--card-ratio` as the literal aspect-ratio value, so a
+    ratio the stylesheet has no rule for still crops correctly instead of
+    falling back to a square. The same numbers go on the <img> width/height
+    attributes: those reserve the box before the image lands, and a card grid
+    with the wrong intrinsic ratio is one of the few places a theme can still
+    ship layout shift on a fast connection.
+  endcomment
+  comment
+    The `when` arms carry BOTH the ratio-shaped spellings and the schema's own
+    option values ('portrait' / 'tall' / 'square' in settings_schema.json).
+    Keep them together: an option value with no arm here falls through to the
+    `else` and silently renders 2:3, and because the inline --card-ratio on
+    .card overrides the :root token, the wrong crop wins over the correct one
+    the layout injected. That is exactly how 'tall' shipped broken once.
+  endcomment
+  assign card_ratio = settings.card_image_ratio | default: '2:3'
+  assign card_w = 600
+  case card_ratio
+    when '1:1', '1_1', 'square'
+      assign card_h = 600
+    when '4:5', '4_5'
+      assign card_h = 750
+    when '3:4', '3_4', 'tall'
+      assign card_h = 800
+    when '2:3', '2_3', 'portrait'
+      assign card_h = 900
+    when 'natural', 'adapt', 'image'
+      comment
+        The image's own ratio — no --card-ratio is emitted, the intrinsic
+        attributes are the image's real pixels, and the stylesheet must not
+        force an aspect-ratio for this value.
+      endcomment
+      assign card_w = product.featured_image.width | default: 600
+      assign card_h = product.featured_image.height | default: 900
+    else
+      assign card_h = 900
+  endcase
+
+  comment
+    'second' is the default because the hover cross-fade is what the theme
+    already shipped; 'none' (or any other value) renders no second image at
+    all, which also removes the byte cost of a second photograph per card.
+  endcomment
+  assign card_hover = settings.card_hover | default: 'second'
+
+  assign card_show_vendor = settings.card_show_vendor | default: false
+
+  comment
+    card_quick_add may reach us as a checkbox (true/false) or as a select
+    ('button'/'none'), depending on how it is declared in settings_schema.json
+    — this card is not the owner of that file. Both shapes are handled: a
+    `| default:` alone would turn an unchecked checkbox (false) back ON, which
+    is the one outcome a merchant would notice as a bug.
+  endcomment
+  assign card_quick_add = settings.card_quick_add | default: 'button'
+  assign show_quick_add = true
+  if card_quick_add == 'none' or card_quick_add == 'off' or settings.card_quick_add == false
+    assign show_quick_add = false
   endif
 
   assign card_swatch_option = null
@@ -68,7 +157,13 @@
     endif
   endfor
 -%}
-<article class="card" data-quick-add-root>
+<article
+  class="card"
+  data-quick-add-root
+  data-ratio="{{ card_ratio | escape }}"
+  data-hover="{{ card_hover | escape }}"
+  {%- unless card_ratio == 'natural' or card_ratio == 'adapt' or card_ratio == 'image' %} style="--card-ratio: {{ card_w }} / {{ card_h }};"{% endunless -%}
+>
   <div class="card__media">
     <a class="card__art" href="{{ product.url }}" aria-label="{{ product.title | escape }}" tabindex="-1">
       {%- if product.featured_image -%}
@@ -76,7 +171,7 @@
           src="{{ product.featured_image | image_url: width: 640 }}"
           srcset="{{ product.featured_image | image_url: width: 420 }} 420w, {{ product.featured_image | image_url: width: 640 }} 640w, {{ product.featured_image | image_url: width: 900 }} 900w"
           sizes="(max-width: 720px) 50vw, 25vw"
-          width="600" height="900"
+          width="{{ card_w }}" height="{{ card_h }}"
           alt="{{ product.featured_image.alt | default: product.title | escape }}"
           {%- if card_index == 1 %}
             fetchpriority="high"
@@ -89,14 +184,17 @@
         the card stylesheet sets `display:none` under (hover: none) — a lazy image
         with no box never intersects and is therefore never fetched on a phone at
         all. It also carries the SAME srcset/sizes as the lead image, to avoid
-        shipping a flat, oversized image to every card on a mobile PLP. {%- endcomment -%}
-        {%- if product.images[1] -%}
+        shipping a flat, oversized image to every card on a mobile PLP.
+
+        Gated on card_hover: a merchant who turns the cross-fade off should stop
+        paying for the second photograph, not just stop seeing it. {%- endcomment -%}
+        {%- if card_hover == 'second' and product.images[1] -%}
           <img
             class="card__alt"
             src="{{ product.images[1] | image_url: width: 640 }}"
             srcset="{{ product.images[1] | image_url: width: 420 }} 420w, {{ product.images[1] | image_url: width: 640 }} 640w, {{ product.images[1] | image_url: width: 900 }} 900w"
             sizes="(max-width: 720px) 50vw, 25vw"
-            width="600" height="900" alt="" loading="lazy" aria-hidden="true">
+            width="{{ card_w }}" height="{{ card_h }}" alt="" loading="lazy" aria-hidden="true">
         {%- endif -%}
       {%- else -%}
         {%- assign ph = product.id | modulo: 6 | plus: 1 -%}
@@ -104,157 +202,182 @@
       {%- endif -%}
     </a>
 
-    {%- comment -%} ONE sale signal on the image, one in the price line — not three:
-    a red SALE flag on the photograph, and the real percentage inside the price
-    block below. Do not add a third duplicate signal (e.g. a separate "Save N%"
-    line next to the price) — it just repeats the same number a third time. {%- endcomment -%}
-    {%- if has_discount and product.available -%}
-      <span class="card__sale-flag lbl-sm">{{ 'product_card.sale_flag' | t }}</span>
+    {%- comment -%} ONE tag on the photograph, and the percentage only in the
+    price line — never three prints of the same discount. Both tags share the
+    same corner and are mutually exclusive by construction. {%- endcomment -%}
+    {%- if product.available == false -%}
+      <span class="card__tag card__tag--sold lbl-sm">{{ 'product.atc.sold_out' | t }}</span>
+    {%- elsif has_discount -%}
+      <span class="card__tag card__tag--sale lbl-sm">{{ 'product_card.sale_flag' | t }}</span>
     {%- endif -%}
+  </div>
 
-    {%- if product.available -%}
+  {%- comment -%} Everything under the photograph in ONE box, so the stylesheet
+  has a single element to rhythm against (the name/price stack and the
+  quick-add were previously siblings of the card itself, which is why nothing
+  could be aligned to anything). {%- endcomment -%}
+  <div class="card__body">
+    <a class="card__info" href="{{ product.url }}">
+      {%- comment -%} NO CATEGORY LINE: the card is title · price · swatches.
+      card_cat stays assigned above and the .card__cat CSS stays — restoring is
+      one <p> again. {%- endcomment -%}
+      {%- if card_show_vendor and product.vendor != blank -%}
+        <p class="card__vendor lbl-sm mute">{{ product.vendor | escape }}</p>
+      {%- endif -%}
+      <h3 class="card__name">{{ card_name | escape }}</h3>
+      {%- comment -%} NO RATING ON THE CARD: settings.rating_value/rating_count
+      are ONE store-wide pair, so printing them on every card would claim a
+      per-product rating that does not exist — the same number under twenty
+      different products reads as filler the moment anyone notices. It stays
+      where it is true as a shop-level figure: the product page, the drawer and
+      the homepage. The card keeps name · price.
+
+      The CSS (.card__rating) stays in card-extras.css if this is ever
+      restored. {%- endcomment -%}
+      {%- comment -%} Three named parts, one formatting rule. `was` is the
+      anchor, `now` is the price being charged, `off` is the real percentage
+      computed from THIS product's own compare_at_price — an odd −36% reads as
+      true in a way a round marketing number never does. {%- endcomment -%}
+      <p class="card__price">
+        {%- if has_discount -%}
+          <s class="card__price-was">{%- render 'price', amount: product.compare_at_price -%}</s>
+          <span class="card__price-now card__price-now--sale">{%- render 'price', amount: product.price -%}</span>
+          <span class="card__price-off">&minus;{{ card_pct }}%</span>
+        {%- else -%}
+          <span class="card__price-now">{%- render 'price', amount: product.price -%}</span>
+        {%- endif -%}
+      </p>
+    </a>
+
+    {%- comment -%} The quick-add sits OUTSIDE `.card__info`'s anchor for the
+    same reason the swatch row does: a button inside a same-page <a> fights the
+    browser's own navigation on click. It keeps both theme.js hooks unchanged —
+    only its position in the card moved. The glyph is decorative here because
+    the label next to it already says the same thing; the aria-label names the
+    product so a screen-reader user hears which one they are adding. {%- endcomment -%}
+    {%- if show_quick_add and product.available -%}
       <button
         type="button"
-        class="card__qa"
+        class="card__add"
         data-quick-add
         {% if product.variants.size == 1 %}data-single-variant="{{ product.variants.first.id }}"{% else %}data-quick-view="{{ product.handle }}"{% endif %}
         aria-label="{{ 'product_card.quick_add_aria' | t: title: product.title }}"
       >
-        {% render 'icon', name: 'cart', size: 19 %}
+        <span class="card__add-icon" aria-hidden="true">{% render 'icon', name: 'cart', size: 17 %}</span>
+        <span class="card__add-label lbl-sm">{{ 'product.atc.add_to_bag' | t }}</span>
       </button>
-    {%- else -%}
-      <span class="card__flag lbl-sm">{{ 'product.atc.sold_out' | t }}</span>
     {%- endif -%}
-  </div>
 
-  <a class="card__info" href="{{ product.url }}">
-    {%- comment -%} NO CATEGORY LINE: the card is title · price · swatches.
-    card_cat stays assigned above and the .card__cat CSS stays — restoring is
-    one <p> again. {%- endcomment -%}
-    <h3 class="card__name lbl">{{ card_name | escape }}</h3>
-    {%- comment -%} NO RATING ON THE CARD: settings.rating_value/rating_count
-    are ONE store-wide pair, so printing them on every card would claim a
-    per-product rating that does not exist — the same number under twenty
-    different products reads as filler the moment anyone notices. It stays
-    where it is true as a shop-level figure: the product page, the drawer and
-    the homepage. The card keeps category · name · price.
+    {%- comment -%} Swatches live OUTSIDE `.card__info`'s anchor on purpose: the
+    "+N" overflow is a real control — a checkbox/label pair that reveals the
+    rest of the dots in place, CSS-only, no theme.js change. A checkbox inside a
+    same-page <a> fights the browser's own navigation on click, so the whole
+    swatch row is a sibling of the info link instead of a child of it. Dots
+    ship colourless with data-swatch; see the file header for why. {%- endcomment -%}
+    {%- if card_swatch_option and card_swatch_option.values.size > 1 -%}
+      {%- comment -%} No id/for pair here, deliberately. The obvious `<input id>` +
+      `<label for>` version breaks the moment the SAME product is rendered twice on one
+      page (a piece that sits in the bestsellers row and in a second homepage row, or in
+      a related row on its own PDP): both cards emit the same id, and every browser
+      resolves `for` against the FIRST one — so tapping "+3" on the second card silently
+      expands the first. Wrapping the checkbox in its label needs no id at all and cannot
+      collide. The reveal then hangs off `:has()` (Safari 15.4+, the same floor
+      showModal() already sets for this theme). Where `:has()` is missing the extras just
+      stay collapsed — degraded, never broken.
 
-    The CSS (.card__rating) stays in card-extras.css if this is ever
-    restored. {%- endcomment -%}
-    <p class="card__price lbl mute">
-      {%- render 'price-badge', price: product.price, compare: product.compare_at_price, layout: 'card' -%}
-    </p>
-  </a>
+      aria-hidden sits on the individual dots, NOT on the row: the row now contains a
+      real focusable control, and a focusable element inside an aria-hidden subtree is
+      the classic screen-reader trap. {%- endcomment -%}
+      {%- comment -%} REAL PHOTOGRAPHS, NOT COLOUR DOTS: a dot can only ever be an
+      approximation of a printed floral or a two-tone knit, and a dot palette has
+      to be maintained by hand besides. This uses the SAME source of truth the PDP
+      already uses for its colour picker: the first product image whose alt text
+      is tagged " in <Colour>," / " in <Colour>-", with the colour's own variant
+      featured image as the fallback. Same rule, same result, no second list to
+      keep in sync.
 
-  {%- comment -%} Swatches live OUTSIDE `.card__info`'s anchor on purpose: the
-  "+N" overflow is a real control — a checkbox/label pair that reveals the
-  rest of the dots in place, CSS-only, no theme.js change. A checkbox inside a
-  same-page <a> fights the browser's own navigation on click, so the whole
-  swatch row is a sibling of the info link instead of a child of it. Dots
-  ship colourless with data-swatch; see the file header for why. {%- endcomment -%}
-  {%- if card_swatch_option and card_swatch_option.values.size > 1 -%}
-    {%- comment -%} No id/for pair here, deliberately. The obvious `<input id>` +
-    `<label for>` version breaks the moment the SAME product is rendered twice on one
-    page (a piece that sits in the bestsellers row and in a second homepage row, or in
-    a related row on its own PDP): both cards emit the same id, and every browser
-    resolves `for` against the FIRST one — so tapping "+3" on the second card silently
-    expands the first. Wrapping the checkbox in its label needs no id at all and cannot
-    collide. The reveal then hangs off `:has()` (Safari 15.4+, the same floor
-    showModal() already sets for this theme). Where `:has()` is missing the extras just
-    stay collapsed — degraded, never broken.
+      ONE loop over all values, instead of a separate limit:4 / offset:4 pair —
+      the lookup is not cheap enough to write twice, and the "+N" label is simply
+      emitted after the fourth entry. {%- endcomment -%}
+      <span class="card__swatches">
+        {%- assign card_more_count = card_swatch_option.values.size | minus: 4 -%}
+        {%- for value in card_swatch_option.values -%}
+          {%- assign sw_i = forloop.index0 -%}
 
-    aria-hidden sits on the individual dots, NOT on the row: the row now contains a
-    real focusable control, and a focusable element inside an aria-hidden subtree is
-    the classic screen-reader trap. {%- endcomment -%}
-    {%- comment -%} REAL PHOTOGRAPHS, NOT COLOUR DOTS: a dot can only ever be an
-    approximation of a printed floral or a two-tone knit, and a dot palette has
-    to be maintained by hand besides. This uses the SAME source of truth the PDP
-    already uses for its colour picker: the first product image whose alt text
-    is tagged " in <Colour>," / " in <Colour>-", with the colour's own variant
-    featured image as the fallback. Same rule, same result, no second list to
-    keep in sync.
-
-    ONE loop over all values, instead of a separate limit:4 / offset:4 pair —
-    the lookup is not cheap enough to write twice, and the "+N" label is simply
-    emitted after the fourth entry. {%- endcomment -%}
-    <span class="card__swatches">
-      {%- assign card_more_count = card_swatch_option.values.size | minus: 4 -%}
-      {%- for value in card_swatch_option.values -%}
-        {%- assign sw_i = forloop.index0 -%}
-
-        {%- if sw_i == 4 -%}
-          {%- comment -%} Both states are in the markup and CSS shows one. The first
-          version hid the whole label once checked, which meant a keyboard user who
-          opened the row lost focus into nowhere and had no way to close it again —
-          the control deleted itself on use. {%- endcomment -%}
-          {%- comment -%} No close state: the control is replaced by what it
-          revealed — once the remaining colours are on screen the "+N" has
-          nothing left to say, and the swatches it uncovered are links, so
-          keyboard focus lands on real targets rather than nowhere. A reload
-          collapses the row again. {%- endcomment -%}
-          <label class="card__more lbl-sm">
-            <input type="checkbox" class="card__more-toggle">
-            <span class="card__more-open" aria-hidden="true">+{{ card_more_count }}</span>
-            <span class="visually-hidden">{{ 'product_card.more_colours' | t: count: card_more_count, title: product.title }}</span>
-          </label>
-        {%- endif -%}
-
-        {%- assign sw_down = value | downcase -%}
-        {%- assign sw_needle = ' in ' | append: sw_down | append: ',' -%}
-        {%- assign sw_needle2 = ' in ' | append: sw_down | append: '-' -%}
-        {%- assign sw_needle3 = ' i ' | append: sw_down | append: ',' -%}
-        {%- assign sw_needle4 = ' i ' | append: sw_down | append: '-' -%}
-        {%- assign sw_img = nil -%}
-        {%- for m in product.media -%}
-          {%- if m.media_type != 'image' -%}{%- continue -%}{%- endif -%}
-          {%- assign sw_alt = m.alt | default: '' | downcase -%}
-          {%- if sw_alt contains sw_needle or sw_alt contains sw_needle2 or sw_alt contains sw_needle3 or sw_alt contains sw_needle4 -%}
-            {%- assign sw_img = m -%}
-            {%- break -%}
+          {%- if sw_i == 4 -%}
+            {%- comment -%} Both states are in the markup and CSS shows one. The first
+            version hid the whole label once checked, which meant a keyboard user who
+            opened the row lost focus into nowhere and had no way to close it again —
+            the control deleted itself on use. {%- endcomment -%}
+            {%- comment -%} No close state: the control is replaced by what it
+            revealed — once the remaining colours are on screen the "+N" has
+            nothing left to say, and the swatches it uncovered are links, so
+            keyboard focus lands on real targets rather than nowhere. A reload
+            collapses the row again. {%- endcomment -%}
+            <label class="card__more lbl-sm">
+              <input type="checkbox" class="card__more-toggle">
+              <span class="card__more-open" aria-hidden="true">+{{ card_more_count }}</span>
+              <span class="visually-hidden">{{ 'product_card.more_colours' | t: count: card_more_count, title: product.title }}</span>
+            </label>
           {%- endif -%}
-        {%- endfor -%}
-        {%- if sw_img == nil -%}
-          {%- for pv in product.variants -%}
-            {%- if pv.options[card_swatch_index] == value and pv.featured_media -%}
-              {%- assign sw_img = pv.featured_media -%}
+
+          {%- assign sw_down = value | downcase -%}
+          {%- assign sw_needle = ' in ' | append: sw_down | append: ',' -%}
+          {%- assign sw_needle2 = ' in ' | append: sw_down | append: '-' -%}
+          {%- assign sw_needle3 = ' i ' | append: sw_down | append: ',' -%}
+          {%- assign sw_needle4 = ' i ' | append: sw_down | append: '-' -%}
+          {%- assign sw_img = nil -%}
+          {%- for m in product.media -%}
+            {%- if m.media_type != 'image' -%}{%- continue -%}{%- endif -%}
+            {%- assign sw_alt = m.alt | default: '' | downcase -%}
+            {%- if sw_alt contains sw_needle or sw_alt contains sw_needle2 or sw_alt contains sw_needle3 or sw_alt contains sw_needle4 -%}
+              {%- assign sw_img = m -%}
               {%- break -%}
             {%- endif -%}
           {%- endfor -%}
-        {%- endif -%}
-
-        {%- comment -%} SELECT IN PLACE, NAVIGATE FROM THE IMAGE: tapping a
-        swatch shows that colour inline on the card image; tapping the image
-        then navigates to that colour's product page.
-
-        The swatch stays an <a> to ?variant=<id> — with JS off it still works as
-        a plain link. card-extras.js intercepts the click: it paints the swatch's
-        data-card-swap photo into the card's lead image, keeps it (hover-restore
-        returns to the SELECTED colour, not the shipped one), and repoints
-        .card__art / .card__info at the variant URL — so the follow-up click on
-        the image or title lands on that colour's product page. {%- endcomment -%}
-        {%- assign sw_variant_id = '' -%}
-        {%- for pv in product.variants -%}
-          {%- if pv.options[card_swatch_index] == value -%}
-            {%- assign sw_variant_id = pv.id -%}
-            {%- if pv.available -%}{%- break -%}{%- endif -%}
+          {%- if sw_img == nil -%}
+            {%- for pv in product.variants -%}
+              {%- if pv.options[card_swatch_index] == value and pv.featured_media -%}
+                {%- assign sw_img = pv.featured_media -%}
+                {%- break -%}
+              {%- endif -%}
+            {%- endfor -%}
           {%- endif -%}
+
+          {%- comment -%} SELECT IN PLACE, NAVIGATE FROM THE IMAGE: tapping a
+          swatch shows that colour inline on the card image; tapping the image
+          then navigates to that colour's product page.
+
+          The swatch stays an <a> to ?variant=<id> — with JS off it still works as
+          a plain link. card-extras.js intercepts the click: it paints the swatch's
+          data-card-swap photo into the card's lead image, keeps it (hover-restore
+          returns to the SELECTED colour, not the shipped one), and repoints
+          .card__art / .card__info at the variant URL — so the follow-up click on
+          the image or title lands on that colour's product page. {%- endcomment -%}
+          {%- assign sw_variant_id = '' -%}
+          {%- for pv in product.variants -%}
+            {%- if pv.options[card_swatch_index] == value -%}
+              {%- assign sw_variant_id = pv.id -%}
+              {%- if pv.available -%}{%- break -%}{%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          <a
+            class="card__swatch{% if sw_i > 3 %} card__swatch--extra{% endif %}"
+            href="{{ product.url }}{% if sw_variant_id != blank %}?variant={{ sw_variant_id }}{% endif %}"
+            title="{{ value | escape }}"
+            aria-label="{{ product.title | escape }} in {{ value | escape }}"
+            {% if sw_img %}data-card-swap="{{ sw_img | image_url: width: 600 }}"{% endif %}
+          >
+            {%- if sw_img -%}
+              <img src="{{ sw_img | image_url: width: 96, height: 128, crop: 'center' }}" width="48" height="64" alt="" loading="lazy" decoding="async">
+            {%- else -%}
+              {%- comment -%} no photograph tagged for this colour yet — fall back to
+              the old dot so the row never shows a hole {%- endcomment -%}
+              <span class="card__swatch-dot" data-swatch="{{ value | escape }}"></span>
+            {%- endif -%}
+          </a>
         {%- endfor -%}
-        <a
-          class="card__swatch{% if sw_i > 3 %} card__swatch--extra{% endif %}"
-          href="{{ product.url }}{% if sw_variant_id != blank %}?variant={{ sw_variant_id }}{% endif %}"
-          title="{{ value | escape }}"
-          aria-label="{{ product.title | escape }} in {{ value | escape }}"
-          {% if sw_img %}data-card-swap="{{ sw_img | image_url: width: 600 }}"{% endif %}
-        >
-          {%- if sw_img -%}
-            <img src="{{ sw_img | image_url: width: 96, height: 128, crop: 'center' }}" width="48" height="64" alt="" loading="lazy" decoding="async">
-          {%- else -%}
-            {%- comment -%} no photograph tagged for this colour yet — fall back to
-            the old dot so the row never shows a hole {%- endcomment -%}
-            <span class="card__swatch-dot" data-swatch="{{ value | escape }}"></span>
-          {%- endif -%}
-        </a>
-      {%- endfor -%}
-    </span>
-  {%- endif -%}
+      </span>
+    {%- endif -%}
+  </div>
 </article>

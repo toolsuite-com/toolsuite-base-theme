@@ -1,0 +1,43 @@
+{%- comment -%}
+  price — THE money-formatting rule for the whole theme. One line of output,
+  no markup, no wrapper:
+
+    {%- render 'price', amount: product.price -%}          → $240   or $240.00
+    {%- render 'price', amount: v.compare_at_price -%}
+
+  WHY THIS EXISTS: the audit found the same product printed as "$240.00" in one
+  place and "$240" in another on the same store. That is not a style
+  disagreement, it is the store looking like two different stores. A shopper
+  reads it as sloppiness about money, on the surface where sloppiness about
+  money costs the most.
+
+  The rule is now a setting, `settings.price_show_cents`:
+    off (default) → `money_without_trailing_zeros` — $240, but $240.50 keeps its
+                    cents, because dropping them would state the wrong price
+    on            → `money` — always two decimals, which is what a shop selling
+                    at .99 or in a currency with meaningful minor units needs
+
+  Falls back to OFF if the setting is absent, which is exactly the behaviour
+  every price in this theme had before the setting existed — so a store that
+  updates the theme files without updating settings_data.json sees no change.
+
+  `amount` is CENTS (Shopify's own unit), never a formatted string. Passing a
+  string silently prints it back unformatted, so pass `product.price`, never
+  `product.price | money`.
+
+  Renders nothing at all for a nil amount: `compare_at_price` is nil on most
+  products and `nil | money` prints "$0.00", which on a strike-through line
+  would advertise a fictional original price of zero.
+{%- endcomment -%}
+{%- liquid
+  assign price_show_cents = settings.price_show_cents | default: false
+  assign price_out = ''
+  unless amount == nil
+    if price_show_cents
+      assign price_out = amount | money
+    else
+      assign price_out = amount | money_without_trailing_zeros
+    endif
+  endunless
+-%}
+{{- price_out -}}

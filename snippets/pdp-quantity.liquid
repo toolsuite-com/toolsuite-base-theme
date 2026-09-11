@@ -1,0 +1,47 @@
+{%- comment -%}
+  Quantity control for the product form.
+
+  There was none: the PDP posted no quantity at all, so /cart/add defaulted to 1
+  and a shopper who wanted three of something had to add it, open the bag, and
+  step the line up twice. The buy-more ladder further down the column was
+  advertising a discount the buy box had no way to reach.
+
+  NOT [data-qty-change]. That attribute is the CART line stepper, handled by a
+  delegated listener on document in theme.js that posts /cart/change with an
+  absolute target quantity — reusing the name here would fire a cart mutation
+  for a product that is not in the cart yet. The steppers use [data-qty-step]
+  (-1 / +1) and are inert until theme.js is taught to read them.
+
+  Without JavaScript the two step buttons do nothing, which is why the control
+  is a real <input type="number" min="1">: the native spinner and the keyboard
+  still work, and the value posts with the form. type="button" on the steppers
+  is load-bearing — a bare <button> inside a form submits it, so an untyped
+  minus button would add to cart instead of decrementing.
+
+  Params: section_id · min (default 1)
+{%- endcomment -%}
+{%- assign qty_min = min | default: 1 -%}
+{%- assign qty_id = 'pdp-qty-' | append: section_id -%}
+<div class="pdp-qty" data-qty>
+  <label class="pdp-qty__label lbl-sm mute" for="{{ qty_id }}">{{ 'product.form.quantity' | t }}</label>
+  <div class="pdp-qty__control">
+    <button type="button" class="pdp-qty__step" data-qty-step="-1" aria-controls="{{ qty_id }}" aria-label="{{ 'product.form.quantity_decrease' | t }}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>
+    </button>
+    <input
+      id="{{ qty_id }}"
+      class="pdp-qty__input"
+      type="number"
+      name="quantity"
+      value="{{ qty_min }}"
+      min="{{ qty_min }}"
+      step="1"
+      inputmode="numeric"
+      autocomplete="off"
+      data-qty-input
+    >
+    <button type="button" class="pdp-qty__step" data-qty-step="1" aria-controls="{{ qty_id }}" aria-label="{{ 'product.form.quantity_increase' | t }}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </div>
+</div>

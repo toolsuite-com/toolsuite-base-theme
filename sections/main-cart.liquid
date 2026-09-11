@@ -77,8 +77,8 @@
               <div class="cart-line__right">
                 {%- if item.variant.compare_at_price > item.variant.price -%}{%- assign line_compare_price = item.variant.compare_at_price | times: item.quantity -%}{%- else -%}{%- assign line_compare_price = item.original_line_price -%}{%- endif -%}
                 {%- assign line_saving = line_compare_price | minus: item.final_line_price -%}
-                <div class="cart-line__price">{% if line_saving > 0 %}<s class="cart-compare">{{ line_compare_price | money_without_trailing_zeros }}</s>{% endif %}{{ item.final_line_price | money_without_trailing_zeros }}</div>
-                {%- if line_saving > 0 -%}{%- assign _save_fmt = line_saving | money_without_trailing_zeros -%}<span class="cart-line__saving lbl-sm">{{ 'cart.line.saving' | t: amount: _save_fmt }}</span>{%- endif -%}
+                <div class="cart-line__price">{% if line_saving > 0 %}<s class="cart-compare">{% render 'price', amount: line_compare_price %}</s>{% endif %}{% render 'price', amount: item.final_line_price %}</div>
+                {%- if line_saving > 0 -%}{%- capture _save_fmt -%}{%- render 'price', amount: line_saving -%}{%- endcapture -%}<span class="cart-line__saving lbl-sm">{{ 'cart.line.saving' | t: amount: _save_fmt }}</span>{%- endif -%}
               </div>
             </article>
           {%- endfor -%}
@@ -100,18 +100,18 @@
             sitting where the good news belongs. Below the threshold it collapses to
             the total alone. {%- endcomment -%}
             {%- if cart_savings > 0 -%}
-              <div class="cart-sum"><span>{{ 'cart.summary.original' | t }}</span><span><s class="cart-compare">{{ compare_total | money_without_trailing_zeros }}</s></span></div>
-              <div class="cart-sum cart-sum--saving"><span>{{ 'cart.summary.you_save' | t }}</span><span>{{ cart_savings | money_without_trailing_zeros }}</span></div>
+              <div class="cart-sum"><span>{{ 'cart.summary.original' | t }}</span><span><s class="cart-compare">{% render 'price', amount: compare_total %}</s></span></div>
+              <div class="cart-sum cart-sum--saving"><span>{{ 'cart.summary.you_save' | t }}</span><span>{% render 'price', amount: cart_savings %}</span></div>
             {%- endif -%}
-            <div class="cart-sum cart-sum--total"><span>{{ 'cart.page.estimated_total' | t }}</span><span>{{ cart.total_price | money_without_trailing_zeros }}</span></div>
+            <div class="cart-sum cart-sum--total"><span>{{ 'cart.page.estimated_total' | t }}</span><span>{% render 'price', amount: cart.total_price %}</span></div>
           </div>
           {%- if cart_savings > 0 -%}
             <details class="cart-breakdown">
               <summary><span>{{ 'cart.summary.see_savings' | t }}</span><span aria-hidden="true">+</span></summary>
               <div class="cart-breakdown__body">
-                <div class="cart-sum cart-sum--soft"><span>{{ 'cart.summary.original_price' | t }}</span><span>{{ compare_total | money_without_trailing_zeros }}</span></div>
-                {%- if anchor_savings > 0 -%}<div class="cart-sum cart-sum--soft"><span>{{ 'cart.summary.markdowns' | t }}</span><span>&minus;{{ anchor_savings | money_without_trailing_zeros }}</span></div>{%- endif -%}
-                {%- for discount in cart.cart_level_discount_applications -%}<div class="cart-sum cart-sum--soft"><span>{{ discount.title | escape }}</span><span>&minus;{{ discount.total_allocated_amount | money_without_trailing_zeros }}</span></div>{%- endfor -%}
+                <div class="cart-sum cart-sum--soft"><span>{{ 'cart.summary.original_price' | t }}</span><span>{% render 'price', amount: compare_total %}</span></div>
+                {%- if anchor_savings > 0 -%}<div class="cart-sum cart-sum--soft"><span>{{ 'cart.summary.markdowns' | t }}</span><span>&minus;{% render 'price', amount: anchor_savings %}</span></div>{%- endif -%}
+                {%- for discount in cart.cart_level_discount_applications -%}<div class="cart-sum cart-sum--soft"><span>{{ discount.title | escape }}</span><span>&minus;{% render 'price', amount: discount.total_allocated_amount %}</span></div>{%- endfor -%}
               </div>
             </details>
           {%- endif -%}

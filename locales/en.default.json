@@ -220,6 +220,15 @@
       "reviews_by": "women have reviewed us",
       "aria": "Rated {{ value }} out of 5 from {{ count }} reviews",
       "aria_short": "Rated {{ value }} out of 5"
+    },
+    "form": {
+      "quantity": "Quantity",
+      "quantity_decrease": "Decrease quantity",
+      "quantity_increase": "Increase quantity",
+      "variant_label": "Variant",
+      "option_unavailable": "Not available with the options selected",
+      "option_sold_out": "Sold out in every combination",
+      "show_video": "Show video"
     }
   },
   "gpsr": {

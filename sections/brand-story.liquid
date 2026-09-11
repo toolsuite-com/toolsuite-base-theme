@@ -3,9 +3,10 @@
   builds trust through the store's own voice instead of borrowed star
   ratings.
 
-  Layout: 50/50 split — copy on one side, one full-bleed atmosphere
+  Layout: 50/50 split — copy on one side, one full-bleed portrait 3:4
   photograph on the other, running to the page edge. Below 900px it stacks
-  image first, copy under it.
+  image first, copy under it. With no image the section is one column of copy
+  (see NO PLACEHOLDER below).
 
   COPY RULES (hard, not stylistic):
     · No craftsmanship, atelier, workshop or artisan claims unless the brand
@@ -22,41 +23,64 @@
   person. The shipped text is a PROPOSAL and every line is a section
   setting.
 
-  Image: brand-story.webp — its own atmosphere frame (no model), kept
-  distinct from the homepage imagery so the PDP never repeats a picture.
+  Image: ONE portrait 3:4 editorial photograph — its own atmosphere frame (no
+  model), kept distinct from the homepage imagery so the PDP never repeats a
+  picture.
+
+  NO PLACEHOLDER HERE. This slot used to fall back to Shopify's
+  `lifestyle-2` placeholder_svg_tag, which is a stock line drawing of cameras,
+  watches and a compass. On a fashion label that single graphic disqualifies the
+  store on sight — it says "demo data" louder than any copy on the page can say
+  otherwise, and it is the illustration a shopper meets in the first second of
+  scrolling. An unset image now renders NOTHING: the section drops to one column
+  (data-media="none") and reads as a deliberate type-only statement, which is a
+  defensible look. A clip-art camera is not.
 {%- endcomment -%}
 {%- liquid
   assign story_url = section.settings.link
   if story_url == blank and section.settings.page != blank
     assign story_url = section.settings.page.url
   endif
+
+  comment
+    Three ways to name the photograph, resolved to one. Priority is
+    asset filename → product's featured image → image_picker, unchanged from
+    before so no live store loses its picture; the picker is the documented
+    slot and the other two stay as the escape hatches they already were.
+  endcomment
+  assign bs_img = section.settings.image
+  if section.settings.image_product != blank and section.settings.image_product.featured_image != blank
+    assign bs_img = section.settings.image_product.featured_image
+  endif
+  assign bs_asset = section.settings.asset_image
+  assign bs_has_media = false
+  if bs_asset != blank or bs_img != blank
+    assign bs_has_media = true
+  endif
 -%}
-<section class="story bleed reveal" aria-label="{{ section.settings.heading | escape }}">
-  <div class="story__art">
-    {%- liquid
-      comment
-        The product picker takes priority over the plain image picker: when
-        set, it pulls the product's real featured image so a model is shown
-        actually wearing a catalog piece instead of a generic atmosphere shot.
-      endcomment
-      assign bs_img = section.settings.image
-      if section.settings.image_product != blank and section.settings.image_product.featured_image != blank
-        assign bs_img = section.settings.image_product.featured_image
-      endif
-    -%}
-    {%- if section.settings.asset_image != blank -%}
-      <img src="{{ section.settings.asset_image | asset_url }}" sizes="(max-width: 899px) 100vw, 50vw" width="1024" height="1536" alt="" loading="lazy" decoding="async">
-    {%- elsif bs_img != blank -%}
-      <img
-        src="{{ bs_img | image_url: width: 900 }}"
-        srcset="{{ bs_img | image_url: width: 560 }} 560w, {{ bs_img | image_url: width: 900 }} 900w, {{ bs_img | image_url: width: 1200 }} 1200w"
-        sizes="(max-width: 899px) 100vw, 50vw"
-        width="{{ bs_img.width }}" height="{{ bs_img.height }}"
-        alt="" loading="lazy" decoding="async">
-    {%- else -%}
-      {{ 'lifestyle-2' | placeholder_svg_tag }}
-    {%- endif -%}
-  </div>
+<section
+  class="story bleed reveal"
+  data-media="{% if bs_has_media %}image{% else %}none{% endif %}"
+  aria-label="{{ section.settings.heading | escape }}"
+>
+  {%- if bs_has_media -%}
+    <div class="story__art">
+      {%- if bs_asset != blank -%}
+        {%- comment -%} A theme asset has no Shopify image object, so there is no
+        real width/height to declare — 1200×1600 is the documented 3:4 target and
+        holds the box against layout shift even if the file shipped is off-ratio
+        (object-fit crops it to 3:4 either way). {%- endcomment -%}
+        <img src="{{ bs_asset | asset_url }}" sizes="(max-width: 899px) 100vw, 50vw" width="1200" height="1600" alt="" loading="lazy" decoding="async">
+      {%- else -%}
+        <img
+          src="{{ bs_img | image_url: width: 900 }}"
+          srcset="{{ bs_img | image_url: width: 560 }} 560w, {{ bs_img | image_url: width: 900 }} 900w, {{ bs_img | image_url: width: 1200 }} 1200w"
+          sizes="(max-width: 899px) 100vw, 50vw"
+          width="{{ bs_img.width }}" height="{{ bs_img.height }}"
+          alt="" loading="lazy" decoding="async">
+      {%- endif -%}
+    </div>
+  {%- endif -%}
 
   {%- liquid
     comment
@@ -102,9 +126,9 @@
   "name": "Brand story",
   "settings": [
     { "type": "paragraph", "content": "Trust through the store's own voice. Never claim craftsmanship, an atelier, a heritage or a natural fibre here unless the brand can back it — unsubstantiated claims risk a Google Merchant Center misrepresentation flag." },
-    { "type": "image_picker", "id": "image", "label": "Image", "info": "Shopify Files: brand-story.webp (or another atmosphere shot). Runs full-bleed on the right half." },
+    { "type": "image_picker", "id": "image", "label": "Image", "info": "Portrait 3:4, 1200 × 1600. Runs full-bleed on one half. Leave empty and the section renders as copy only — no placeholder graphic." },
     { "type": "product", "id": "image_product", "label": "Or: product whose model photo to show", "info": "Uses the product's featured image (can crop awkwardly — prefer the asset filename below)." },
-    { "type": "text", "id": "asset_image", "label": "Or: theme-asset filename (wins over both)", "info": "e.g. my-image.webp — dedicated portrait model shot." },
+    { "type": "text", "id": "asset_image", "label": "Or: theme-asset filename (wins over both)", "info": "e.g. my-image.webp — dedicated portrait 3:4 shot." },
     { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Our approach" },
     { "type": "text", "id": "heading", "label": "Heading", "default": "Effortless, on purpose" },
     {

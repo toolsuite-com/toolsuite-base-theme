@@ -170,7 +170,13 @@
           {%- comment -%} price_range carries min/max instead of active_values — chip it too {%- endcomment -%}
           {%- if filter.type == 'price_range' -%}
             {%- if filter.min_value.value or filter.max_value.value -%}
-              <a class="chip" href="{{ filter.url_to_remove }}">{{ filter.min_value.value | default: 0 | money_without_trailing_zeros }} – {{ filter.max_value.value | default: filter.range_max | money_without_trailing_zeros }} {% render 'icon', name: 'close', size: 12 %}</a>
+              {%- comment -%} Pre-assigned because the defaults have to resolve BEFORE the
+              amount reaches `render 'price'`: a nil amount prints nothing at all there, so
+              an open-ended range would otherwise chip as " – $200". The two number inputs
+              above keep money_without_currency on purpose — they need a bare numeral. {%- endcomment -%}
+              {%- assign chip_min = filter.min_value.value | default: 0 -%}
+              {%- assign chip_max = filter.max_value.value | default: filter.range_max -%}
+              <a class="chip" href="{{ filter.url_to_remove }}">{% render 'price', amount: chip_min %} – {% render 'price', amount: chip_max %} {% render 'icon', name: 'close', size: 12 %}</a>
             {%- endif -%}
           {%- endif -%}
         {%- endfor -%}

@@ -1,0 +1,190 @@
+{%- comment -%}
+  Variant picker — one control group per entry in product.options_with_values,
+  so it fits Size, Colour, Length or whatever a merchant actually configured.
+  Nothing here is hard-coded to a two-option apparel catalogue: "colour" only
+  changes the PRESENTATION (photo swatches instead of value tiles), and the
+  size-guide link only appears when the option name contains "size".
+
+  MARKUP CONTRACT (theme.js reads every one of these by name on the PDP AND
+  re-emits the same classes into the quick-view dialog):
+    .opt / .opt__head / .opt__label / .opt__value
+    .swatches > .swatch[data-swatch] / .swatch--img
+    .sizes > .size-btn
+    [data-opt-btn][data-opt-index][data-opt-value] + aria-pressed
+    [data-opt-current="<index>"]  — the live value echo
+    [data-size-opt] + [data-size-home] — the phone sheet MOVES the size group
+      into the bar and puts it back before this anchor, which is why the anchor
+      is a separate element and not a marker class on .opt itself.
+
+  UNAVAILABLE VALUES ARE KEPT AND MARKED, NEVER DROPPED. Removing a sold-out
+  size hides the fact that the size exists, so a shopper who wears it reads the
+  store as not making it at all. They also stay FOCUSABLE — aria-disabled and a
+  data attribute, never the disabled attribute — so a keyboard or screen-reader
+  shopper can still land on the value and hear that it is gone.
+
+  The two availability attributes and their different lifetimes are explained at
+  the point they are computed; the short version for the stylesheet is that
+  [data-unavailable] is permanent and [data-unavailable-here] is only true of
+  the selection Liquid rendered, so it must be gated behind html:not(.js).
+
+  Params: product · v (current variant) · color_opt_index · size_chart_html
+{%- endcomment -%}
+{%- unless product.has_only_default_variant -%}
+  {%- for option in product.options_with_values -%}
+    {%- liquid
+      assign opt_index = forloop.index0
+      assign opt_down = option.name | downcase
+
+      assign is_color = false
+      if opt_down == 'color' or opt_down == 'colour'
+        assign is_color = true
+      endif
+      assign is_size = false
+      if opt_down contains 'size'
+        assign is_size = true
+      endif
+
+      comment
+        Option NAME localisation only. The option VALUE is never touched here:
+        the alt-text colour parser in pdp-media-colors matches on the value
+        exactly as imported, and a translated value would match no photograph.
+      endcomment
+      assign opt_label = option.name
+      if is_color
+        assign opt_label = 'product.option_color' | t
+      elsif is_size
+        assign opt_label = 'product.option_size' | t
+      endif
+    -%}
+    {%- comment -%} A single-value option is not a choice — it is a fact about the
+    product, and a one-button picker just asks the shopper to confirm something
+    they cannot change. It stays out of the picker and remains in the variant
+    id carried by the form. {%- endcomment -%}
+    {%- if option.values.size < 2 -%}{%- continue -%}{%- endif -%}
+
+    <div class="opt pdp-opt"{% if is_size %} data-size-opt{% endif %}>
+      <div class="opt__head">
+        {%- comment -%} Name left, live value beside it, size-guide link hard right on
+        the same row. The size group used to print no value at all on the theory
+        that the pressed button says it — which is true only while the button row
+        is on screen, and it is the first thing the phone sheet moves away. {%- endcomment -%}
+        <p class="opt__label lbl-sm mute">
+          {{- opt_label | upcase | escape -}}:
+          <strong class="opt__value" data-opt-current="{{ opt_index }}">{{ v.options[opt_index] | default: '' | upcase | escape }}</strong>
+        </p>
+        {%- if is_size and size_chart_html != blank -%}
+          <button type="button" class="tlink opt__guide" data-open-size-chart>{{ 'product.size.chart_link' | t }}</button>
+        {%- endif -%}
+      </div>
+
+      {%- if is_color -%}
+        <div class="swatches" role="group" aria-label="{{ opt_label | escape }}">
+          {%- for value in option.values -%}
+            {%- comment -%} A colour is picked from its own photograph. The curated
+            alt-tagged media wins (same contract as the gallery), the variant's
+            featured media is only the fallback. {%- endcomment -%}
+            {%- assign cv_media = false -%}
+            {%- assign value_down = value | downcase -%}
+            {%- assign cv_needle = ' in ' | append: value_down | append: ',' -%}
+            {%- assign cv_needle2 = ' in ' | append: value_down | append: '-' -%}
+            {%- assign cv_needle3 = ' i ' | append: value_down | append: ',' -%}
+            {%- assign cv_needle4 = ' i ' | append: value_down | append: '-' -%}
+            {%- for cv_product_media in product.media -%}
+              {%- if cv_product_media.media_type == 'image' -%}
+                {%- assign cv_product_alt = cv_product_media.alt | default: '' | downcase -%}
+                {%- if cv_product_alt contains cv_needle or cv_product_alt contains cv_needle2 or cv_product_alt contains cv_needle3 or cv_product_alt contains cv_needle4 -%}
+                  {%- assign cv_media = cv_product_media -%}
+                  {%- break -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- unless cv_media -%}
+              {%- for cv_variant in product.variants -%}
+                {%- if cv_variant.options[opt_index] == value and cv_variant.featured_media != blank -%}
+                  {%- assign cv_media = cv_variant.featured_media -%}
+                  {%- break -%}
+                {%- endif -%}
+              {%- endfor -%}
+            {%- endunless -%}
+            {%- if cv_media -%}
+              <button type="button" class="swatch swatch--img" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}" aria-label="{{ value | escape }}" title="{{ value | escape }}"><img src="{{ cv_media | image_url: width: 96, height: 144, crop: 'center' }}" srcset="{{ cv_media | image_url: width: 96, height: 144, crop: 'center' }} 2x, {{ cv_media | image_url: width: 144, height: 216, crop: 'center' }} 3x" width="48" height="72" alt="" loading="lazy"></button>
+            {%- else -%}
+              {%- comment -%} Colourless in Liquid on purpose: theme.js paintSwatches()
+              fills these from qvSwatchMap, so the fashion-hex table lives in exactly
+              one place (the PLP cards and the quick view share it). {%- endcomment -%}
+              <button type="button" class="swatch" data-swatch="{{ value | escape }}" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}" aria-label="{{ value | escape }}" title="{{ value | escape }}"></button>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      {%- else -%}
+        {%- comment -%} .sizes is the JS contract name and the quick view reuses it;
+        .sizes--boxed is the PDP-only opt-in to the 44x44 tile treatment, so
+        widening the tiles here can never inflate the inline row inside the
+        desktop rich bar or the injected quick-view row. {%- endcomment -%}
+        <div class="sizes sizes--boxed" role="group" aria-label="{{ opt_label | escape }}">
+          {%- for value in option.values -%}
+            {%- liquid
+              comment
+                TWO availability answers, because they have different lifetimes
+                and mixing them is how a picker ends up lying:
+
+                anywhere — no available variant carries this value at all. A
+                  property of the PRODUCT, so no option click can change it and
+                  the attribute can never go stale. This is the one that earns
+                  aria-disabled and the unconditional strike-through.
+                here — unavailable with every OTHER option pinned where the
+                  shopper currently stands. Same test as theme.js
+                  partialFor(test).find(available), so the first paint matches
+                  what the JS paints a frame later. It IS selection-dependent,
+                  and theme.js re-resolves it into the disabled attribute on
+                  every render — which is exactly why the stylesheet must gate
+                  data-unavailable-here behind html:not(.js). Styled
+                  unconditionally it would stay struck through after a colour
+                  change that made the size available again.
+              endcomment
+              assign value_anywhere = false
+              assign value_here = false
+              for pv in product.variants
+                unless pv.available
+                  continue
+                endunless
+                unless pv.options[opt_index] == value
+                  continue
+                endunless
+                assign value_anywhere = true
+                assign combo_ok = true
+                for other_option in product.options_with_values
+                  assign other_index = forloop.index0
+                  unless other_index == opt_index
+                    unless pv.options[other_index] == v.options[other_index]
+                      assign combo_ok = false
+                      break
+                    endunless
+                  endunless
+                endfor
+                if combo_ok
+                  assign value_here = true
+                  break
+                endif
+              endfor
+            -%}
+            <button
+              type="button"
+              class="size-btn"
+              data-opt-btn
+              data-opt-index="{{ opt_index }}"
+              data-opt-value="{{ value | escape }}"
+              aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}"
+              {%- unless value_anywhere %} aria-disabled="true" data-unavailable title="{{ 'product.form.option_sold_out' | t }}"{% endunless -%}
+              {%- if value_anywhere and value_here == false %} data-unavailable-here title="{{ 'product.form.option_unavailable' | t }}"{% endif -%}
+            >{{ value | escape }}</button>
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+    {%- comment -%} Return anchor: the phone bar's expansion panel MOVES the group
+    above into the sheet (never a duplicate picker to keep in sync) and puts it
+    back immediately before this span. {%- endcomment -%}
+    {%- if is_size -%}<span data-size-home hidden></span>{%- endif -%}
+  {%- endfor -%}
+{%- endunless -%}

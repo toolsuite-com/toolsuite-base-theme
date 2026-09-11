@@ -137,10 +137,10 @@
               {%- endif -%}
               {%- assign line_saving = line_compare_price | minus: item.final_line_price -%}
               <div class="cart-line__price">
-                {%- if line_saving > 0 -%}<s class="cart-compare">{{ line_compare_price | money_without_trailing_zeros }}</s>{%- endif -%}
-                {{ item.final_line_price | money_without_trailing_zeros }}
+                {%- if line_saving > 0 -%}<s class="cart-compare">{% render 'price', amount: line_compare_price %}</s>{%- endif -%}
+                {% render 'price', amount: item.final_line_price %}
               </div>
-              {%- if line_saving > 0 -%}{%- assign _save_fmt = line_saving | money_without_trailing_zeros -%}<span class="cart-line__saving lbl-sm">{{ 'cart.line.saving' | t: amount: _save_fmt }}</span>{%- endif -%}
+              {%- if line_saving > 0 -%}{%- capture _save_fmt -%}{%- render 'price', amount: line_saving -%}{%- endcapture -%}<span class="cart-line__saving lbl-sm">{{ 'cart.line.saving' | t: amount: _save_fmt }}</span>{%- endif -%}
               {%- comment -%} Remove lives in the price column, under the
               number. It used to be absolutely positioned out of the control
               row and landed on top of the savings line. {%- endcomment -%}
@@ -212,13 +212,13 @@
           discounts in a single number, no discount names). cart_savings (=
           compare_total − total_price) is exactly that sum; compare_total
           stays computed above because it feeds it. {%- endcomment -%}
-          <div class="cart-sum cart-sum--saving"><span>{{ 'cart.summary.you_save' | t }}</span><span>{{ cart_savings | money_without_trailing_zeros }}</span></div>
+          <div class="cart-sum cart-sum--saving"><span>{{ 'cart.summary.you_save' | t }}</span><span>{% render 'price', amount: cart_savings %}</span></div>
         {%- endif -%}
         {%- comment -%} "Total", not "Estimated total": the hedge and its
         explanatory line both go — with no sales tax added at checkout the
         number IS the total, and calling it an estimate invited a question
         that has no answer. {%- endcomment -%}
-        <div class="cart-sum cart-sum--total"><span>{{ 'cart.summary.total' | t }}</span><span>{{ cart.total_price | money_without_trailing_zeros }}</span></div>
+        <div class="cart-sum cart-sum--total"><span>{{ 'cart.summary.total' | t }}</span><span>{% render 'price', amount: cart.total_price %}</span></div>
       </div>
 
       {%- comment -%} data-no-instant: page-speed/prefetch app embeds prefetch

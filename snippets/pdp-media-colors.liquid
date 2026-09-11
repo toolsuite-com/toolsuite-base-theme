@@ -1,0 +1,41 @@
+{%- comment -%}
+  One media item's colour tags, as a "Value||Value||" string.
+
+  Extracted because the gallery stage and the thumbnail rail need the SAME
+  answer for the same media and carried two byte-identical copies of this
+  parser inline. It returns a value by being rendered inside a capture, then
+  stripped — see the two call sites in snippets/pdp-gallery.liquid.
+
+  The strip is not optional: render inherits this file's own whitespace, and
+  theme.js compares the pieces of data-colors to option values with ===, so a
+  single leading space turns " Pink" into a colour that matches nothing.
+
+  THE CONTRACT (shared with theme.js's data-colors reader and the swatch
+  picker): a photograph belongs to a colour when its ALT TEXT names it as
+  " in <Colour>," or " in <Colour>-" — " i " covers the Danish-language alt
+  texts in the source catalogue. Alt text wins because it tags EVERY photo of a
+  colour; variant.featured_media points at exactly one, so it is only the
+  fallback for catalogues with no alt convention at all.
+
+  Params: media · product · color_opt_index (-1 = product has no colour option)
+          · color_values (that option's values)
+{%- endcomment -%}
+{%- if color_opt_index > -1 -%}
+  {%- assign mc_alt = media.alt | default: '' | downcase -%}
+  {%- assign mc_tagged = false -%}
+  {%- for cv in color_values -%}
+    {%- assign cv_down = cv | downcase -%}
+    {%- assign mc_n1 = ' in ' | append: cv_down | append: ',' -%}
+    {%- assign mc_n2 = ' in ' | append: cv_down | append: '-' -%}
+    {%- assign mc_n3 = ' i ' | append: cv_down | append: ',' -%}
+    {%- assign mc_n4 = ' i ' | append: cv_down | append: '-' -%}
+    {%- if mc_alt contains mc_n1 or mc_alt contains mc_n2 or mc_alt contains mc_n3 or mc_alt contains mc_n4 -%}
+      {{- cv -}}||{%- assign mc_tagged = true -%}
+    {%- endif -%}
+  {%- endfor -%}
+  {%- unless mc_tagged -%}
+    {%- for pv in product.variants -%}
+      {%- if pv.featured_media.id == media.id -%}{{- pv.options[color_opt_index] -}}||{%- endif -%}
+    {%- endfor -%}
+  {%- endunless -%}
+{%- endif -%}

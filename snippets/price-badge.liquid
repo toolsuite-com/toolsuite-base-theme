@@ -10,8 +10,15 @@
   looks credible (an odd "−36%" rather than a round marketing number). No
   anchor → plain price, no strikethrough, no badge — nothing invented.
 
-  Card styles `.pb--card` in card-extras.css. PDP styles `.pb--pdp` in
-  pdp-extras.css. Never add rules for the other layout's class from here.
+  Money formatting is NOT decided here. All three prices go through
+  `render 'price'`, which is the one place settings.price_show_cents is read —
+  this snippet used to hardcode money_without_trailing_zeros, which made it the
+  one surface that could not follow the setting. The frozen signature is the
+  three parameters above; the money filter was never part of it.
+
+  Card styles `.pb--card`, PDP styles `.pb--pdp`, both now in theme.css (the
+  *-extras.css files are folded into it). Never add rules for the other
+  layout's class from here.
 {%- endcomment -%}
 {%- liquid
   assign has_discount = false
@@ -22,10 +29,10 @@
 -%}
 <span class="pb pb--{{ layout }}">
   {%- if has_discount -%}
-    <s>{{ compare | money_without_trailing_zeros }}</s>
-    <span class="price--sale">{{ price | money_without_trailing_zeros }}</span>
+    <s>{% render 'price', amount: compare %}</s>
+    <span class="price--sale">{% render 'price', amount: price %}</span>
     <span class="pb__badge">&minus;{{ pct }}%</span>
   {%- else -%}
-    {{ price | money_without_trailing_zeros }}
+    {% render 'price', amount: price %}
   {%- endif -%}
 </span>

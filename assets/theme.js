@@ -33,19 +33,31 @@ function formatWithDelimiters(cents, precision, thousands, decimal) {
   const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousands);
   return precision > 0 ? `${intPart}${decimal}${parts[1]}` : intPart;
 }
+/* settings.price_show_cents, ported to JS. shop.money_format always asks for
+   decimals, so without this every price this file repaints (variant switch,
+   cart drawer, mini view, ATC bar) read "$240.00" next to a server-rendered
+   "$240" — the inconsistency the setting exists to remove. The rule is Liquid's
+   money_without_trailing_zeros exactly: drop the decimals only when they would
+   be ".00", so $240.50 keeps its cents and never states the wrong price.
+   Formats that already ask for no decimals are untouched. */
+function moneyPrecision(cents) {
+  if (S.showCents) return 2;
+  return Number(cents) % 100 === 0 ? 0 : 2;
+}
 export function money(cents) {
   try {
     const fmt = S.moneyFormat || '€{{amount}}';
     const match = fmt.match(/\{\{\s*(\w+)\s*\}\}/);
-    if (!match) return `€${formatWithDelimiters(cents, 2, ',', '.')}`;
+    const p = moneyPrecision(cents);
+    if (!match) return `€${formatWithDelimiters(cents, p, ',', '.')}`;
     let value;
     switch (match[1]) {
       case 'amount_no_decimals': value = formatWithDelimiters(cents, 0, ',', '.'); break;
-      case 'amount_with_comma_separator': value = formatWithDelimiters(cents, 2, '.', ','); break;
+      case 'amount_with_comma_separator': value = formatWithDelimiters(cents, p, '.', ','); break;
       case 'amount_no_decimals_with_comma_separator': value = formatWithDelimiters(cents, 0, '.', ','); break;
-      case 'amount_with_apostrophe_separator': value = formatWithDelimiters(cents, 2, "'", '.'); break;
+      case 'amount_with_apostrophe_separator': value = formatWithDelimiters(cents, p, "'", '.'); break;
       case 'amount':
-      default: value = formatWithDelimiters(cents, 2, ',', '.'); break;
+      default: value = formatWithDelimiters(cents, p, ',', '.'); break;
     }
     return fmt.replace(/\{\{\s*\w+\s*\}\}/, value).replace(/<[^>]+>/g, '');
   } catch {
@@ -695,9 +707,24 @@ function initPDP() {
       const test = [...state.options]; test[Number(optIndex)] = optValue;
       const candidate = partialFor(test).find((m) => m.available);
       btn.setAttribute('aria-pressed', String(state.options[Number(optIndex)] === optValue));
-      if (btn.classList.contains('size-btn')) btn.toggleAttribute('disabled', !candidate);
+      /* aria-disabled, NOT the disabled attribute: a size that exists but is
+         unavailable in this combination has to stay reachable by keyboard and
+         screen reader, because taking it out of the tab order hides the fact
+         that the size exists at all. theme.css strikes through
+         [aria-disabled="true"] in the same rule as [data-unavailable], so this
+         looks identical to the Liquid first paint. */
+      if (btn.classList.contains('size-btn')) {
+        btn.setAttribute('aria-disabled', String(!candidate));
+        btn.removeAttribute('disabled');
+      }
     });
     $$('[data-opt-current]', root).forEach((el) => { el.textContent = state.options[Number(el.dataset.optCurrent)] || S.t?.optionSelect || 'Select'; });
+    /* The form's only name="id" control, kept in step with the buttons. Without
+       this the native POST path — Enter pressed in the quantity field, or
+       theme.js attaching and then render() being the thing that failed — posts
+       whichever variant Liquid pre-selected rather than the one just picked. */
+    const idField = $('[data-variant-select]', root);
+    if (idField && v) idField.value = String(v.id);
     /* title-block price: plain, sale markup identical to the Liquid first paint
        (no discount badge, no chrome around the number). $$ not $: the
        desktop rich bar carries a second [data-price]. */
@@ -789,7 +816,10 @@ function initPDP() {
 
   root.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-opt-btn]');
-    if (btn && !btn.disabled) {
+    /* aria-disabled has to be rejected here as well as `disabled`: render()
+       now marks unavailable sizes that way so they stay tabbable, which also
+       means they stay clickable unless this guard says otherwise. */
+    if (btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true') {
       /* re-click on the already-active colour swatch:
          state doesn't change, so the colorChanged jump in render() would stay
          silent — reset the tracker so the jump re-fires and the gallery answers
@@ -842,6 +872,16 @@ function initPDP() {
      bar are real add buttons too. Unpicked size still opens the
      phone sheet / nudges the picker rather than adding blind. */
   $$('[data-atc]', root).forEach((btn) => btn.addEventListener('click', (e) => {
+    /* The in-column ATC is a real type="submit" inside {% form 'product' %}, so
+       the product stays buyable with no JavaScript. Once this handler is
+       attached we own the click, so the native POST has to be suppressed or a
+       healthy page adds twice — once here, once by submitting. This replaces an
+       inline onclick guard that probed for an aria-label render() writes: it
+       worked, but it made "never put aria-label on a [data-atc] in Liquid" a
+       rule whose violation silently removed no-JS purchasing. Not attaching at
+       all (no JS, or theme.js dying before this line) leaves the native submit
+       intact, which is the fallback the form exists for. */
+    e.preventDefault();
     const id = Number(e.currentTarget.dataset.variantId);
     if (!id) {
       /* VISIBLE PRESS: the button is full black in both states now, so nothing else signals that
@@ -858,14 +898,46 @@ function initPDP() {
       if (e.currentTarget.classList.contains('pdp__atc')) {
         const row = $('.sizes', root) || $('[data-size-home]', root);
         row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        row?.querySelector('.size-btn:not([disabled])')?.focus({ preventScroll: true });
+        row?.querySelector('.size-btn:not([disabled]):not([aria-disabled="true"])')?.focus({ preventScroll: true });
         return;
       }
       openSheet(); return;
     }
-    addToCart(id, 1, e.currentTarget);
+    /* READ THE QUANTITY PICKER. snippets/pdp-quantity.liquid renders a real
+       name="quantity" input, so the no-JS POST has always carried the right
+       number; this path used to hardcode 1, which meant a shopper who set 3
+       on a normal JS page silently got 1. The field is scoped to `root` (the
+       PDP section), and the column ATC, the phone bar and the rich bar are all
+       inside it, so all three add buttons read the one input. Falls back to 1
+       wherever the snippet is not rendered (quick view, upsells). */
+    const qtyField = $('[data-qty-input]', root);
+    const qty = Math.max(1, Math.floor(Number(qtyField?.value) || 1));
+    addToCart(id, qty, e.currentTarget);
     closeSheet();
   }));
+
+  /* THE +/- STEPPERS. Without this they are dead on a JS page — and because
+     `html.js .pdp-qty__input` in theme.css hides the native number spinner
+     (correctly: the spinner is the no-JS stepper), typing would be the only
+     way left to change quantity. Delegated on root rather than bound per
+     button so it survives a section re-render. Clamped to the input's own
+     min/max so the field can never post a quantity /cart/add will reject. */
+  root.addEventListener('click', (e) => {
+    const step = e.target.closest('[data-qty-step]');
+    if (!step) return;
+    const field = $('[data-qty-input]', root);
+    if (!field) return;
+    const min = Number(field.min) || 1;
+    const max = Number(field.max) || Infinity;
+    const current = Math.floor(Number(field.value) || min);
+    const clamped = Math.min(max, Math.max(min, current + Number(step.dataset.qtyStep)));
+    if (clamped === current) return;
+    field.value = String(clamped);
+    /* 'change', not 'input': that is what a native spinner fires on commit, so
+       the two stepper paths stay indistinguishable to any later listener. */
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
   /* a size picked inside the panel is the whole point of the panel — close it and
      leave the shopper on a bar that now reads "Add to bag · $x" */
   sheetSlot?.addEventListener('click', (e) => {

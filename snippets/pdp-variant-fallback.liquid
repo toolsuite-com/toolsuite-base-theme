@@ -1,0 +1,48 @@
+{%- comment -%}
+  The form's variant id field — and the only variant control that works with
+  JavaScript switched off.
+
+  WHY A SELECT AND NOT A HIDDEN INPUT. The swatch and size buttons above are
+  <button type="button"> driven entirely by theme.js; with no JS they are
+  decoration. A hidden input alone would therefore let a no-JS shopper buy only
+  whatever variant Liquid happened to pre-select — the wrong size, silently.
+  This select carries every variant id, so the purchase is honest in both
+  worlds, and it is the ONLY name="id" control on the page: a second one would
+  mean two values for the same field name in the POST body and a purchase that
+  depends on which the server keeps.
+
+  WHY IT IS NOT WRAPPED IN <noscript>. A <noscript> block is inert the moment
+  scripting is enabled, so the form would post no variant id at all whenever
+  theme.js loads but fails — the exact case the native-POST fallback exists for.
+  Visibility is CSS's job instead, keyed on the html.js class that
+  layout/theme.liquid sets in the head before first paint: hidden under html.js,
+  shown under html:not(.js). The element is always in the DOM and always
+  submits, whatever happened to the JavaScript.
+
+  Sold-out variants stay in the list and carry the disabled attribute, so a
+  no-JS shopper can see the size exists and cannot buy air.
+
+  Params: product · v (current variant) · section_id
+{%- endcomment -%}
+{%- if product.has_only_default_variant -%}
+  {%- comment -%} Nothing to choose. A one-option select reading "Default Title"
+  is not a control, it is a confession — the id still has to post, so it posts
+  as a hidden field. {%- endcomment -%}
+  <input type="hidden" name="id" value="{{ v.id }}" data-variant-select>
+{%- else -%}
+  {%- assign vf_id = 'pdp-variant-' | append: section_id -%}
+  <div class="pdp-form__variants" data-variant-fallback>
+    <label class="pdp-form__variants-label lbl-sm mute" for="{{ vf_id }}">{{ 'product.form.variant_label' | t }}</label>
+    <select id="{{ vf_id }}" class="pdp-form__variants-select" name="id" data-variant-select>
+      {%- for variant in product.variants -%}
+        <option
+          value="{{ variant.id }}"
+          {% if variant.id == v.id %}selected{% endif %}
+          {% unless variant.available %}disabled{% endunless %}
+        >
+          {{- variant.title }} — {% render 'price', amount: variant.price %}{% unless variant.available %} ({{ 'product.atc.sold_out' | t }}){% endunless -%}
+        </option>
+      {%- endfor -%}
+    </select>
+  </div>
+{%- endif -%}

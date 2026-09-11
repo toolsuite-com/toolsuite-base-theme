@@ -70,7 +70,7 @@
       <h2 class="dl">{{ name | escape }}</h2>
       <div class="home-hl__meta lbl">
         {%- if descriptor != blank -%}<span class="mute">{{ descriptor | escape }}</span>{%- endif -%}
-        {%- if p != blank -%}<span>{{ p.price | money_without_trailing_zeros }}</span>{%- endif -%}
+        {%- if p != blank -%}<span>{% render 'price', amount: p.price %}</span>{%- endif -%}
       </div>
       {%- if hl_blurb != blank -%}
         <p class="prose home-hl__say">{{ hl_blurb | escape }}</p>

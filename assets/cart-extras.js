@@ -42,19 +42,27 @@ function formatWithDelimiters(cents, precision, thousands, decimal) {
   const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousands);
   return precision > 0 ? `${intPart}${decimal}${parts[1]}` : intPart;
 }
+/* settings.price_show_cents — kept identical to moneyPrecision() in theme.js
+   (separate copy for the same reason money() is: these scripts load as
+   independent modules with no cross-file imports). Change one, change both. */
+function moneyPrecision(cents) {
+  if (S.showCents) return 2;
+  return Number(cents) % 100 === 0 ? 0 : 2;
+}
 function money(cents) {
   try {
     const format = S.moneyFormat || '€{{amount}}';
     const match = format.match(/\{\{\s*(\w+)\s*\}\}/);
-    if (!match) return `€${formatWithDelimiters(cents, 2, ',', '.')}`;
+    const p = moneyPrecision(cents);
+    if (!match) return `€${formatWithDelimiters(cents, p, ',', '.')}`;
     let value;
     switch (match[1]) {
       case 'amount_no_decimals': value = formatWithDelimiters(cents, 0, ',', '.'); break;
-      case 'amount_with_comma_separator': value = formatWithDelimiters(cents, 2, '.', ','); break;
+      case 'amount_with_comma_separator': value = formatWithDelimiters(cents, p, '.', ','); break;
       case 'amount_no_decimals_with_comma_separator': value = formatWithDelimiters(cents, 0, '.', ','); break;
-      case 'amount_with_apostrophe_separator': value = formatWithDelimiters(cents, 2, "'", '.'); break;
+      case 'amount_with_apostrophe_separator': value = formatWithDelimiters(cents, p, "'", '.'); break;
       case 'amount':
-      default: value = formatWithDelimiters(cents, 2, ',', '.'); break;
+      default: value = formatWithDelimiters(cents, p, ',', '.'); break;
     }
     return format.replace(/\{\{\s*\w+\s*\}\}/, value).replace(/<[^>]+>/g, '');
   } catch {

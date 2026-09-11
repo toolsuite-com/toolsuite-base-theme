@@ -1,8 +1,30 @@
 {%- comment -%}
-  Hero. Full-bleed photograph, with ONE quiet voice caption and
-  ONE underlined link on it — bottom left, over the bright limestone-and-gravel
-  part of the frame, so the type is INK on the picture and no scrim is needed
-  (the thesis bans scrims; that is why the caption cannot move).
+  Hero. Full-bleed photograph with ONE quiet voice caption and ONE link,
+  anchored bottom-left.
+
+  THE NO-SCRIM THESIS IS NOW A SETTING, NOT A LAW.
+  The original rule was: place the caption over the bright limestone-and-gravel
+  corner of the shipped photograph, set it in ink, and no scrim is needed. That
+  holds for the shipped photograph and for nothing else. A merchant who picks a
+  white-garment, high-key or backlit frame — and Obsidian ships this theme to
+  merchants who pick their own — lands type on a ground with no contrast left,
+  and the caption disappears. The audit caught exactly that: white display type
+  over a white garment.
+
+  So the thesis survives as the DEFAULT and the escape hatches are explicit:
+    · `scrim` (0-80, default 45) drives `--hero-scrim`, an alpha the stylesheet
+      turns into a bottom-up gradient on its own element (.home-hero__scrim).
+      Set it to 0 and the hero is bare again — the original thesis, opt-in.
+    · `text_tone` flips the caption between light type (dark scrim) and dark
+      type (paper scrim), so a pale photograph can take ink instead of fighting
+      a veil it does not need.
+    · `object_position` keeps the subject in frame at every viewport. The art
+      box crops hard (object-fit: cover); before this, a face could be cropped
+      out on a phone with no way for the merchant to fix it.
+  The scrim is its OWN element rather than a background on the caption block,
+  because a caption-sized wash only protects the caption's own box — display
+  type at hero scale overhangs it, and the strength has to be settable without
+  the stylesheet having to re-derive the caption's padding.
 
   No product card sits on the hero: showing a product here would sell it
   twice over (the highlight section already shows a product) and leaves the
@@ -24,8 +46,46 @@
   if hero_url == blank and section.settings.collection != blank
     assign hero_url = section.settings.collection.url
   endif
+
+  comment
+    Height, focal point and scrim are handed to the stylesheet as custom
+    properties on the section rather than as a class per value: three selects
+    would otherwise need nine hand-written rules, and `scrim` is a range — it
+    has 81 values and cannot be a class at all. `data-height` / `data-tone`
+    stay as attributes too, because those two DO change more than one number
+    (type colour, link colour, gradient direction) and read better as states.
+  endcomment
+  assign hero_height = section.settings.height | default: 'tall'
+  case hero_height
+    when 'medium'
+      assign hero_h = '72svh'
+    when 'short'
+      assign hero_h = '56svh'
+    else
+      assign hero_h = '88svh'
+  endcase
+
+  comment
+    The select ships CSS `object-position` keywords verbatim ("left top"), so the
+    stylesheet needs no lookup table. Escaped anyway: settings JSON can be edited
+    by hand outside the editor's select, and this value lands in a style attribute.
+  endcomment
+  assign hero_focal = section.settings.object_position | default: 'center center' | escape
+
+  comment
+    0-80 in the editor, 0-0.80 as an alpha. Divided here so the stylesheet can
+    use it raw in a colour function without a calc() in every gradient stop.
+  endcomment
+  assign hero_scrim = section.settings.scrim | default: 45 | divided_by: 100.0
+  assign hero_tone = section.settings.text_tone | default: 'light'
+  assign hero_cta_style = section.settings.cta_style | default: 'underline'
 -%}
-<section class="home-hero">
+<section
+  class="home-hero"
+  data-height="{{ hero_height }}"
+  data-tone="{{ hero_tone }}"
+  style="--hero-h: {{ hero_h }}; --hero-focal: {{ hero_focal }}; --hero-scrim: {{ hero_scrim }};"
+>
   <div class="home-hero__art">
     {%- if img_m != blank -%}
       {%- comment -%} PERFORMANCE (measured via Lighthouse before/after):
@@ -47,7 +107,13 @@
             desktop band shows ~1.78-1.86:1 of the 3:2 master via object-fit
             cover, so requesting the full height shipped ~35% pixels nobody saw.
             crop center matches what cover was showing — same picture, fewer
-            bytes. LCP phase Load Delay 728ms was mostly this file. {%- endcomment -%}
+            bytes. LCP phase Load Delay 728ms was mostly this file.
+
+            The crop stays `center` even when `object_position` is set off-centre:
+            the CDN crop decides which part of the MASTER is delivered, the
+            object-position decides which part of the DELIVERED frame survives the
+            box. Pinning both to the same corner would crop the subject twice.
+            {%- endcomment -%}
             srcset="{{ img_d | image_url: width: 1000, height: 562, crop: 'center' }} 1000w, {{ img_d | image_url: width: 1300, height: 731, crop: 'center' }} 1300w, {{ img_d | image_url: width: 1600, height: 900, crop: 'center' }} 1600w"
             sizes="100vw">
         {%- endif -%}
@@ -64,6 +130,13 @@
     {%- endif -%}
   </div>
 
+  {%- comment -%} Empty by design: one element the stylesheet gradients, sitting
+  between the photograph and the caption. It renders even at scrim 0 (where it is
+  fully transparent) so the merchant can drag the range in the theme editor and
+  see the result live, without a section re-render adding or removing a node.
+  aria-hidden + no text: it is a lighting instrument, not content. {%- endcomment -%}
+  <div class="home-hero__scrim" aria-hidden="true"></div>
+
   {%- liquid
     comment
       What the merchant typed wins in EVERY language. Reassigning these on any
@@ -79,6 +152,11 @@
     assign h_cta = section.settings.cta_label
   -%}
   {%- if h_line_1 != blank or h_cta != blank -%}
+    {%- comment -%} The caption is its own anchored block so the stylesheet can
+    give the hero a real editorial baseline: the line sits on a bottom-left
+    grid cell, the link below it, and the two share ONE inline-start edge with
+    the page gutter. Previously the block was the scrim as well, which is why
+    its padding and its lighting could never be tuned apart. {%- endcomment -%}
     <div class="home-hero__say">
       {%- if h_line_1 != blank -%}
         <p class="dl home-hero__line">
@@ -87,7 +165,16 @@
         </p>
       {%- endif -%}
       {%- if h_cta != blank and hero_url != blank -%}
-        <a class="tlink" href="{{ hero_url }}">{{ h_cta | escape }}</a>
+        {%- comment -%} Two shapes only, both already in the theme's vocabulary:
+        the underlined text link (.tlink) and the black bar (.bar, which reads
+        settings.buy_color through --buy-fill / --buy-text, so the amber store
+        gets an amber hero button for free). Ghost buttons and pills stay banned.
+        {%- endcomment -%}
+        {%- if hero_cta_style == 'button' -%}
+          <a class="bar home-hero__cta home-hero__cta--button" href="{{ hero_url }}">{{ h_cta | escape }}</a>
+        {%- else -%}
+          <a class="tlink home-hero__cta home-hero__cta--underline" href="{{ hero_url }}">{{ h_cta | escape }}</a>
+        {%- endif -%}
       {%- endif -%}
     </div>
   {%- endif -%}
@@ -99,10 +186,55 @@
   "settings": [
     { "type": "image_picker", "id": "image", "label": "Desktop image", "info": "Shopify Files: brand-hero.webp (landscape 3:2)." },
     { "type": "image_picker", "id": "image_mobile", "label": "Mobile image", "info": "Shopify Files: brand-hero-mobile.webp (portrait 2:3)." },
+    { "type": "header", "content": "Frame" },
+    {
+      "type": "select", "id": "height", "label": "Height", "default": "tall",
+      "info": "Tall gives the homepage a first screen that is only photograph.",
+      "options": [
+        { "value": "tall", "label": "Tall (88%)" },
+        { "value": "medium", "label": "Medium (72%)" },
+        { "value": "short", "label": "Short (56%)" }
+      ]
+    },
+    {
+      "type": "select", "id": "object_position", "label": "Focal point", "default": "center center",
+      "info": "The image is cropped to fill. Pick the part that must stay in frame — usually the face.",
+      "options": [
+        { "value": "left top", "label": "Top left" },
+        { "value": "center top", "label": "Top" },
+        { "value": "right top", "label": "Top right" },
+        { "value": "left center", "label": "Left" },
+        { "value": "center center", "label": "Centre" },
+        { "value": "right center", "label": "Right" },
+        { "value": "left bottom", "label": "Bottom left" },
+        { "value": "center bottom", "label": "Bottom" },
+        { "value": "right bottom", "label": "Bottom right" }
+      ]
+    },
     { "type": "header", "content": "Caption on the image" },
-    { "type": "text", "id": "line_1", "label": "Line 1", "default": "Dressed, not fussed.", "info": "Sits in ink on the bright part of the photograph, bottom left. Keep it short." },
+    { "type": "text", "id": "line_1", "label": "Line 1", "default": "Dressed, not fussed.", "info": "Sits bottom left over the image. Keep it short." },
     { "type": "text", "id": "line_2", "label": "Line 2", "info": "Optional second line." },
+    {
+      "type": "select", "id": "text_tone", "label": "Caption colour", "default": "light",
+      "info": "Dark suits a pale, high-key photograph — it needs far less veil than light type does.",
+      "options": [
+        { "value": "light", "label": "Light" },
+        { "value": "dark", "label": "Dark" }
+      ]
+    },
+    {
+      "type": "range", "id": "scrim", "label": "Shade behind the caption",
+      "min": 0, "max": 80, "step": 5, "unit": "%", "default": 45,
+      "info": "0 shows the photograph bare. Raise it until the caption is readable — check it over the brightest part of your image."
+    },
     { "type": "text", "id": "cta_label", "label": "Link label", "default": "Shop new in" },
+    {
+      "type": "select", "id": "cta_style", "label": "Link style", "default": "underline",
+      "options": [
+        { "value": "underline", "label": "Underline" },
+        { "value": "button", "label": "Button" }
+      ]
+    },
     { "type": "collection", "id": "collection", "label": "Link collection" },
     { "type": "url", "id": "link", "label": "Link override", "info": "Leave empty to link to the collection above." }
   ],
@@ -112,9 +244,14 @@
       "settings": {
         "image": "",
         "image_mobile": "",
+        "height": "tall",
+        "object_position": "center center",
         "line_1": "Dressed, not fussed.",
         "line_2": "New in for the season ahead.",
+        "text_tone": "light",
+        "scrim": 45,
         "cta_label": "Shop new in",
+        "cta_style": "underline",
         "collection": "new-in"
       }
     }

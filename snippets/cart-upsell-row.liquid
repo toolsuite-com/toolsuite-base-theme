@@ -26,7 +26,7 @@
           <span class="cart-upsell__desc lbl-sm mute">{{ up.description | strip_html | truncate: 90 }}</span>
         {%- endif -%}
       </span>
-      <span class="cart-upsell__price lbl">{{ uv.price | money_without_trailing_zeros }}</span>
+      <span class="cart-upsell__price lbl">{% render 'price', amount: uv.price %}</span>
     </button>
   {%- endif -%}
 {%- endif -%}

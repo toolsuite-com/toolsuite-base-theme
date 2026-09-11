@@ -19,6 +19,21 @@
   All three add buttons carry [data-atc] and theme.js paints every one of them
   from the same render() pass — there is no second source of truth.
 
+  THE BUY BOX IS A REAL PRODUCT FORM. Picker, quantity and .pdp__atc live inside
+  a Shopify product form tag, so the page can still take money with JavaScript
+  off or broken; the AJAX add stays as the enhancement on top. The full
+  three-way behaviour (no JS / broken JS / healthy JS) and the one-line inline
+  guard that keeps them from firing together are documented at the form itself.
+  Two rules that are easy to break from outside it:
+    · The in-column [data-atc] must stay a real type="submit" inside the
+      product form — that submit IS the no-JavaScript purchase.
+    · [data-variant-fallback] holds the ONLY name="id" control on the page. A
+      second one means two values for one field in the POST body.
+
+  Broken out into snippets, all still owned by this section: pdp-gallery (every
+  media type, thumbs, dots), pdp-variant-picker, pdp-variant-fallback,
+  pdp-quantity, pdp-trust-row, pdp-media-colors.
+
   Scarcity and live viewers are setting-owned and disappear when cleared.
   Delivery estimates stay off: the dated card below promises only a
   policy-matched SHIPPING date. Model measurements (models are AI-generated)
@@ -117,8 +132,7 @@
     with a price.
   endcomment
   assign needs_size = false
-  assign pdp_images = product.media | where: 'media_type', 'image'
-  assign pdp_image_count = pdp_images.size
+  assign pdp_form_id = 'pdp-form-' | append: section.id
   assign pdp_price_pct = 0
   if v.compare_at_price > v.price
     assign pdp_price_pct = v.compare_at_price | minus: v.price | times: 100.0 | divided_by: v.compare_at_price | round
@@ -150,68 +164,16 @@ open under the buy buttons. {%- endcomment -%}
 <section class="pdp" data-product-root>
   <div class="pdp__top">
 
-    <div class="pdp__stage">
-      {%- if pdp_image_count > 1 -%}
-        <div class="pdp__rail" aria-label="{{ 'product.gallery.aria' | t }}">
-          {%- for media in product.media -%}
-            {%- if media.media_type == 'image' -%}
-              {%- capture thumb_colors -%}{%- if color_opt_index > -1 -%}{%- assign tm_alt = media.alt | default: '' | downcase -%}{%- for cv in color_values -%}{%- assign cv_down = cv | downcase -%}{%- assign tneedle = ' in ' | append: cv_down | append: ',' -%}{%- assign tneedle2 = ' in ' | append: cv_down | append: '-' -%}{%- assign tneedle3 = ' i ' | append: cv_down | append: ',' -%}{%- assign tneedle4 = ' i ' | append: cv_down | append: '-' -%}{%- if tm_alt contains tneedle or tm_alt contains tneedle2 or tm_alt contains tneedle3 or tm_alt contains tneedle4 -%}{{ cv }}||{%- endif -%}{%- endfor -%}{%- endif -%}{%- endcapture -%}
-              {%- if color_opt_index > -1 and thumb_colors == blank -%}{%- capture thumb_colors -%}{%- for pv in product.variants -%}{%- if pv.featured_media.id == media.id -%}{{ pv.options[color_opt_index] }}||{%- endif -%}{%- endfor -%}{%- endcapture -%}{%- endif -%}
-              <button type="button" class="pdp__thumb" data-thumb-target="{{ media.id }}"{% if thumb_colors != blank %} data-colors="{{ thumb_colors | escape }}"{% endif %} aria-label="{{ 'product.gallery.show_image' | t: index: forloop.index }}">
-                <img src="{{ media | image_url: width: 132 }}" width="66" height="99" loading="lazy" alt="">
-              </button>
-            {%- endif -%}
-          {%- endfor -%}
-        </div>
-      {%- endif -%}
-
-      <div class="pdp__frame">
-        <div class="pdp__gallery">
-          {%- for media in product.media -%}
-            {%- if media.media_type == 'image' -%}
-              {%- capture media_colors -%}{%- if color_opt_index > -1 -%}{%- assign m_alt = media.alt | default: '' | downcase -%}{%- for cv in color_values -%}{%- assign cv_down = cv | downcase -%}{%- assign needle = ' in ' | append: cv_down | append: ',' -%}{%- assign needle2 = ' in ' | append: cv_down | append: '-' -%}{%- assign needle3 = ' i ' | append: cv_down | append: ',' -%}{%- assign needle4 = ' i ' | append: cv_down | append: '-' -%}{%- if m_alt contains needle or m_alt contains needle2 or m_alt contains needle3 or m_alt contains needle4 -%}{{ cv }}||{%- endif -%}{%- endfor -%}{%- endif -%}{%- endcapture -%}
-              {%- if color_opt_index > -1 and media_colors == blank -%}
-                {%- capture media_colors -%}{%- for pv in product.variants -%}{%- if pv.featured_media.id == media.id -%}{{ pv.options[color_opt_index] }}||{%- endif -%}{%- endfor -%}{%- endcapture -%}
-              {%- endif -%}
-              {%- comment -%} ceiling 1024×1536: the masters are 2:3 at that size and Shopify
-              silently DROPS the crop once the requested height exceeds the source, handing
-              back an uncropped original at a different URL. The three srcset steps + sizes
-              below must stay byte-identical to the preload in layout/theme.liquid or the
-              hero image downloads twice. {%- endcomment -%}
-              <button
-                type="button"
-                class="gallery-item{% if forloop.first %} is-current{% endif %}"
-                data-media-id="{{ media.id }}"
-                data-zoom-src="{{ media | image_url: width: 1024 }}"
-                {% if media_colors != blank %}data-colors="{{ media_colors | escape }}"{% endif %}
-                aria-label="{{ 'product.gallery.zoom_image' | t: index: forloop.index }}"
-              >
-                <img
-                  src="{{ media | image_url: width: 800 }}"
-                  srcset="{{ media | image_url: width: 500 }} 500w, {{ media | image_url: width: 640 }} 640w, {{ media | image_url: width: 800 }} 800w, {{ media | image_url: width: 1024 }} 1024w"
-                  sizes="(max-width: 720px) 80vw, 46vw"
-                  width="800" height="1200"
-                  alt="{{ media.alt | default: product.title | escape }}"
-                  {% if forloop.first %}fetchpriority="high"{% else %}loading="lazy"{% endif %}
-                >
-              </button>
-            {%- endif -%}
-          {%- endfor -%}
-          {%- if pdp_image_count == 0 -%}
-            {%- assign ph = product.id | modulo: 6 | plus: 1 -%}
-            <div class="gallery-item is-current">{{ 'product-' | append: ph | placeholder_svg_tag }}</div>
-          {%- endif -%}
-        </div>
-
-        {%- comment -%} Dots and a visible "n / total" counter are omitted:
-        with many images the dot row reads as a dotted rule across the
-        photograph rather than as an indicator. The counter stays in the
-        markup but visually hidden — it is the aria-live region that tells
-        a screen-reader user which image they moved to, and the gallery has no
-        other spoken position cue. {%- endcomment -%}
-        {%- if pdp_image_count > 0 -%}<p class="visually-hidden" data-gallery-counter aria-live="polite">1 / {{ pdp_image_count }}</p>{%- endif -%}
-      </div>
-    </div>
+    {%- comment -%} Gallery moved to snippets/pdp-gallery.liquid: the stage and the
+    thumbnail rail each carried their own inline copy of the colour-tag parser and
+    both were gated on media_type == 'image', so product video never reached the
+    storefront at all. The snippet renders every media type and emits the mobile
+    dot rail that theme.js has always known how to drive. {%- endcomment -%}
+    {%- render 'pdp-gallery',
+      product: product,
+      color_opt_index: color_opt_index,
+      color_values: color_values
+    -%}
 
     <div class="pdp__buy">
       {%- render 'pdp-rating' -%}
@@ -220,7 +182,12 @@ open under the buy buttons. {%- endcomment -%}
       colour moved onto the COLOR option label ("Color: Pink") further down —
       same [data-opt-current] hook, one line less. {%- endcomment -%}
       <div class="pdp__titles">
-        <h1 class="pdp__name lbl">{{ pdp_name | escape }}</h1>
+        {%- comment -%} .dm, not .lbl. Every other heading in this theme is Prata
+        (--font-display); the product title — the one heading a shopper clicked
+        through to read — was set in the uppercase Archivo label voice, which made
+        the PDP the single page where the type system broke. .dm is the display
+        step whose range already matches the title's 20-26px. {%- endcomment -%}
+        <h1 class="pdp__name dm">{{ pdp_name | escape }}</h1>
         {%- comment -%} descriptor sits BESIDE the name, not three rows below it {%- endcomment -%}
         {%- if pdp_descriptor != blank -%}
           <p class="pdp__descriptor lbl-sm">{{ pdp_descriptor | escape }}</p>
@@ -229,9 +196,9 @@ open under the buy buttons. {%- endcomment -%}
       <div class="pdp__price lbl">
         <span data-price>
           {%- if v.compare_at_price > v.price -%}
-            <s>{{ v.compare_at_price | money_without_trailing_zeros }}</s> <span class="price--sale">{{ v.price | money_without_trailing_zeros }}</span>
+            <s>{% render 'price', amount: v.compare_at_price %}</s> <span class="price--sale">{% render 'price', amount: v.price %}</span>
           {%- else -%}
-            {{ v.price | money_without_trailing_zeros }}
+            {% render 'price', amount: v.price %}
           {%- endif -%}
         </span>
         {%- comment -%} Sibling by contract: theme.js replaces every [data-price]
@@ -241,7 +208,7 @@ open under the buy buttons. {%- endcomment -%}
 
       {%- comment -%} The three-line USP stack under the price is gone. Its
       claims moved — secure payment closes the buy zone (one line over the
-      payment marks), shipping + money-back sit as a two-point trust row under
+      payment marks), the merchant trust lines sit as their own row under
       the accordions. Snippet + settings stay; re-adding means putting the
       render back here. {%- endcomment -%}
 
@@ -250,148 +217,96 @@ open under the buy buttons. {%- endcomment -%}
       next to it is gone: its count was generated, never measured. {%- endcomment -%}
       {%- render 'pdp-scarcity', product: product -%}
 
-      {%- unless product.has_only_default_variant -%}
-        {%- for option in product.options_with_values -%}
-          {%- assign opt_index = forloop.index0 -%}
-          {%- assign opt_down = option.name | downcase -%}
-          {%- assign is_color = false -%}
-          {%- if opt_down == 'color' or opt_down == 'colour' -%}{%- assign is_color = true -%}{%- endif -%}
-          {%- if option.values.size < 2 -%}{%- continue -%}{%- endif -%}
-          {%- assign is_size = false -%}
-          {%- if opt_down contains 'size' -%}{%- assign is_size = true -%}{%- endif -%}
-          {%- comment -%} Option NAME localisation: the option VALUE
-          (v.options[opt_index], size_btn text, swatch value) is never touched
-          here — the alt-text parser depends on those staying exactly as imported.
-          Only the NAME ("Color"/"Size") routes through a locale key. {%- endcomment -%}
-          {%- assign opt_label = option.name -%}
-          {%- if is_color -%}
-            {%- assign opt_label = 'product.option_color' | t -%}
-          {%- elsif is_size -%}
-            {%- assign opt_label = 'product.option_size' | t -%}
-          {%- endif -%}
-          <div class="opt"{% if is_size %} data-size-opt{% endif %}>
-            {%- comment -%} SIZE head = label left, size-guide link right on the
-            same row (saves an extra link row below the buttons). No value
-            echo — the picked size shows on the selected button. Colour keeps
-            its value (swatches carry no name). The finder lives inside the
-            guide dialog. {%- endcomment -%}
-            <div class="opt__head">
-              {%- if is_size -%}
-                <p class="opt__label lbl-sm mute">{{ opt_label | upcase | escape }}</p>
-                {%- if size_chart_html != blank -%}
-                  <button type="button" class="tlink opt__guide" data-open-size-chart>{{ 'product.size.chart_link' | t }}</button>
-                {%- endif -%}
-              {%- else -%}
-                <p class="opt__label lbl-sm mute">{{ opt_label | upcase | escape }}: <strong class="opt__value" data-opt-current="{{ opt_index }}">{{ v.options[opt_index] | upcase | escape }}</strong></p>
-              {%- endif -%}
-            </div>
-            {%- if is_color -%}
-              <div class="swatches" role="group" aria-label="{{ opt_label | escape }}">
-                {%- for value in option.values -%}
-                  {%- comment -%} A colour is picked from its own photograph. The curated
-                  alt-tagged media wins (same " in Colour," / " in Colour-" contract as
-                  the gallery), variant featured media is only the fallback. {%- endcomment -%}
-                  {%- assign cv_media = false -%}
-                  {%- assign value_down = value | downcase -%}
-                  {%- assign cv_needle = ' in ' | append: value_down | append: ',' -%}
-                  {%- assign cv_needle2 = ' in ' | append: value_down | append: '-' -%}
-                  {%- assign cv_needle3 = ' i ' | append: value_down | append: ',' -%}
-                  {%- assign cv_needle4 = ' i ' | append: value_down | append: '-' -%}
-                  {%- for cv_product_media in product.media -%}
-                    {%- if cv_product_media.media_type == 'image' -%}
-                      {%- assign cv_product_alt = cv_product_media.alt | default: '' | downcase -%}
-                      {%- if cv_product_alt contains cv_needle or cv_product_alt contains cv_needle2 or cv_product_alt contains cv_needle3 or cv_product_alt contains cv_needle4 -%}
-                        {%- assign cv_media = cv_product_media -%}
-                        {%- break -%}
-                      {%- endif -%}
-                    {%- endif -%}
-                  {%- endfor -%}
-                  {%- unless cv_media -%}
-                  {%- for cv_variant in product.variants -%}
-                    {%- if cv_variant.options[opt_index] == value and cv_variant.featured_media != blank -%}
-                      {%- assign cv_media = cv_variant.featured_media -%}
-                      {%- break -%}
-                    {%- endif -%}
-                  {%- endfor -%}
-                  {%- endunless -%}
-                  {%- if cv_media -%}
-                    <button type="button" class="swatch swatch--img" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}" aria-label="{{ value | escape }}" title="{{ value | escape }}"><img src="{{ cv_media | image_url: width: 96, height: 144, crop: 'center' }}" srcset="{{ cv_media | image_url: width: 96, height: 144, crop: 'center' }} 2x, {{ cv_media | image_url: width: 144, height: 216, crop: 'center' }} 3x" width="48" height="72" alt="" loading="lazy"></button>
-                  {%- else -%}
-                    {%- comment -%} colourless in Liquid on purpose: theme.js paintSwatches()
-                    fills these from qvSwatchMap, so the fashion-hex table lives in exactly
-                    one place (the PLP cards and the quick view share it). {%- endcomment -%}
-                    <button type="button" class="swatch" data-swatch="{{ value | escape }}" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}" aria-label="{{ value | escape }}" title="{{ value | escape }}"></button>
-                  {%- endif -%}
-                {%- endfor -%}
-              </div>
-            {%- else -%}
-              <div class="sizes" role="group" aria-label="{{ opt_label | escape }}">
-                {%- for value in option.values -%}
-                  <button type="button" class="size-btn" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if needs_size %}false{% elsif v.options[opt_index] == value %}true{% else %}false{% endif %}">{{ value | escape }}</button>
-                {%- endfor -%}
-              </div>
-            {%- endif -%}
+      {%- comment -%} ============================ THE BUY FORM ==================
+      Everything from the picker to the payment marks is now inside a real
+      Shopify product form tag. Before this the whole buy box was a
+      type="button" plus fetch and the file contained no product form at all, so
+      the storefront had exactly one way to sell anything and it was JavaScript.
+      A store that cannot take money when a script fails is not an unstyled
+      store, it is a closed one.
+
+      HOW THE TWO PATHS SHARE ONE BUTTON — read this before touching the button
+      below, because it is not decoration:
+
+        no JS at all      the html.js class is never set, CSS reveals the
+                          [data-variant-fallback] select, the shopper picks a
+                          variant and a quantity, the button submits, Shopify
+                          POSTs /cart/add and redirects to the bag.
+        theme.js broken   the [data-atc] click handler never attached, so
+                          nothing suppresses the native submit and the POST goes
+                          through with whatever variant the select carries.
+                          Degraded, but the product is still buyable.
+        theme.js healthy  the handler attached, calls e.preventDefault() to own
+                          the click, does the AJAX add and opens the drawer. It
+                          also reads the quantity field and keeps
+                          [data-variant-select] in step, so if the native path
+                          is ever reached it posts the right variant.
+
+      Which path runs is decided by whether that one listener attached — there
+      is no attribute interlock and nothing here to keep in sync. Keep the
+      button a real type="submit" inside this form; that is the whole fallback.
+      ============================================================== {%- endcomment -%}
+      {%- form 'product', product, id: pdp_form_id, class: 'pdp-form' -%}
+        {%- if form.errors -%}
+          {%- comment -%} The no-JS error surface. Shopify re-renders the page with
+          form.errors after a rejected POST; without this the shopper is returned to
+          an unchanged page and has to guess what happened. {%- endcomment -%}
+          <div class="pdp-form__error lbl-sm" role="alert">
+            {{ form.errors | default_errors }}
           </div>
-          {%- comment -%} return anchor: the bar's expansion panel MOVES this row into
-          the sheet (no duplicate picker to keep in sync) and puts it back here. {%- endcomment -%}
-          {%- if is_size -%}<span data-size-home hidden></span>{%- endif -%}
-        {%- endfor -%}
-      {%- endunless -%}
+        {%- endif -%}
 
-      {%- comment -%} Size recommender lives inside the option loop, above the
-      size row — see the render inside the loop. It still applies its answer
-      by clicking the real size button (never a second picker). {%- endcomment -%}
-      {%- comment -%} FIT SCALE is toggle-owned; derivation from
-      custom.fit_note is unchanged. {%- endcomment -%}
-      {%- comment -%} sizekit: fit scale sits in one bordered block. The
-      measure note is no longer printed — the settings toggle stays but this
-      template doesn't render it. {%- endcomment -%}
-      {%- if settings.fit_scale_enabled -%}
-        <div class="pdp-sizekit">
-          {%- render 'pdp-fit-scale' -%}
-        </div>
-      {%- endif -%}
+        {%- render 'pdp-variant-picker',
+          product: product,
+          v: v,
+          color_opt_index: color_opt_index,
+          size_chart_html: size_chart_html
+        -%}
 
-      {%- comment -%} ORDER: size grid → size help + fit → scarcity → buy —
-      the scarcity line sits directly against the button, not separated from
-      it by fit scale and spacing.
+        {%- render 'pdp-variant-fallback', product: product, v: v, section_id: section.id -%}
 
-      The viewers line is removed here: with scarcity, the drawer countdown
-      and the tier upsell already live, a fourth pressure signal cost 30px
-      that kept the add button below the 785px fold. The snippet and its CSS
-      stay — re-adding the render line brings it back. {%- endcomment -%}
+        {%- comment -%} FIT SCALE is toggle-owned; derivation from custom.fit_note is
+        unchanged. It sits in one bordered block; the measure note is not printed. {%- endcomment -%}
+        {%- if settings.fit_scale_enabled -%}
+          <div class="pdp-sizekit">
+            {%- render 'pdp-fit-scale' -%}
+          </div>
+        {%- endif -%}
 
-      {%- comment -%} THE desktop add button. This is the primary action from
-      900px up — it replaces a floating payment button far from the size just
-      picked; below that it never renders and the fixed bar stays THE buy
-      button. It carries [data-atc] like every other add button in
-      this theme, and theme.js paints all of them from the one render() pass. {%- endcomment -%}
-      <button
-        type="button"
-        class="bar pdp__atc{% if needs_size %} bar--awaiting{% endif %}"
-        data-atc
-        data-variant-id="{% unless needs_size %}{{ v.id }}{% endunless %}"
-        {% unless needs_size or v.available %}disabled{% endunless %}
-      >
-        <span data-atc-label>{% if needs_size %}{{ 'product.atc.select_size' | t }}{% elsif v.available %}{{ 'product.atc.add_to_bag' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span>
-        <span data-atc-price>{% if v.available and needs_size == false %}{{ v.price | money_without_trailing_zeros }}{% endif %}</span>
-      </button>
+        {%- comment -%} Quantity sits between the picker and the button, where the
+        decision actually is. The PDP used to post no quantity at all. {%- endcomment -%}
+        {%- render 'pdp-quantity', section_id: section.id -%}
 
-      {%- comment -%} The secure-payment trust line above the payment marks
-      reads the locale key on every language — the settings value carries
-      different (longer) wording than what belongs here, and only the primary
-      locale would otherwise read the setting raw (same locale-fallback
-      architecture rule as the retired USP stack). The delivery timeline moved
-      below the accordions. {%- endcomment -%}
-      {%- assign cp_sec = 'product.usp.secure' | t -%}
-      {%- if cp_sec != blank -%}
-        <p class="pdp-secure lbl-sm">{% render 'icon', name: 'lock', size: 15 %}<span>{{ cp_sec | escape }}</span></p>
-      {%- endif -%}
-      {%- if shop.enabled_payment_types.size > 0 -%}
-        <div class="pdp-payments pdp-payments--column" aria-label="{{ 'general.accepted_payment_methods' | t }}">
-          {%- for payment_type in shop.enabled_payment_types -%}{{ payment_type | payment_type_svg_tag }}{%- endfor -%}
-        </div>
-      {%- endif -%}
+        {%- comment -%} THE in-column add button — the primary action on every
+        viewport, and now a real submit. It carries [data-atc] like the phone bar
+        and the rich bar so theme.js paints all three from the one render() pass;
+        there is still no second source of truth. {%- endcomment -%}
+        <button
+          type="submit"
+          class="bar pdp__atc{% if needs_size %} bar--awaiting{% endif %}"
+          data-atc
+          data-variant-id="{% unless needs_size %}{{ v.id }}{% endunless %}"
+          {% unless needs_size or v.available %}disabled{% endunless %}
+        >
+          <span data-atc-label>{% if needs_size %}{{ 'product.atc.select_size' | t }}{% elsif v.available %}{{ 'product.atc.add_to_bag' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span>
+          <span data-atc-price>{% if v.available and needs_size == false %}{% render 'price', amount: v.price %}{% endif %}</span>
+        </button>
+
+        {%- comment -%} The secure-payment trust line above the payment marks reads
+        the locale key on every language — the settings value carries different
+        (longer) wording than what belongs here, and only the primary locale would
+        otherwise read the setting raw (same locale-fallback architecture rule as
+        the retired USP stack). {%- endcomment -%}
+        {%- assign cp_sec = 'product.usp.secure' | t -%}
+        {%- if cp_sec != blank -%}
+          <p class="pdp-secure lbl-sm">{% render 'icon', name: 'lock', size: 15 %}<span>{{ cp_sec | escape }}</span></p>
+        {%- endif -%}
+        {%- if shop.enabled_payment_types.size > 0 -%}
+          <div class="pdp-payments pdp-payments--column" aria-label="{{ 'general.accepted_payment_methods' | t }}">
+            {%- for payment_type in shop.enabled_payment_types -%}{{ payment_type | payment_type_svg_tag }}{%- endfor -%}
+          </div>
+        {%- endif -%}
+      {%- endform -%}
 
       {%- comment -%} Renders only while the tier discounts exist — with them off
       this is nothing at all. {%- endcomment -%}
@@ -456,9 +371,13 @@ open under the buy buttons. {%- endcomment -%}
   <div class="pdp__info pdp__info--acc wrap">
     <div class="pdp__acc bt">
       {%- if has_description_tab -%}
-        {%- comment -%} Ships CLOSED like every other panel — quiet page,
-        reader opens what they want. {%- endcomment -%}
-        <details class="acc bb">
+        {%- comment -%} SHIPS OPEN, and it is the only panel that does. With all four
+        closed the page carried no sentence about the product at all — a shopper who
+        landed from a paid click read a photograph, a price and four grey headings, so
+        the description, the one thing they came for, cost a tap to reach. Exactly one
+        panel is open: whichever renders first, so a product with no description at all
+        opens Fabric & care instead of showing four shut drawers. {%- endcomment -%}
+        <details class="acc bb" open>
           <summary class="acc__q lbl">{{ 'product.tabs.description' | t }}<span class="acc__sign" aria-hidden="true"></span></summary>
           <div class="acc__body pdp-rte prose">
             {%- if desc_intro != blank -%}<div class="pdp__desc" data-pdp-desc>{{ desc_intro }}</div>{%- endif -%}
@@ -466,7 +385,7 @@ open under the buy buttons. {%- endcomment -%}
           </div>
         </details>
       {%- endif -%}
-      <details class="acc bb">
+      <details class="acc bb"{% unless has_description_tab %} open{% endunless %}>
         <summary class="acc__q lbl">{{ 'product.tabs.fabric' | t }}<span class="acc__sign" aria-hidden="true"></span></summary>
         <div class="acc__body pdp-rte">
           {%- if product.metafields.custom.care != blank -%}
@@ -518,23 +437,14 @@ open under the buy buttons. {%- endcomment -%}
       {% endif %}
     </div>
 
-    {%- comment -%} Delivery time sits after the dropdowns, then the two
-    remaining trust points (money-back + shipping), then similar products.
-
-    Both lines print exactly what the merchant set, in every language. They used
-    to be replaced by the theme's locale defaults on any non-primary locale —
-    which meant a translated storefront advertised a money-back guarantee and a
-    free-shipping promise the merchant had never written, and overrode the
-    "empty = the line does not render" contract these settings document. Blank
-    stays blank here for that reason. {%- endcomment -%}
-    {%- assign cp_back = settings.guarantee_line -%}
-    {%- assign cp_ship = settings.ship_free_line -%}
-    {%- if cp_back != blank or cp_ship != blank -%}
-      <div class="pdp-trust-duo lbl-sm">
-        {%- if cp_back != blank -%}<span>{% render 'icon', name: 'returns', size: 20 %}<em>{{ cp_back | escape }}</em></span>{%- endif -%}
-        {%- if cp_ship != blank -%}<span>{% render 'icon', name: 'truck', size: 20 %}<em>{{ cp_ship | escape }}</em></span>{%- endif -%}
-      </div>
-    {%- endif -%}
+    {%- comment -%} The trust row sits after the dropdowns, before similar
+    products. It was two hard-coded cards in a two-column grid; the snippet makes
+    the count the variable, so the third promise the cart page already prints has
+    somewhere to go and a merchant who fills in only one line gets one card
+    rather than an empty half-row. Every line is merchant-owned and prints
+    verbatim in every language — the theme must never substitute a locale default
+    for a guarantee the merchant did not write. {%- endcomment -%}
+    {%- render 'pdp-trust-row' -%}
 
     {%- comment -%} Complete-the-look renders at the page end — after the
     info accordions, before the related section that the template renders
@@ -585,7 +495,7 @@ open under the buy buttons. {%- endcomment -%}
       {% unless needs_size or v.available %}disabled{% endunless %}
     >
       <span data-atc-label>{% if needs_size %}{{ 'product.atc.select_size' | t }}{% elsif v.available %}{{ 'product.atc.add_to_bag' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span>
-      <span data-atc-price>{% if v.available and needs_size == false %}{{ v.price | money_without_trailing_zeros }}{% endif %}</span>
+      <span data-atc-price>{% if v.available and needs_size == false %}{% render 'price', amount: v.price %}{% endif %}</span>
     </button>
     {%- if shop.enabled_payment_types.size > 0 -%}
       <div class="pdp-payments pdp-payments--mobile" aria-label="{{ 'general.accepted_payment_methods' | t }}">
@@ -620,9 +530,9 @@ open under the buy buttons. {%- endcomment -%}
         <div class="pdp__rb-price lbl">
           <span data-price>
             {%- if v.compare_at_price > v.price -%}
-              <s>{{ v.compare_at_price | money_without_trailing_zeros }}</s> <span class="price--sale">{{ v.price | money_without_trailing_zeros }}</span>
+              <s>{% render 'price', amount: v.compare_at_price %}</s> <span class="price--sale">{% render 'price', amount: v.price %}</span>
             {%- else -%}
-              {{ v.price | money_without_trailing_zeros }}
+              {% render 'price', amount: v.price %}
             {%- endif -%}
           </span>
           <span data-price-badge{% if pdp_price_pct <= 0 %} hidden{% endif %}>{%- if pdp_price_pct > 0 -%}&minus;{{ pdp_price_pct }}%{%- endif -%}</span>
@@ -652,7 +562,7 @@ open under the buy buttons. {%- endcomment -%}
         {% unless needs_size or v.available %}disabled{% endunless %}
       >
         <span data-atc-label>{% if needs_size %}{{ 'product.atc.select_size' | t }}{% elsif v.available %}{{ 'product.atc.add_to_bag' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span>
-        <span data-atc-price>{% if v.available and needs_size == false %}{{ v.price | money_without_trailing_zeros }}{% endif %}</span>
+        <span data-atc-price>{% if v.available and needs_size == false %}{% render 'price', amount: v.price %}{% endif %}</span>
       </button>
     </div>
   </div>

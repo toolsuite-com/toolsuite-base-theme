@@ -15,7 +15,7 @@
         {%- endif -%}
         <span>
           <span class="p-title">{{ product.title | escape }}</span><br>
-          <span class="p-price">{{ product.price | money_without_trailing_zeros }}</span>
+          <span class="p-price">{% render 'price', amount: product.price %}</span>
         </span>
       </a>
     {%- endfor -%}

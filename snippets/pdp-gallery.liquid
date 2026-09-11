@@ -1,0 +1,167 @@
+{%- comment -%}
+  PDP gallery: thumbnail rail + stage + mobile dot rail, for EVERY media type.
+
+  Why it moved out of the section: both loops in the stage were guarded on
+  media_type == 'image', so a merchant who uploaded a product video got a PDP
+  that silently dropped it — the media was in the admin, paid for, and
+  unreachable on the storefront. Video, external video and 3D preview stills now
+  all render, in the merchant's own media order.
+
+  THE JS CONTRACT (theme.js initPDP + pdp-extras.js initGalleryHeightSync read
+  these; renaming any of them breaks the gallery, the colour jump and the zoom):
+    .pdp__rail / .pdp__thumb[data-thumb-target=<media.id>][data-colors]
+    .pdp__gallery
+    .gallery-item[data-media-id][data-colors], .is-current on exactly one
+    .gallery-item[data-zoom-src]  — the ZOOMABLE set. theme.js filters on this
+      attribute, so video items must NOT carry it: a video in the zoom
+      lightbox would open as a still frame with no controls.
+    [data-gallery-dots] — theme.js builds and syncs the dot spans itself and
+      hides the rail when fewer than two slides are visible, which is why this
+      renders empty and [hidden]. It was simply never emitted before, so the
+      mobile carousel had no position indicator at all while the code that
+      draws one sat unused in theme.js.
+    [data-gallery-counter] — the aria-live position cue.
+
+  THE LCP CONTRACT with layout/theme.liquid: that file preloads
+  product.featured_media at 500/640/800/1024, width only, no height, no crop,
+  sizes "(max-width: 720px) 80vw, 46vw". The <img> below MUST mirror those four
+  URLs and that sizes string byte for byte or the CDN hands back a different
+  variant and the hero downloads twice. The eager image is chosen by MEDIA ID,
+  not by loop position: featured_media is not always media[0], and matching on
+  forloop.first meant the preloaded file was the one marked loading="lazy"
+  while a different photo raced it for bandwidth.
+
+  Params: product · color_opt_index · color_values
+{%- endcomment -%}
+{%- liquid
+  assign gal_count = product.media.size
+
+  comment
+    Which image the browser has already been told to fetch. A featured VIDEO
+    leaves the layout's preload unwritten (it is guarded on media_type), so the
+    first still in the set takes the eager slot instead — otherwise every slide
+    is lazy and the stage paints last.
+  endcomment
+  assign lcp_media_id = 0
+  if product.featured_media.media_type == 'image'
+    assign lcp_media_id = product.featured_media.id
+  else
+    for gal_m in product.media
+      if gal_m.media_type == 'image'
+        assign lcp_media_id = gal_m.id
+        break
+      endif
+    endfor
+  endif
+-%}
+
+<div class="pdp__stage">
+  {%- if gal_count > 1 -%}
+    <div class="pdp__rail" role="group" aria-label="{{ 'product.gallery.aria' | t }}">
+      {%- for media in product.media -%}
+        {%- capture thumb_colors -%}{%- render 'pdp-media-colors', media: media, product: product, color_opt_index: color_opt_index, color_values: color_values -%}{%- endcapture -%}
+        {%- assign thumb_colors = thumb_colors | strip -%}
+        {%- assign is_moving = false -%}
+        {%- if media.media_type == 'video' or media.media_type == 'external_video' -%}{%- assign is_moving = true -%}{%- endif -%}
+        <button
+          type="button"
+          class="pdp__thumb{% if is_moving %} pdp__thumb--video{% endif %}"
+          data-thumb-target="{{ media.id }}"
+          {% if thumb_colors != blank %}data-colors="{{ thumb_colors | escape }}"{% endif %}
+          aria-label="{% if is_moving %}{{ 'product.form.show_video' | t }}{% else %}{{ 'product.gallery.show_image' | t: index: forloop.index }}{% endif %}"
+        >
+          {%- comment -%} image_url on a media object always resolves to its preview
+          image, so one call covers stills, video posters and 3D previews. 128 =
+          2x the 64px rail the stylesheet draws; the 3x step is there for the
+          phone rail, where the same thumbs are the only navigation. {%- endcomment -%}
+          <img
+            src="{{ media | image_url: width: 128 }}"
+            srcset="{{ media | image_url: width: 128 }} 1x, {{ media | image_url: width: 192 }} 1.5x, {{ media | image_url: width: 256 }} 2x"
+            width="64" height="96" loading="lazy" decoding="async" alt=""
+          >
+          {%- if is_moving -%}<span class="pdp__thumb-play" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></span>{%- endif -%}
+        </button>
+      {%- endfor -%}
+    </div>
+  {%- endif -%}
+
+  <div class="pdp__frame">
+    <div class="pdp__gallery">
+      {%- for media in product.media -%}
+        {%- capture media_colors -%}{%- render 'pdp-media-colors', media: media, product: product, color_opt_index: color_opt_index, color_values: color_values -%}{%- endcapture -%}
+        {%- assign media_colors = media_colors | strip -%}
+
+        {%- case media.media_type -%}
+          {%- when 'video' -%}
+            {%- comment -%} A <div>, not the <button> the stills use: a <video controls>
+            inside a button is unoperable — every click on play/scrub is swallowed by
+            the button's activation. No data-zoom-src either, see the contract above.
+            preload="none" keeps a 20MB clip off the critical path; the poster comes
+            from image_size, so the slide is never an empty black box. {%- endcomment -%}
+            <div
+              class="gallery-item gallery-item--video{% if forloop.first %} is-current{% endif %}"
+              data-media-id="{{ media.id }}"
+              data-media-type="video"
+              {% if media_colors != blank %}data-colors="{{ media_colors | escape }}"{% endif %}
+            >
+              {{ media | video_tag: controls: true, preload: 'none', image_size: '800x' }}
+            </div>
+
+          {%- when 'external_video' -%}
+            <div
+              class="gallery-item gallery-item--video gallery-item--embed{% if forloop.first %} is-current{% endif %}"
+              data-media-id="{{ media.id }}"
+              data-media-type="external_video"
+              {% if media_colors != blank %}data-colors="{{ media_colors | escape }}"{% endif %}
+            >
+              {{ media | external_video_tag }}
+            </div>
+
+          {%- else -%}
+            {%- comment -%} Stills, and 3D models rendered as their preview still: this
+            theme ships no model-viewer, and pulling one in would mean a CDN script —
+            the preview image is the honest fallback, and it zooms like any photo.
+            The four srcset steps and the sizes string are the LCP mirror. {%- endcomment -%}
+            <button
+              type="button"
+              class="gallery-item{% if forloop.first %} is-current{% endif %}"
+              data-media-id="{{ media.id }}"
+              data-media-type="{{ media.media_type }}"
+              data-zoom-src="{{ media | image_url: width: 1024 }}"
+              {% if media_colors != blank %}data-colors="{{ media_colors | escape }}"{% endif %}
+              aria-label="{{ 'product.gallery.zoom_image' | t: index: forloop.index }}"
+            >
+              <img
+                src="{{ media | image_url: width: 800 }}"
+                srcset="{{ media | image_url: width: 500 }} 500w, {{ media | image_url: width: 640 }} 640w, {{ media | image_url: width: 800 }} 800w, {{ media | image_url: width: 1024 }} 1024w"
+                sizes="(max-width: 720px) 80vw, 46vw"
+                width="800" height="1200"
+                alt="{{ media.alt | default: product.title | escape }}"
+                {% if media.id == lcp_media_id %}fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
+              >
+            </button>
+        {%- endcase -%}
+      {%- endfor -%}
+
+      {%- if gal_count == 0 -%}
+        {%- assign ph = product.id | modulo: 6 | plus: 1 -%}
+        <div class="gallery-item is-current">{{ 'product-' | append: ph | placeholder_svg_tag }}</div>
+      {%- endif -%}
+    </div>
+
+    {%- comment -%} Dot rail. Empty and [hidden] on purpose — theme.js owns both
+    the spans and the hidden flag, and it recounts on resize, so a dot row built
+    in Liquid would be wrong the moment the viewport crosses 900px (desktop shows
+    exactly one slide). aria-hidden because the counter below is the spoken cue;
+    two position announcements for one carousel is noise, not access. {%- endcomment -%}
+    {%- if gal_count > 1 -%}
+      <div class="pdp__dots" data-gallery-dots hidden aria-hidden="true"></div>
+    {%- endif -%}
+
+    {%- comment -%} Visually hidden, not shown: with 20+ photos a visible "n / total"
+    reads as chrome across the photograph. It is the gallery's only spoken position
+    cue. NOTE for whoever wires the next theme.js pass: nothing rewrites this text
+    today — the dot sync in initPDP() is the natural place to also set it. {%- endcomment -%}
+    {%- if gal_count > 0 -%}<p class="visually-hidden" data-gallery-counter aria-live="polite">1 / {{ gal_count }}</p>{%- endif -%}
+  </div>
+</div>

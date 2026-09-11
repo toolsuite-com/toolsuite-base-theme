@@ -1,5 +1,10 @@
 <!doctype html>
-<html lang="{{ request.locale.iso_code }}">
+{%- comment -%} settings.card_hover rides the root element rather than a class on each
+card: the card snippet is rendered from eight different places (home, collection, search,
+cart cross-sell, related row, quick view, complete-the-look, recently viewed) and a root
+attribute means the hover rule is written once in the stylesheet instead of every caller
+having to remember to pass the option through. {%- endcomment -%}
+<html lang="{{ request.locale.iso_code }}" data-card-hover="{{ settings.card_hover }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -45,15 +50,70 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ settings.brand_logo_square | image_url: width: 32, height: 32 }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ settings.brand_logo_square | image_url: width: 180, height: 180 }}">
   {%- endif -%}
-  {%- comment -%} Archivo covers --font-display AND --font-ui too (see @font-face + :root
-  below) — the Prata preload stays because .pdp__color ("in <Colour>") is still Prata
-  italic and sits above the fold on every PDP. {%- endcomment -%}
-  <link rel="preload" href="{{ 'prata-regular.woff2' | asset_url }}" as="font" type="font/woff2" crossorigin>
-  {%- comment -%} Archivo: now the whole UI/display/prose voice (regular + italic); the
-  500 weight rides the same variable file as regular (see @font-face below), no
-  third preload needed. {%- endcomment -%}
-  <link rel="preload" href="{{ 'archivo-var.woff2' | asset_url }}" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="{{ 'archivo-400i.woff2' | asset_url }}" as="font" type="font/woff2" crossorigin>
+  {%- comment -%} TYPEFACE SOURCE — decided once here, then obeyed by the preloads, the
+  @font-face block and the :root stacks below.
+
+  The theme ships Prata and Archivo as woff2 in assets/ and preloads them from this head.
+  That is meaningfully faster than Shopify's font service: the files sit on the same CDN
+  origin as the rest of the theme, so there is no second connection to open, and the
+  preload starts the download before the stylesheet has been parsed. Handing the merchant
+  a font_picker and then unconditionally emitting `| font_face` would throw that away on
+  every store — including the large majority that never change the font.
+
+  So each picker DEFAULTS to the closest Shopify-hosted equivalent of the family we ship,
+  and we branch on `.family`: while a picker still reads its default family the local file
+  is used, and only a genuine change to some other family moves that role onto
+  `| font_face`.
+
+  The two defaults are not symmetrical, and the reason is worth knowing before you change
+  either string:
+
+    --font-ui / --font-prose  default `archivo_n4` → family "Archivo". Exact. The picker
+    names the typeface that actually renders, and a merchant who selects Archivo by hand
+    gets the fast local file rather than a second download of the same typeface.
+
+    --font-display  default `dm_serif_display_n4` → family "DM Serif Display". A STAND-IN.
+    Shopify deprecated `prata_n4` and dropped Prata from the font list, so there is no
+    handle that names what renders. DM Serif Display is the nearest equivalent — display
+    serif, same contrast band, and single-weight like Prata rather than a variable family
+    — which makes it the least misleading label available and the least costly one to
+    shadow. The cost is real and is documented in the setting's own info text: a merchant
+    who genuinely wants DM Serif Display gets Prata instead.
+
+  These two strings are the contract between this file and config/settings_schema.json.
+  Change a picker default there and you MUST change the matching family name here, or that
+  role silently flips to Shopify-hosted for every store that never touched the setting.
+
+  Fails safe in the direction of the shipped design: a blank, nil or unresolvable picker
+  value leaves the flag false, i.e. local files. That also covers the day Shopify retires
+  a handle out from under us — the storefront quietly keeps rendering Prata and Archivo
+  instead of losing its font stack. There is no input that produces an empty
+  font-family. {%- endcomment -%}
+  {%- assign font_display_local_family = 'DM Serif Display' -%}
+  {%- assign font_body_local_family = 'Archivo' -%}
+  {%- assign font_display_hosted = false -%}
+  {%- assign font_body_hosted = false -%}
+  {%- if settings.font_display.family != blank and settings.font_display.family != font_display_local_family -%}
+    {%- assign font_display_hosted = true -%}
+  {%- endif -%}
+  {%- if settings.font_body.family != blank and settings.font_body.family != font_body_local_family -%}
+    {%- assign font_body_hosted = true -%}
+  {%- endif -%}
+  {%- unless font_display_hosted -%}
+    {%- comment -%} Prata carries --font-display AND --font-accent-italic — the short
+    italic tags under the product name ("in <Colour>") sit above the fold on every PDP, so
+    this is a preload and not a lazy fetch. Dropped entirely once display type has moved
+    to another family: nothing would reference the file. {%- endcomment -%}
+    <link rel="preload" href="{{ 'prata-regular.woff2' | asset_url }}" as="font" type="font/woff2" crossorigin>
+  {%- endunless -%}
+  {%- unless font_body_hosted -%}
+    {%- comment -%} Archivo is --font-ui and --font-prose: the label system, nav, buttons,
+    prices and body copy. Two files because the italic is a separate cut; the 500/600/700
+    weights all ride the variable file that regular already downloads (see the
+    `font-weight: 400 700` range below), so there is no third preload. {%- endcomment -%}
+    <link rel="preload" href="{{ 'archivo-var.woff2' | asset_url }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ 'archivo-400i.woff2' | asset_url }}" as="font" type="font/woff2" crossorigin>
+  {%- endunless -%}
   {%- if template.name == 'product' and product.featured_media.media_type == 'image' -%}
     {%- comment -%} ceiling 1024w. The URLs MUST mirror the gallery's exactly (500 / 800 / 1024,
     width only, no height, no crop) — any difference and the CDN hands back a different URL than
@@ -66,7 +126,194 @@
       imagesizes="(max-width: 720px) 80vw, 46vw"
       fetchpriority="high">
   {%- endif -%}
+  {%- comment -%} AMBER BUY BAR — the label colour is measured, not assumed.
+
+  The line this replaced branched on buy_color and then returned var(--paper) from BOTH
+  arms — an if/else that could only ever produce one answer, so the amber case was never
+  really a case. It matters, because the shipped amber (#A88652) measures 3.19:1 on paper —
+  under the WCAG AA 4.5:1 floor for the buy bar's 14px uppercase label — and 5.48:1
+  against ink. The buy bar is the single most important control in the store and on an
+  amber store it was shipping below AA.
+
+  color_contrast does the arithmetic at render time instead of hardcoding the answer, so
+  this stays correct for whatever amber a merchant picks: a deep bronze gets paper text
+  back automatically. That is why the fix is a comparison and not a new hex default — the
+  store owner's amber is kept exactly as chosen. {%- endcomment -%}
+  {%- assign amber_on_ink = settings.color_amber | color_contrast: settings.color_ink -%}
+  {%- assign amber_on_paper = settings.color_amber | color_contrast: settings.color_paper -%}
+
+  {%- comment -%} THE TOKEN BLOCK, captured once and emitted twice.
+
+  There are two :root injections in this file (see the note above the second one): theme.css
+  carries standalone fallbacks for some of these tokens and loads BETWEEN them, so a token
+  that theme.css also defines has to be re-stated afterwards or the stylesheet's fallback
+  wins. Rather than keep two hand-maintained copies in sync — which is how the first block
+  and theme.css drifted to different --mute values — the whole set is captured here and
+  printed in both places. Add a token once, get it in both. {%- endcomment -%}
+  {%- capture theme_tokens -%}
+      --paper: {{ settings.color_paper }};
+      --ink: {{ settings.color_ink }};
+      --cream: {{ settings.color_cream }};
+      --hairline: {{ settings.color_hairline }};
+      --mute: {{ settings.color_mute }};
+      {%- comment -%} Surface tones for the chapter rhythm. --limestone backs alternating
+      sections and is only 1.08:1 against paper on purpose: a band that reads at arm's
+      length and disappears up close. --ink-soft is the secondary PROSE voice (8.75:1 on
+      paper, 8.08:1 on limestone — AAA on both), and is not interchangeable with --mute,
+      which is the 14px uppercase chrome colour. {%- endcomment -%}
+      --limestone: {{ settings.color_limestone }};
+      --ink-soft: {{ settings.color_ink_soft }};
+
+      {%- comment -%} --font-display is the serif display voice (.dxl/.dl/.dm — hero,
+      category typo-block, editorial captions, footer newsletter headline).
+      --font-ui and --font-prose are the grotesque voice (labels, buttons, nav, prose).
+      --font-prose MUST be listed here even though theme.css also defines it: theme.css
+      loads after the first block, so without the re-injection a merchant could change the
+      body font everywhere except body copy — the one place it matters most.
+      The hosted stacks take their fallbacks from Shopify's own fallback_families for the
+      chosen family; the local stacks keep the metric-matched *-fallback faces defined
+      below, which is what stops the swap from reflowing the hero. {%- endcomment -%}
+      {%- if font_display_hosted -%}
+      --font-display: {{ settings.font_display.family }}, {{ settings.font_display.fallback_families }};
+      {%- else -%}
+      --font-display: 'Prata', 'Prata-fallback', Georgia, serif;
+      {%- endif -%}
+      {%- if font_body_hosted -%}
+      --font-ui: {{ settings.font_body.family }}, {{ settings.font_body.fallback_families }};
+      --font-prose: {{ settings.font_body.family }}, {{ settings.font_body.fallback_families }};
+      {%- else -%}
+      --font-ui: 'Archivo', 'Archivo-fallback', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      --font-prose: 'Archivo', 'Archivo-fallback', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      {%- endif -%}
+      {%- comment -%} The display face's small-type accent voice: it follows --font-display
+      rather than --font-ui because an accent tag is type, not chrome, so moving the display
+      voice moves it too.
+
+      CURRENTLY REFERENCED BY NOTHING. It was the italic tags under the product name, but
+      .pdp__color no longer exists and .pdp__descriptor / .pdp__rb-sub were both moved to
+      var(--font-ui) in theme.css so the descriptor matches the title face. Kept emitted,
+      and deliberately: it is one declaration, it is the documented hook for the next accent
+      tag, and it is what such a tag must use rather than naming --font-display directly.
+      If it is still unreferenced at the next cleanup, delete it here and in theme.css
+      together — do not point a selector at it just to give it a job. {%- endcomment -%}
+      {%- if font_display_hosted -%}
+      --font-accent-italic: {{ settings.font_display.family }}, {{ settings.font_display.fallback_families }};
+      {%- else -%}
+      --font-accent-italic: 'Prata', 'Prata-fallback', Georgia, serif;
+      {%- endif -%}
+
+      {%- comment -%} --type-scale multiplies the display steps as a SET, so the ratio
+      between hero, heading and caption survives the change. ±8% is chosen to be one
+      perceptible step without letting Generous push the 96px hero into wrapping on a
+      laptop. {%- endcomment -%}
+      {%- case settings.type_scale -%}
+        {%- when 'compact' -%}
+      --type-scale: .92;
+        {%- when 'generous' -%}
+      --type-scale: 1.08;
+        {%- else -%}
+      --type-scale: 1;
+      {%- endcase -%}
+      {%- comment -%} Authored in hundredths of an em so the merchant's slider shows whole
+      and half numbers instead of 0.005. calc() rather than a Liquid `times: 0.01` because
+      float multiplication in Liquid prints artefacts like 0.015000000000000001 — CSS does
+      the arithmetic exactly. Default -0.5 reproduces the -.005em the display steps have
+      always shipped with, so this setting is a no-op until it is touched. {%- endcomment -%}
+      {%- comment -%} The `default:` filters on the three numeric settings are not
+      belt-and-braces. An empty value here does not degrade, it emits BROKEN CSS —
+      `calc( * 0.01em)` and a bare `px` — and --body-size is the font-size of every
+      paragraph in the store. Shopify does supply the schema default for a key missing from
+      settings_data, so this should be unreachable; it is written down anyway because the
+      cost of being wrong is the whole store's body text. Liquid's `default` passes 0
+      through (it only substitutes nil/false/empty), so a deliberate 0 tracking survives. {%- endcomment -%}
+      --display-tracking: calc({{ settings.heading_tracking | default: -0.5 }} * 0.01em);
+      --body-size: {{ settings.body_size | default: 17 }}px;
+
+      {%- comment -%} --page is the contained measure, and it is now live: theme.css sets
+      `--max: var(--page)` and `.wrap` obeys --max, so this setting governs every contained
+      surface in the store from here. Because --max is a var-in-var on :root it resolves
+      against :root's FINAL --page, which is the copy of this block injected after
+      theme.css — so the merchant's value wins and the stylesheet's standalone fallback
+      never does. Changing the default here changes the width of the whole store. {%- endcomment -%}
+      --page: {{ settings.page_width | default: 1320 }}px;
+
+      {%- comment -%} ONE spacing system, three presets. The audit's core finding was that
+      this theme had no layout system at all: grids ran at a hardcoded 2px gap flush to the
+      viewport edge, and every section was a flat ~48px apart, so nothing read as a chapter.
+      These five tokens are that system.
+        --gutter     page edge inset (also the container's padding-inline)
+        --col-gap    horizontal gap inside a grid — smaller than --row-gap on purpose:
+                     columns are read across, rows are read down, and equal gaps make a
+                     grid read as a scatter
+        --row-gap    vertical gap inside a grid, and the space a card's caption needs
+        --band       space between sections — THE chapter break
+        --band-tight the same break where two sections belong to one thought
+      Every value is a clamp, so a preset choice never means an empty phone screen: Airy
+      and Tight differ by ~2x at 1600px and much less at 390px, which is where the
+      difference would otherwise hurt. {%- endcomment -%}
+      {%- case settings.section_spacing -%}
+        {%- when 'tight' -%}
+      --gutter: clamp(16px, 3vw, 44px);
+      --col-gap: 14px;
+      --row-gap: 30px;
+      --band: clamp(48px, 5.5vw, 88px);
+      --band-tight: clamp(32px, 3.5vw, 56px);
+        {%- when 'airy' -%}
+      --gutter: clamp(24px, 5vw, 84px);
+      --col-gap: 28px;
+      --row-gap: 60px;
+      --band: clamp(96px, 10.5vw, 176px);
+      --band-tight: clamp(64px, 6.5vw, 112px);
+        {%- else -%}
+      --gutter: clamp(20px, 4vw, 64px);
+      --col-gap: 20px;
+      --row-gap: 44px;
+      --band: clamp(72px, 8vw, 128px);
+      --band-tight: clamp(48px, 5vw, 80px);
+      {%- endcase -%}
+
+      {%- comment -%} Sharp is the default and the theme's signal — square corners are what
+      a serif display face and a hairline rule system are built around. Emitted as `0px`
+      rather than `0` so a consumer can safely write calc(var(--card-radius) - 1px) for an
+      inner edge without the calc going invalid on a unitless zero.
+      Note for the stylesheet: theme.css has a hard `border-radius: 0` guardrail on inputs,
+      buttons, img, dialog and fieldset. This token does not defeat it, and should not —
+      apply it explicitly on the surfaces that are meant to follow the setting. {%- endcomment -%}
+      {%- case settings.corner_style -%}
+        {%- when 'soft' -%}
+      --card-radius: 4px;
+        {%- when 'round' -%}
+      --card-radius: 10px;
+        {%- else -%}
+      --card-radius: 0px;
+      {%- endcase -%}
+      {%- comment -%} Written width/height for `aspect-ratio` so one crop governs every
+      card in a grid — mixed source ratios were doing more to make the catalogue look
+      unfinished than any single other detail. The card snippet still needs the raw
+      setting to ask the CDN for a correctly proportioned image; this token is what keeps
+      the BOX stable even before that image has loaded. {%- endcomment -%}
+      {%- case settings.card_image_ratio -%}
+        {%- when 'tall' -%}
+      --card-ratio: 3 / 4;
+        {%- when 'square' -%}
+      --card-ratio: 1 / 1;
+        {%- else -%}
+      --card-ratio: 2 / 3;
+      {%- endcase -%}
+
+      {%- comment -%} The only place a warm tone may appear, and only when
+      settings.buy_color selects it. {%- endcomment -%}
+      --buy-fill: {% if settings.buy_color == 'amber' %}{{ settings.color_amber }}{% else %}var(--ink){% endif %};
+      --buy-text: {% if settings.buy_color == 'amber' %}{% if amber_on_ink > amber_on_paper %}var(--ink){% else %}var(--paper){% endif %}{% else %}var(--paper){% endif %};
+  {%- endcapture -%}
   <style>
+    {%- if font_display_hosted -%}
+      {%- comment -%} Shopify-hosted display face. Only regular and bold are requested:
+      the display steps are all font-weight 400, and bold is emitted so a merchant whose
+      chosen family has a real bold gets it rather than a synthesised one. {%- endcomment -%}
+      {{ settings.font_display | font_face: font_display: 'swap' }}
+      {{ settings.font_display | font_modify: 'weight', 'bold' | font_face: font_display: 'swap' }}
+    {%- else -%}
     @font-face {
       font-family: 'Prata';
       src: url('{{ 'prata-regular.woff2' | asset_url }}') format('woff2');
@@ -74,12 +321,31 @@
       font-style: normal;
       font-display: swap;
     }
+    {%- comment -%} Metric-matched local stand-in for the swap period: size-adjust and
+    ascent-override are tuned so Georgia occupies the same box as Prata and the hero does
+    not reflow when the real file lands. Only defined when the local file is in play — the
+    hosted branch takes its fallbacks from Shopify's fallback_families instead. {%- endcomment -%}
     @font-face {
       font-family: 'Prata-fallback';
       src: local('Georgia'), local('Times New Roman');
       size-adjust: 104%;
       ascent-override: 98%;
     }
+    {%- endif -%}
+    {%- if font_body_hosted -%}
+      {%- comment -%} Shopify-hosted body face: regular, bold, italic and bold-italic, which
+      is the full set this theme asks for. font_modify returns nil when the chosen family has
+      no such cut and `nil | font_face` prints nothing, so a single-weight family degrades to
+      browser synthesis rather than to a broken rule.
+      One known cost of leaving the local Archivo: the six font-weight:600 call sites
+      (.pdp__name, .pdp__rb-name, .acc__q, prose h4/strong) were relying on Archivo's
+      variable axis for a true Semibold. Against a static hosted family they resolve to the
+      nearest cut — 700 — which is heavier but never absent. {%- endcomment -%}
+      {{ settings.font_body | font_face: font_display: 'swap' }}
+      {{ settings.font_body | font_modify: 'weight', 'bold' | font_face: font_display: 'swap' }}
+      {{ settings.font_body | font_modify: 'style', 'italic' | font_face: font_display: 'swap' }}
+      {{ settings.font_body | font_modify: 'style', 'italic' | font_modify: 'weight', 'bold' | font_face: font_display: 'swap' }}
+    {%- else -%}
     {%- comment -%} archivo-var.woff2 is the full variable file (fvar wght 100-900,
     confirmed via fontTools) but the @font-face range below is what the browser actually
     maps CSS font-weight onto — set to "400 700" so the six font-weight:600 call sites
@@ -104,26 +370,9 @@
       src: local('Helvetica Neue'), local('Arial');
       size-adjust: 100%;
     }
+    {%- endif -%}
     :root {
-      --paper: {{ settings.color_paper }};
-      --ink: {{ settings.color_ink }};
-      --cream: {{ settings.color_cream }};
-      --hairline: {{ settings.color_hairline }};
-      --mute: {{ settings.color_mute }};
-      {%- comment -%} --font-display uses Prata (serif) for display headings (.dxl/.dl/.dm
-      — hero, category typo-block, editorial captions, footer newsletter headline);
-      --font-ui and --font-prose stay Archivo (labels, buttons, nav, prose, bullets keep
-      the grotesque voice). {%- endcomment -%}
-      --font-display: 'Prata', 'Prata-fallback', Georgia, serif;
-      --font-ui: 'Archivo', 'Archivo-fallback', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      {%- comment -%} The only Prata holdout: the short italic tags under the product name
-      (.pdp__color, .pdp__descriptor, .pdp__rb-sub in theme.css). No other selector may
-      reference this var. {%- endcomment -%}
-      --font-accent-italic: 'Prata', 'Prata-fallback', Georgia, serif;
-      {%- comment -%} the only place a warm tone may appear, and only when settings.buy_color selects it {%- endcomment -%}
-      --buy-fill: {% if settings.buy_color == 'amber' %}{{ settings.color_amber }}{% else %}var(--ink){% endif %};
-      {%- comment -%} buy-text vs accent fill: check contrast against color_amber (WCAG >= 4.5) when customizing {%- endcomment -%}
-    --buy-text: {% if settings.buy_color == 'amber' %}var(--paper){% else %}var(--paper){% endif %};
+{{ theme_tokens }}
     }
   </style>
   {%- comment -%} The six *-extras.css files are combined into theme.css (in their
@@ -131,17 +380,27 @@
   request instead of seven. New block styles can go into a separate extras file
   linked here, then get combined into theme.css again afterward. {%- endcomment -%}
   {{ 'theme.css' | asset_url | stylesheet_tag }}
-  {%- comment -%} theme.css keeps standalone colour fallbacks in :root; because it
-  loads AFTER the inline block above, those fallbacks would otherwise override the
-  merchant's colour settings. Re-inject the settings-driven tokens here, after
-  theme.css, so the theme's Colors settings actually take effect. {%- endcomment -%}
+  {%- comment -%} theme.css keeps standalone fallbacks in its own :root so the stylesheet
+  stays readable on its own; because it loads AFTER the inline block above, those fallbacks
+  would otherwise override the merchant's settings. Re-inject here, after theme.css, so the
+  settings actually take effect.
+
+  The set re-injected used to be the five colours. It is now the whole token block, because
+  the tokens theme.css also declares have grown: --gutter, --body-size and --font-prose are
+  all defined in theme.css:77 and would each silently ignore their new setting. Emitting the
+  identical capture in both places removes the question entirely — a token added upstairs is
+  a token that works, with no second list to remember.
+
+  Worth knowing for anyone reading theme.css: this block also outranks theme.css's
+  `@media (min-width: 721px) { :root { ... } }` step, because a media query adds no
+  specificity and this style element comes later in the cascade. --gutter and --body-size
+  are therefore no longer stepped at 721px — --gutter is a clamp that scales continuously
+  instead, and --body-size is a merchant setting that should not change under them at a
+  breakpoint. The other tokens in that media query (--lbl-size, --prose-size, --hdr-h,
+  --ann-h) are untouched and still step. {%- endcomment -%}
   <style>
     :root {
-      --paper: {{ settings.color_paper }};
-      --ink: {{ settings.color_ink }};
-      --cream: {{ settings.color_cream }};
-      --hairline: {{ settings.color_hairline }};
-      --mute: {{ settings.color_mute }};
+{{ theme_tokens }}
     }
   </style>
   <script>
@@ -151,6 +410,14 @@
     document.documentElement.classList.add('js');
     window.Theme = {
       moneyFormat: {{ shop.money_format | json }},
+      /* shop.money_format always carries decimals, so every JS-repainted price
+         (variant switch, cart drawer, mini view, ATC bar) printed "$240.00"
+         while the server-rendered price beside it printed "$240" — the exact
+         split settings.price_show_cents exists to close. money() in theme.js
+         and cart-extras.js both read this flag and drop a trailing ".00" when
+         it is false, which is what Liquid's money_without_trailing_zeros does.
+         One switch, both halves of the store. */
+      showCents: {{ settings.price_show_cents | default: false | json }},
       cartAddUrl: '{{ routes.cart_add_url }}.js',
       cartChangeUrl: '{{ routes.cart_change_url }}.js',
       cartUrl: '{{ routes.cart_url }}.js',
