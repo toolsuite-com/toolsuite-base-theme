@@ -245,11 +245,10 @@ open under the buy buttons. {%- endcomment -%}
       the accordions. Snippet + settings stay; re-adding means putting the
       render back here. {%- endcomment -%}
 
-      {%- comment -%} The stock/urgency line sits between price and colour —
-      not buried between fit scale and the buy zone. Viewers travels with it
-      (its toggle needs a call site, ships OFF). {%- endcomment -%}
+      {%- comment -%} The stock line sits between price and colour — not buried
+      between fit scale and the buy zone. The live-viewers line that used to sit
+      next to it is gone: its count was generated, never measured. {%- endcomment -%}
       {%- render 'pdp-scarcity', product: product -%}
-      {%- render 'pdp-viewers', product: product -%}
 
       {%- unless product.has_only_default_variant -%}
         {%- for option in product.options_with_values -%}
@@ -521,14 +520,15 @@ open under the buy buttons. {%- endcomment -%}
 
     {%- comment -%} Delivery time sits after the dropdowns, then the two
     remaining trust points (money-back + shipping), then similar products.
-    Same settings + locale-fallback pattern as the rest of the buy column — no new
-    keys. {%- endcomment -%}
+
+    Both lines print exactly what the merchant set, in every language. They used
+    to be replaced by the theme's locale defaults on any non-primary locale —
+    which meant a translated storefront advertised a money-back guarantee and a
+    free-shipping promise the merchant had never written, and overrode the
+    "empty = the line does not render" contract these settings document. Blank
+    stays blank here for that reason. {%- endcomment -%}
     {%- assign cp_back = settings.guarantee_line -%}
     {%- assign cp_ship = settings.ship_free_line -%}
-    {%- unless request.locale.primary -%}
-      {%- assign cp_back = 'product.usp.money_back' | t -%}
-      {%- assign cp_ship = 'product.usp.shipping' | t -%}
-    {%- endunless -%}
     {%- if cp_back != blank or cp_ship != blank -%}
       <div class="pdp-trust-duo lbl-sm">
         {%- if cp_back != blank -%}<span>{% render 'icon', name: 'returns', size: 20 %}<em>{{ cp_back | escape }}</em></span>{%- endif -%}

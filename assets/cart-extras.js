@@ -443,7 +443,6 @@ function renderMini() {
   const unselected = options.includes(null);
   const variant = unselected ? null : miniVariantFor(product, options);
   const priceVariant = variant || miniPartialFor(product, options).find((item) => item.available) || miniPartialFor(product, options)[0] || product.variants[0];
-  S.applyScarcity?.($('[data-cart-mv-scarcity]', panel), product.id);
   els.price.innerHTML = priceMarkup(priceVariant);
   if (priceVariant?.compare_at_price > priceVariant.price) {
     const percent = Math.round((priceVariant.compare_at_price - priceVariant.price) * 100 / priceVariant.compare_at_price);

@@ -30,16 +30,18 @@
   {%- endif -%}
   <div class="wrap home-proof__body">
     {%- liquid
+      comment
+        Merchant copy wins in every language; the old reassign on non-primary
+        locales replaced it with the theme's defaults. These are shipping and
+        returns claims, so printing theme copy over a merchant's own wording was
+        also the riskiest version of this bug — the store would be advertising
+        terms it never wrote. Every field is guarded (usp-trio drops blank
+        slots), so blank stays blank instead of falling back.
+      endcomment
       assign pf_voice = section.settings.voice
       assign pf_1 = section.settings.usp_1
       assign pf_2 = section.settings.usp_2
       assign pf_3 = section.settings.usp_3
-      unless request.locale.primary
-        assign pf_voice = 'home.proof.voice' | t
-        assign pf_1 = 'home.proof.usp_1' | t
-        assign pf_2 = 'home.proof.usp_2' | t
-        assign pf_3 = 'home.proof.usp_3' | t
-      endunless
     -%}
     {%- if pf_voice != blank -%}
       <p class="dl home-proof__voice">{{ pf_voice | escape }}</p>

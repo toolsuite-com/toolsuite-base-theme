@@ -22,10 +22,12 @@
         if url == blank and col != blank
           assign url = col.url
         endif
+        comment
+          A merchant-entered tile label wins in every language, falling back to
+          the collection's own (Shopify-localized) title. The priority used to
+          flip on non-primary locales, which discarded the typed label there.
+        endcomment
         assign label = block.settings.label | default: col.title
-        unless request.locale.primary
-          assign label = col.title | default: block.settings.label
-        endunless
       -%}
       <a class="home-cat{% if block.settings.label_color == 'ink' %} home-cat--ink{% endif %}" href="{{ url | default: routes.all_products_collection_url }}" {{ block.shopify_attributes }}>
         {%- if block.settings.image != blank -%}

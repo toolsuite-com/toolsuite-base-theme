@@ -24,14 +24,9 @@
       <h3 class="pdp__name lbl" data-cart-mv-title></h3>
       <div class="cart-miniview__price pdp__price lbl" data-cart-mv-price></div>
       <div class="cart-miniview__options" data-cart-mv-options></div>
-      {%- comment -%} per-product scarcity, painted by cart-extras.js via
-      S.applyScarcity — the panel serves many products (see pdp-scarcity.liquid) {%- endcomment -%}
-      {%- comment %} disabled: id-modulo pseudo-scarcity can read as fake urgency without real inventory gating; re-enable only once that exists {% endcomment -%}
-      {%- if false -%}
-      {%- if settings.low_stock_line != blank -%}
-        <p class="pdp-low-stock stmt-sm" data-cart-mv-scarcity hidden></p>
-      {%- endif -%}
-      {%- endif -%}
+      {%- comment -%} No scarcity line: the cart-extras.js painter that filled this
+      slot generated the state from product.id, so the placeholder went with it. See
+      snippets/pdp-scarcity.liquid. {%- endcomment -%}
       <button type="button" class="bar cart-miniview__atc" data-cart-mv-atc disabled>
         <span data-cart-mv-atc-label>{{ 'product.atc.add_to_bag' | t }}</span>
       </button>

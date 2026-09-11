@@ -11,10 +11,15 @@
 <section class="sec reveal">
   <div class="wrap wrap--narrow">
     {%- liquid
+      comment
+        The merchant's heading wins in every language (Translate & Adapt localizes
+        section settings); the locale file is the fallback for a blank one only.
+        Reassigning on every secondary locale threw away merchant-typed headings.
+      endcomment
       assign fq_heading = section.settings.heading
-      unless request.locale.primary
+      if fq_heading == blank
         assign fq_heading = 'home.faq.heading' | t
-      endunless
+      endif
     -%}
     {%- if fq_heading != blank -%}
       <h2 class="dl home-faq__head">{{ fq_heading | escape }}</h2>
@@ -24,23 +29,30 @@
         <details class="acc bb" {{ block.shopify_attributes }}>
           <summary class="acc__q lbl">
             {%- liquid
+              comment
+                Same rule as the heading: what the merchant typed wins in every
+                language. The per-index locale keys q1..q5 only fill a field the
+                merchant left empty, and a block beyond the translated set keeps
+                its own value rather than printing a translation-missing string.
+                Question and answer resolve independently — the old version
+                replaced BOTH whenever the question happened to be translated.
+              endcomment
               assign fq_q = block.settings.question
               assign fq_a = block.settings.answer
-              unless request.locale.primary
-                comment
-                  per-index locale keys q1..q5; a block beyond the translated set
-                  falls back to its own (primary-language) settings rather than
-                  printing a translation-missing string
-                endcomment
+              if fq_q == blank
                 assign fq_qk = 'home.faq.q' | append: forloop.index | append: '_question'
-                assign fq_ak = 'home.faq.q' | append: forloop.index | append: '_answer_html'
                 assign fq_qt = fq_qk | t
-                assign fq_at = fq_ak | t
                 unless fq_qt contains 'Translation missing' or fq_qt contains 'translation missing'
                   assign fq_q = fq_qt
+                endunless
+              endif
+              if fq_a == blank
+                assign fq_ak = 'home.faq.q' | append: forloop.index | append: '_answer_html'
+                assign fq_at = fq_ak | t
+                unless fq_at contains 'Translation missing' or fq_at contains 'translation missing'
                   assign fq_a = fq_at
                 endunless
-              endunless
+              endif
             -%}
             {{ fq_q | escape }}
             <span class="acc__sign" aria-hidden="true"></span>

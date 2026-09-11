@@ -421,6 +421,10 @@ body:not(.template-password) { padding-top: var(--chrome-h); }
    runs off the SVG's own ~2.59:1 viewBox and is never stretched. */
 .brand__row { display: flex; align-items: center; font-size: var(--logo-size, 28px); line-height: 1; }
 .brand__mark { height: 1.12em; width: auto; flex: none; }
+/* Typeset fallback when no logo image is uploaded: the store's own name in the
+   display face. Sized in em so it tracks --logo-size like the image does, but
+   height is left to the text itself — .brand__mark's 1.12em would clip descenders. */
+.brand__mark--text { height: auto; font-family: var(--font-d, serif); font-weight: 500; font-size: .72em; letter-spacing: .02em; white-space: nowrap; }
 
 .hdr__nav { display: none; gap: 22px; margin-left: 10px; }
 .hdr__nav a { white-space: nowrap; }
@@ -2547,7 +2551,6 @@ details.acc[open] .acc__sign::after { opacity: 0; }
 .pdp-usp-line,
 .pdp-checks p,
 .pdp-trust-box p,
-.pdp-viewers,
 .pdp-low-stock {
   display: flex;
   align-items: center;
@@ -2571,17 +2574,6 @@ details.acc[open] .acc__sign::after { opacity: 0; }
 @keyframes pdp-pulse {
   0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: .55; }
   50% { box-shadow: 0 0 0 5px transparent; opacity: 1; }
-}
-
-.pdp-viewers {
-  margin-top: 4px;
-  padding-block: 2px;
-}
-
-.pdp-viewers [data-viewers-count] {
-  min-width: 2ch;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
 /* the one assurance line under the add button — a single line, not a
@@ -2716,10 +2708,8 @@ details.acc[open] .acc__sign::after { opacity: 0; }
   .pdp-low-stock__pulse { animation: none; }
 }
 
-/* varied states: amber keeps the pulse, the green in-stock dot is calm — it
-   is reassurance, not pressure */
-.pdp-low-stock--fast .pdp-low-stock__pulse { color: #a15c00; }
-.pdp-low-stock--stock .pdp-low-stock__pulse { color: #26734d; animation: none; }
+/* The --fast (amber) and --stock (green) state modifiers are gone with the
+   id-modulo scarcity buckets that were the only thing that set them. */
 
 .pdp-fit {
   display: grid;

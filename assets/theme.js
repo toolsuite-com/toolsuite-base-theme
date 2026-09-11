@@ -10,24 +10,12 @@ const S = window.Theme || {};
    endpoints are excluded, see below. */
 const LROOT = (window.Shopify && Shopify.routes && Shopify.routes.root) || '/';
 
-/* Scarcity bucket, MIRRORS snippets/pdp-scarcity.liquid exactly (product.id % 10:
-   0-2 red "almost sold out" / 3-5 amber "selling fast" / 6-9 green "in stock") —
-   varied per product so the same red line does not repeat across the whole
-   catalog (a uniform urgency claim reads as fake). Change one side, change both. */
-S.scarcityFor = (productId) => {
-  const bucket = Number(productId) % 10;
-  if (bucket <= 2) return { mod: '', text: S.t?.almostSoldOut || 'Almost sold out, only a few left in stock' };
-  if (bucket <= 5) return { mod: ' pdp-low-stock--fast', text: S.t?.sellingFast || 'Selling fast \u2014 stock is limited' };
-  return { mod: ' pdp-low-stock--stock', text: S.t?.inStock || 'In stock and ready to ship' };
-};
-S.applyScarcity = (el, productId) => {
-  if (!el) return;
-  const sc = S.scarcityFor(productId);
-  el.className = 'pdp-low-stock stmt-sm' + sc.mod;
-  el.innerHTML = '<span class="pdp-low-stock__pulse" aria-hidden="true"></span>';
-  el.appendChild(document.createTextNode(sc.text));
-  el.hidden = false;
-};
+/* S.scarcityFor / S.applyScarcity removed: they derived a stock state from
+   `product.id % 10` and painted it into the quick view and the cart mini-page.
+   Inventory is untracked in this theme, so that state described nothing — it was
+   a stock claim generated from a product ID. Real per-product stock needs
+   Shopify inventory tracking and variant.inventory_quantity, not a hash of the
+   ID; snippets/pdp-scarcity.liquid holds the honest, merchant-owned version. */
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
 
@@ -540,7 +528,6 @@ function initQuickView() {
 
   function open(p) {
     product = p;
-    S.applyScarcity($('[data-qv-scarcity]', dlg), p.id);
     /* lead colour first, variant (= import) order second — same rule as the PDP:
        the dialog must open on the colour of the card photograph that was tapped
        (without this, "black" cards could open on a different variant's colour) */

@@ -34,8 +34,10 @@
   "name": {{ shop.name | json }},
   "url": {{ request.origin | json }},
   {%- comment -%} Google reads Organization.logo for the seller logo in Shopping results and the
-  knowledge panel. Square mark, 512px (its minimum is 112px). {%- endcomment -%}
-  "logo": {{ 'brand-logo-512.png' | asset_url | prepend: 'https:' | json }},
+  knowledge panel. Square mark, 512px (its minimum is 112px). Emitted ONLY when the merchant
+  has uploaded one — a logo URL pointing at a file that isn't there is worse than no logo at
+  all, since Google fetches it and records the 404 against the store. {%- endcomment -%}
+  {%- if settings.brand_logo_square != blank %}"logo": {{ settings.brand_logo_square | image_url: width: 512, height: 512 | prepend: 'https:' | json }},{% endif -%}
   "email": {{ settings.biz_email | json }},
   "telephone": {{ settings.biz_phone | json }},
   "address": {

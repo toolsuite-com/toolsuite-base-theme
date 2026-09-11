@@ -5,9 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>
     {%- if request.page_type == 'index' -%}
-      {%- comment -%} Fallback for when the homepage title preference is unset or domain-only. {%- endcomment -%}
-      {%- if page_title == blank or page_title == 'BRAND-DOMAIN' or page_title == shop.name -%}
-        BRAND | Women's Fashion
+      {%- comment -%} Homepage: the shop's own name plus an optional merchant tagline
+      (settings.seo_tagline). Never a hardcoded industry — this theme ships to every
+      kind of store, and a wrong category in the <title> is what search engines index.
+      A homepage SEO title equal to shop.name counts as unset, so the tagline still
+      applies. {%- endcomment -%}
+      {%- if page_title == blank or page_title == shop.name -%}
+        {{- shop.name -}}
+        {%- if settings.seo_tagline != blank %} &ndash; {{ settings.seo_tagline }}{% endif -%}
       {%- else -%}
         {{- page_title -}}
         {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
@@ -19,18 +24,27 @@
       {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
     {%- endif -%}
   </title>
+  {%- comment -%} No generic fallback description: an unset store gets NO description tag
+  rather than an invented one. The old default promised free shipping and 30-day returns
+  on every store that installed the theme — a shipping/returns claim the merchant may not
+  honour is a Merchant Center misrepresentation risk. {%- endcomment -%}
   {%- if page_description -%}
     <meta name="description" content="{{ page_description | escape }}">
-  {%- elsif request.page_type == 'index' -%}
-    <meta name="description" content="BRAND — women's fashion with free shipping and 30-day returns.">
+  {%- elsif request.page_type == 'index' and settings.seo_description != blank -%}
+    <meta name="description" content="{{ settings.seo_description | escape }}">
   {%- endif -%}
   <link rel="canonical" href="{{ canonical_url }}">
   {% render 'social-meta' %}
-  {%- comment -%} Favicon files are generated from the logo — never hand-edit. {%- endcomment -%}
+  {%- comment -%} brand-favicon.svg is a neutral default that ships with the theme, so this
+  always resolves. The raster icons are derived from the merchant's square logo through the
+  CDN instead of shipping as hand-made files: without an upload they are simply omitted,
+  and the browser falls back to the SVG rather than requesting a 404. {%- endcomment -%}
   <link rel="icon" type="image/svg+xml" href="{{ 'brand-favicon.svg' | asset_url }}">
-  {%- comment -%} PNG fallback: mobile/in-app browsers + iOS don't take SVG favicons {%- endcomment -%}
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ 'brand-favicon-32.png' | asset_url }}">
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ 'brand-touch-180.png' | asset_url }}">
+  {%- if settings.brand_logo_square != blank -%}
+    {%- comment -%} PNG fallback: mobile/in-app browsers + iOS don't take SVG favicons {%- endcomment -%}
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ settings.brand_logo_square | image_url: width: 32, height: 32 }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ settings.brand_logo_square | image_url: width: 180, height: 180 }}">
+  {%- endif -%}
   {%- comment -%} Archivo covers --font-display AND --font-ui too (see @font-face + :root
   below) — the Prata preload stays because .pdp__color ("in <Colour>") is still Prata
   italic and sits above the fold on every PDP. {%- endcomment -%}
@@ -156,7 +170,9 @@
         chooseSize: {{ 'product.complete_look.choose_size' | t | json }},
         optionSelect: {{ 'product.option_select' | t | json }},
         addShort: {{ 'cart.cross.add_short' | t | json }}
-        {%- comment %} disabled: almostSoldOut/sellingFast/inStock backed S.scarcityFor/S.applyScarcity (id-modulo pseudo-scarcity); every caller is now disabled in snippets/pdp-scarcity.liquid, quick-view.liquid, cart-miniview.liquid, so this data only leaked unused strings into page source with nothing left to read it. Re-enable only with real inventory gating. {% endcomment -%}
+        {%- comment %} almostSoldOut/sellingFast/inStock are gone for good: they fed
+        S.scarcityFor/S.applyScarcity, which dealt a stock state from product.id.
+        The painters, their markup and the locale strings have all been removed. {% endcomment -%}
       }
     };
   </script>

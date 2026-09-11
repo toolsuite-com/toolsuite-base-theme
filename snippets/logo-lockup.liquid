@@ -1,11 +1,28 @@
 {%- comment -%}
-  Brand lockup — image wordmark. A generated, transparent-background PNG per
-  store, uploaded as the theme asset `brand-logo.png`. An ink-dark PNG works
-  on every render site (header, password, footer) — the footer band is cream,
-  not dark, so no invert filter is needed anywhere.
-  Sizing rides --logo-size via a .82em factor so every caller keeps a
+  Brand lockup — the merchant's uploaded logo (Theme settings → Brand & SEO),
+  or the store's own name typeset in the display face when none is set.
+
+  The fallback used to be an inline onerror handler that swapped a broken <img>
+  for a <span> in JS. That only ran AFTER the browser had already requested a
+  missing asset (a guaranteed 404 on every page of a fresh install) and it put
+  the lockup one failed request behind first paint. The branch belongs in Liquid,
+  where it costs nothing and nothing 404s.
+
+  Sizing rides --logo-size so every caller (header, footer, password) keeps a
   consistent visual scale for the wordmark.
 {%- endcomment -%}
 <span class="brand__row">
-  <img class="brand__mark brand__mark--img" src="{{ 'brand-logo.png' | asset_url }}" alt="{{ shop.name | escape }}" onerror="var s=document.createElement('span');s.className='brand__mark brand__mark--text';s.textContent=this.alt;s.style.cssText='font:500 22px/1 var(--font-d,serif);letter-spacing:.02em;height:auto';this.replaceWith(s)" style="display:block; height: calc(var(--logo-size, 28px) * .82); width: auto;" width="1221" height="513" loading="eager" decoding="async">
+  {%- if settings.brand_logo != blank -%}
+    {%- comment -%} x-descriptors, not w/sizes: the rendered size is pinned by CSS
+    height, not by the viewport, so the only variable is device pixel ratio. {%- endcomment -%}
+    <img class="brand__mark brand__mark--img"
+      src="{{ settings.brand_logo | image_url: width: 240 }}"
+      srcset="{{ settings.brand_logo | image_url: width: 240 }} 1x, {{ settings.brand_logo | image_url: width: 480 }} 2x"
+      alt="{{ shop.name | escape }}"
+      width="{{ settings.brand_logo.width }}" height="{{ settings.brand_logo.height }}"
+      style="display:block; height: calc(var(--logo-size, 28px) * .82); width: auto;"
+      loading="eager" decoding="async">
+  {%- else -%}
+    <span class="brand__mark brand__mark--text">{{ shop.name }}</span>
+  {%- endif -%}
 </span>

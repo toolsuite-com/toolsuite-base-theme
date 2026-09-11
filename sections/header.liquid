@@ -79,14 +79,13 @@ desktop-bound. {%- endcomment -%}
 {%- endif -%}
 
 <div class="hdr-wrap">
-  {%- comment -%} Non-primary locales read the localized key instead of the
-market-global setting — theme translations do not survive theme duplication,
-so the theme carries its own. {%- endcomment -%}
+  {%- comment -%} The merchant's announcement wins in every language. This used to
+read the localized key on any non-primary locale, which discarded a merchant-typed
+bar — and since the bar carries shipping and returns facts, it could advertise terms
+the store never wrote. Blank stays blank: clearing the setting is how the bar is
+turned off, so there is no locale fallback. {%- endcomment -%}
 {%- liquid
   assign hdr_ann = section.settings.announcement
-  unless request.locale.primary
-    assign hdr_ann = 'home.announcement' | t
-  endunless
 -%}
 {%- if hdr_ann != blank -%}
     {%- comment -%} ROTATING BAR: the same `·`-separated setting feeds one

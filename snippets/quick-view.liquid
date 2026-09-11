@@ -25,14 +25,9 @@
         <h3 class="pdp__name lbl" data-qv-title></h3>
         <div class="pdp__price lbl" data-qv-price></div>
         <div data-qv-options></div>
-        {%- comment -%} per-product scarcity, painted by theme.js S.applyScarcity
-        on open — the dialog serves many products (see pdp-scarcity.liquid) {%- endcomment -%}
-        {%- comment %} disabled: id-modulo pseudo-scarcity can read as fake urgency without real inventory gating; re-enable only once that exists {% endcomment -%}
-        {%- if false -%}
-        {%- if settings.low_stock_line != blank -%}
-          <p class="pdp-low-stock stmt-sm" data-qv-scarcity hidden></p>
-        {%- endif -%}
-        {%- endif -%}
+        {%- comment -%} No scarcity line: the theme.js painter that filled this slot
+        generated the state from product.id, so the placeholder went with it. See
+        snippets/pdp-scarcity.liquid. {%- endcomment -%}
         <button type="button" class="bar qv__atc" data-qv-atc>
           <span data-qv-atc-label>{{ 'product.atc.add_to_bag' | t }}</span>
         </button>

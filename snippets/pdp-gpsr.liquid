@@ -6,13 +6,16 @@
   [data-info-tab]/[data-info-panel] by matching key, no per-tab JS needed).
 
   shop.email is passed into gpsr.responsible_line as a t-param so the contact
-  address can never drift from the real mailbox if it changes.
+  address can never drift from the real mailbox if it changes. The distributor
+  name rides the same mechanism (settings.biz_name → shop.name): GPSR demands the
+  REAL responsible party, so it can never be hardcoded theme copy.
 
   MANUFACTURER PLACEHOLDER: gpsr.manufacturer_line says "available on request"
   until the real manufacturer identity is sourced from the supplier and used
   to replace this line. Do not invent a name.
 {%- endcomment -%}
 {%- assign gpsr_email = settings.biz_email | default: shop.email -%}
-<p>{{ 'gpsr.responsible_line' | t: email: gpsr_email }}</p>
+{%- assign gpsr_name = settings.biz_name | default: shop.name -%}
+<p>{{ 'gpsr.responsible_line' | t: name: gpsr_name, email: gpsr_email }}</p>
 <p>{{ 'gpsr.manufacturer_line' | t }}</p>
 <p>{{ 'gpsr.safety_line' | t }}</p>

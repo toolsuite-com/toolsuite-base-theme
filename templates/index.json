@@ -141,14 +141,14 @@
           "type": "qa",
           "settings": {
             "question": "What is your return policy?",
-            "answer": "<p>You have 30 days from delivery to return an unworn item in its original condition. Write to <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> first to receive a return authorization. There are no restocking fees.</p>"
+            "answer": "<p>You have 30 days from delivery to return an unworn item in its original condition. Contact us first to receive a return authorization. There are no restocking fees.</p>"
           }
         },
         "q3": {
           "type": "qa",
           "settings": {
             "question": "How do I find my size?",
-            "answer": "<p>Every product page has a size guide with the measurements for that exact style, since fit can vary between pieces. Check the guide before ordering, and write to <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> if you are between sizes and would like help choosing.</p>"
+            "answer": "<p>Every product page has a size guide with the measurements for that exact style, since fit can vary between pieces. Check the guide before ordering, and get in touch if you are between sizes and would like help choosing.</p>"
           }
         },
         "q4": {
@@ -162,7 +162,7 @@
           "type": "qa",
           "settings": {
             "question": "How do I track my order?",
-            "answer": "<p>As soon as your order ships, we email you a tracking number and a link so you can follow it the whole way. You can also write to <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> with your order number at any time for a status update.</p>"
+            "answer": "<p>As soon as your order ships, we email you a tracking number and a link so you can follow it the whole way. You can also contact us with your order number at any time for a status update.</p>"
           }
         }
       },

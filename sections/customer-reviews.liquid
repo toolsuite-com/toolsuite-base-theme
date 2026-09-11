@@ -39,10 +39,15 @@
   <div class="wrap tp__grid">
     <div class="tp__intro reveal">
       {%- liquid
+        comment
+          The merchant's heading wins in every language (Translate & Adapt
+          localizes section settings); 'reviews.heading' is the fallback for a
+          blank one only. Reassigning on every secondary locale discarded it.
+        endcomment
         assign tp_heading = section.settings.heading
-        unless request.locale.primary
+        if tp_heading == blank
           assign tp_heading = 'reviews.heading' | t
-        endunless
+        endif
       -%}
       <h2 class="dl">{{ tp_heading | escape }}</h2>
       {%- if settings.rating_value != blank -%}
@@ -72,23 +77,28 @@
       {%- for block in section.blocks -%}
         {%- liquid
           comment
-            Reviews render in the storefront language — the primary locale
-            reads the block settings, other locales read per-index locale
-            keys (reviews.rN_quote / rN_meta) with a translation-missing
-            guard, exactly like the FAQ blocks. Names stay as entered.
+            A review the merchant entered wins in every language — these are
+            real customer words, so a locale default must never overwrite one.
+            The per-index keys (reviews.rN_quote / rN_meta) only fill a field
+            left empty, with a translation-missing guard, exactly like the FAQ
+            blocks. Quote and meta resolve independently. Names stay as entered.
           endcomment
           assign tp_quote = block.settings.quote
           assign tp_meta = block.settings.meta
-          unless request.locale.primary
+          if tp_quote == blank
             assign tp_qk = 'reviews.r' | append: forloop.index | append: '_quote'
-            assign tp_mk = 'reviews.r' | append: forloop.index | append: '_meta'
             assign tp_qt = tp_qk | t
-            assign tp_mt = tp_mk | t
             unless tp_qt contains 'Translation missing' or tp_qt contains 'translation missing'
               assign tp_quote = tp_qt
+            endunless
+          endif
+          if tp_meta == blank
+            assign tp_mk = 'reviews.r' | append: forloop.index | append: '_meta'
+            assign tp_mt = tp_mk | t
+            unless tp_mt contains 'Translation missing' or tp_mt contains 'translation missing'
               assign tp_meta = tp_mt
             endunless
-          endunless
+          endif
         -%}
         <figure class="tp__card" {{ block.shopify_attributes }}>
           {%- comment -%} Reviews and the UGC selfie band share one card

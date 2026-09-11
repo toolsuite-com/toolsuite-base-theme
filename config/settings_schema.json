@@ -2,7 +2,7 @@
   {
     "name": "theme_info",
     "theme_name": "ToolSuite Base Theme",
-    "theme_version": "1.2.3",
+    "theme_version": "1.2.4",
     "theme_author": "ToolSuite",
     "theme_documentation_url": "https://example.com",
     "theme_support_url": "https://example.com"
@@ -42,7 +42,8 @@
         "type": "color",
         "id": "color_mute",
         "label": "Secondary label",
-        "default": "#8A857C"
+        "default": "#6E6960",
+        "info": "Used for secondary text everywhere. The default clears WCAG AA (4.5:1) on both paper and cream — 5.14:1 and 4.67:1. Lightening it past roughly #767168 drops below AA on paper."
       },
       {
         "type": "select",
@@ -67,6 +68,39 @@
         "label": "Amber (buy bar only)",
         "default": "#A88652",
         "info": "Used only when the buy bar is set to Amber. Never a UI accent."
+      }
+    ]
+  },
+  {
+    "name": "Brand & SEO",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Your store's name comes from Shopify (Settings → Store details) and is used automatically. These two fields only add what Shopify cannot know: how you describe yourself."
+      },
+      {
+        "type": "text",
+        "id": "seo_tagline",
+        "label": "Homepage tagline",
+        "info": "Appended to your store name in the browser tab and in link previews, e.g. \"Store name – Everyday knitwear\". Leave empty to show the store name alone. Do not name a product category you do not sell."
+      },
+      {
+        "type": "textarea",
+        "id": "seo_description",
+        "label": "Homepage meta description",
+        "info": "The search-result snippet for your homepage, ~155 characters. Empty = no description tag, which lets Google pick its own text. Never promise shipping or returns terms you do not honour."
+      },
+      {
+        "type": "image_picker",
+        "id": "brand_logo",
+        "label": "Logo",
+        "info": "Shown in the header, footer and password page. Empty = your store name is set in type instead."
+      },
+      {
+        "type": "image_picker",
+        "id": "brand_logo_square",
+        "label": "Square logo (structured data)",
+        "info": "Square, at least 112px — Google reads this for the seller logo in Shopping results and the knowledge panel. Empty = the logo is omitted from structured data rather than pointing at a missing file."
       }
     ]
   },
@@ -234,20 +268,18 @@
     "settings": [
       {
         "type": "paragraph",
-        "content": "Rating shown above the product title and under the checkout button. These are hand-entered numbers — the theme never links to or scrapes an external review profile."
+        "content": "⚠️ Rating shown above the product title and under the checkout button. Both fields ship EMPTY and must stay empty until you have a real review base to quote: enter only numbers you can evidence from your own orders. Publishing a rating you cannot substantiate breaches consumer-protection law (DSA Art. 25, FTC fake-review rule) and Google's structured-data policy. The theme never links to or scrapes an external review profile."
       },
       {
         "type": "text",
         "id": "rating_value",
         "label": "Rating value",
-        "default": "4.7",
-        "info": "Printed as-is next to the stars. Empty = the whole rating row is hidden everywhere."
+        "info": "Printed as-is next to the stars, e.g. \"4.7\". Empty = the whole rating row is hidden everywhere."
       },
       {
         "type": "text",
         "id": "rating_count",
         "label": "Review count",
-        "default": "1,284",
         "info": "Printed as-is, e.g. \"1,284\". Empty = only the value shows."
       },
       {
@@ -273,26 +305,8 @@
         "default": "Stack & save — buy more, get a bigger discount"
       },
       {
-        "type": "range",
-        "id": "viewers_min",
-        "label": "Live viewers — lowest number",
-        "min": 3,
-        "max": 40,
-        "step": 1,
-        "default": 8
-      },
-      {
-        "type": "range",
-        "id": "viewers_max",
-        "label": "Live viewers — highest number",
-        "min": 4,
-        "max": 80,
-        "step": 1,
-        "default": 23
-      },
-      {
         "type": "paragraph",
-        "content": "Trust box under the add button, and the ✔ promise lines. Copy stays GMC-safe fact — no guarantee we do not actually honour."
+        "content": "Trust box under the add button, and the ✔ promise lines. Enter only facts your store actually honours — a returns window or guarantee you do not keep is a Merchant Center misrepresentation. Empty = the line does not render."
       },
       {
         "type": "text",
@@ -304,7 +318,7 @@
         "type": "text",
         "id": "trust_customers_line",
         "label": "Customers line",
-        "default": "Over 1,000+ happy customers"
+        "info": "Ships empty on purpose — the old default (\"Over 1,000+ happy customers\") was a customer count no store had earned yet. Fill in your real figure, or leave it empty."
       },
       {
         "type": "text",
@@ -344,28 +358,21 @@
       },
       {
         "type": "paragraph",
-        "content": "⚠️ URGENCY SWITCHES. Everything below fakes a live signal (inventory is untracked). Turning any of these on without a real data basis is a GMC-misrepresentation and dark-pattern risk under consumer-protection law in many jurisdictions. They exist as switches so each store can be configured individually; they are NOT meant to be enabled by default."
+        "content": "⚠️ URGENCY + PROOF SWITCHES. These print claims about your store, so only turn one on once the claim is TRUE. The theme no longer generates any of these numbers — the pseudo-random scarcity tiers and the live-viewers line have been removed outright, and what remains prints exactly what you type in Storefront proof, or nothing."
       },
       {
         "type": "checkbox",
         "id": "scarcity_enabled",
-        "label": "Scarcity line (PDP) — ⚠️ fake urgency",
+        "label": "Stock line (PDP)",
         "default": false,
-        "info": "id-modulo pseudo scarcity (red/amber/green). Off by default: enable only with real inventory gating."
-      },
-      {
-        "type": "checkbox",
-        "id": "viewers_enabled",
-        "label": "Live-viewers line (PDP) — ⚠️ fake signal",
-        "default": false,
-        "info": "Deterministic pseudo-random count, no real data behind it."
+        "info": "Prints your Storefront-proof low-stock line on the product page. Inventory is untracked, so the same line shows on every product — only enable it if that statement is true across your catalogue."
       },
       {
         "type": "checkbox",
         "id": "rating_enabled",
         "label": "Star rating (PDP + cart) — ⚠️ needs a real source",
         "default": false,
-        "info": "Prints the hand-entered rating_value/rating_count from Storefront proof. OFF until a genuine review base backs the numbers — fabricated ratings breach consumer-protection law (e.g. DSA Art. 25, FTC)."
+        "info": "Prints the rating_value/rating_count you entered under Storefront proof. Keep OFF until a genuine review base backs those numbers — fabricated ratings breach consumer-protection law (DSA Art. 25, FTC)."
       },
       {
         "type": "checkbox",

@@ -59,19 +59,27 @@
   </div>
 
   {%- liquid
+    comment
+      Every field the merchant filled in wins, in every language — Translate &
+      Adapt localizes section settings, so a secondary locale already holds the
+      translated copy. The locale file only fills a field left blank. The old
+      version reassigned all four on any non-primary locale, which replaced a
+      merchant's own brand story with the theme's default copy — the worst place
+      for it, since this section is explicitly the store's own voice.
+
+      Eyebrow and link_label keep blank-means-hidden (each has an != blank guard
+      below), so only the two structural fields fall back.
+    endcomment
     assign st_eyebrow = section.settings.eyebrow
-    assign st_heading = section.settings.heading
-    assign st_text = section.settings.text
     assign st_link = section.settings.link_label
-    unless request.locale.primary
-      assign st_eyebrow = 'pdp_story.eyebrow' | t
+    assign st_heading = section.settings.heading
+    if st_heading == blank
       assign st_heading = 'pdp_story.heading' | t
-      assign st_text_t = 'pdp_story.text_html' | t
-      if st_text_t != blank
-        assign st_text = st_text_t
-      endif
-      assign st_link = 'pdp_story.link_label' | t
-    endunless
+    endif
+    assign st_text = section.settings.text
+    if st_text == blank
+      assign st_text = 'pdp_story.text_html' | t
+    endif
   -%}
   <div class="story__body">
     {%- if st_eyebrow != blank -%}
@@ -103,7 +111,7 @@
       "type": "richtext",
       "id": "text",
       "label": "Text",
-      "default": "<p>BRAND is an edit, not a catalogue. A piece earns its place when it goes on without thinking and still looks considered at the end of a long day: colours that live happily next to each other, shapes that layer, nothing that waits for an occasion.</p><p>We would rather carry fewer things and stand behind each one: honest photography, sizing you can check before you buy, and prices we can explain. If something is not right, you write to us and a person writes back.</p>"
+      "default": "<p>This is an edit, not a catalogue. A piece earns its place when it goes on without thinking and still looks considered at the end of a long day: colours that live happily next to each other, shapes that layer, nothing that waits for an occasion.</p><p>We would rather carry fewer things and stand behind each one: honest photography, sizing you can check before you buy, and prices we can explain. If something is not right, you write to us and a person writes back.</p>"
     },
     { "type": "text", "id": "link_label", "label": "Link label", "default": "About us" },
     { "type": "page", "id": "page", "label": "Link page" },

@@ -27,52 +27,12 @@ function initRatingLink() {
   });
 }
 
-function hashString(value) {
-  let hash = 2166136261;
-  for (const char of String(value)) {
-    hash ^= char.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function initViewers() {
-  document.querySelectorAll('[data-pdp-viewers]').forEach((line) => {
-    const output = line.querySelector('[data-viewers-count]');
-    const min = Number(line.dataset.viewersMin);
-    const max = Number(line.dataset.viewersMax);
-    const productId = line.dataset.productId;
-    if (!output || !Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max < min) return;
-
-    const storageKey = `theme-pdp-viewers-${productId}`;
-    let stored = Number.NaN;
-    try { stored = Number(sessionStorage.getItem(storageKey)); } catch { /* private mode */ }
-    let current = Number.isInteger(stored) && stored >= min && stored <= max
-      ? stored
-      : min + (hashString(productId) % (max - min + 1));
-    const paint = () => {
-      output.textContent = String(current);
-      try { sessionStorage.setItem(storageKey, String(current)); } catch { /* private mode */ }
-    };
-    /* ±1, direction random every tick: the STEP is always one, the SIGN is a
-       fresh coin flip. A direction variable that only flips occasionally produces
-       a visible ramp; drawing anywhere in the range produces large jumps (e.g.
-       12 → 27 → 14). Flipping the sign every tick drifts the way a real counter
-       would. At the range edges the step is forced inward, otherwise the number
-       would sit still there. */
-    const reroll = () => {
-      if (min === max) return;
-      let step = Math.random() < 0.5 ? -1 : 1;
-      if (current + step > max) step = -1;
-      if (current + step < min) step = 1;
-      current += step;
-      paint();
-      window.setTimeout(reroll, 4200 + Math.floor(Math.random() * 3600));
-    };
-    paint();
-    window.setTimeout(reroll, 4200 + (hashString(productId) % 2200));
-  });
-}
+/* initViewers() and its hashString() seed are removed. The line claimed "N people
+   are viewing this item": the opening number was a hash of the product ID mapped
+   into a merchant-set range, then drifted ±1 on a Math.random() coin flip every
+   ~4-8s to imitate a live feed. No viewer data was involved at any point. A live
+   viewer count needs real analytics; inventing one is a fabricated social-proof
+   signal. The snippet, its settings and its locale string are gone too. */
 
 /* GALLERY HEIGHT SYNC.
    The slides are exactly as tall as their own photograph, so the flex track
@@ -187,7 +147,6 @@ document.addEventListener('click', (event) => {
 });
 
 initRatingLink();
-initViewers();
 initGalleryCounter();
   initGalleryHeightSync();
 initCompleteLook();

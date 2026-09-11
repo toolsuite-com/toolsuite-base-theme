@@ -65,14 +65,18 @@
   </div>
 
   {%- liquid
+    comment
+      What the merchant typed wins in EVERY language. Reassigning these on any
+      non-primary locale silently discarded the merchant's own hero caption and
+      printed the theme's default copy instead. Translate & Adapt localizes
+      section settings, so a translated storefront already reads its own text.
+
+      No locale fallback on purpose: all three are captions over a photograph,
+      and clearing them is how a merchant shows the image bare.
+    endcomment
     assign h_line_1 = section.settings.line_1
     assign h_line_2 = section.settings.line_2
     assign h_cta = section.settings.cta_label
-    unless request.locale.primary
-      assign h_line_1 = 'home.hero.line_1' | t
-      assign h_line_2 = 'home.hero.line_2' | t
-      assign h_cta = 'home.hero.cta_label' | t
-    endunless
   -%}
   {%- if h_line_1 != blank or h_cta != blank -%}
     <div class="home-hero__say">

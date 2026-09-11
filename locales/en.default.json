@@ -25,7 +25,7 @@
       },
       "tips": {
         "title": "Leave a tip",
-        "description": "Enjoying BRAND? Tips buy our small team their morning coffee",
+        "description": "Enjoying your order? A tip goes straight to the team who packed it",
         "presets_description": "Pick a little thank-you",
         "custom_label": "Your amount",
         "message": "Thank you! Today's coffee is on you.",
@@ -171,11 +171,6 @@
     "trust": {
       "shipping_estimate": "Ships in 1–3 days"
     },
-    "scarcity": {
-      "fast": "Selling fast — stock is limited",
-      "stock": "In stock and ready to ship",
-      "low": "Almost sold out, only a few left in stock"
-    },
     "complete_look": {
       "heading": "Complete the look",
       "choose_size_aria": "Choose a size for {{ title }}",
@@ -225,13 +220,10 @@
       "reviews_by": "women have reviewed us",
       "aria": "Rated {{ value }} out of 5 from {{ count }} reviews",
       "aria_short": "Rated {{ value }} out of 5"
-    },
-    "viewers": {
-      "line": "people are viewing this item"
     }
   },
   "gpsr": {
-    "responsible_line": "Distributor: BRAND. Contact: {{ email }}",
+    "responsible_line": "Distributor: {{ name }}. Contact: {{ email }}",
     "manufacturer_line": "Manufacturer: information available on request from our customer service.",
     "safety_line": "Safety instructions: keep plastic packaging out of reach of children and pets. Follow the care instructions on the product's label."
   },
@@ -425,9 +417,9 @@
   },
   "newsletter": {
     "popup": {
-      "aria": "Join the BRAND list",
+      "aria": "Join the {{ shop_name }} list",
       "close": "Close",
-      "kicker": "The BRAND Club",
+      "kicker": "The {{ shop_name }} Club",
       "heading": "Be first to the new pieces",
       "body": "Join the list for first looks at new arrivals and restocks.",
       "email_label": "Email address",
@@ -439,7 +431,7 @@
     }
   },
   "social_proof": {
-    "heading": "BRAND at home"
+    "heading": "At home with our customers"
   },
   "home": {
     "announcement": "Ships 1–3 workdays · Free shipping · 30-day returns",
@@ -474,19 +466,19 @@
       "q1_question": "How long does shipping take?",
       "q1_answer_html": "<p>Orders leave the facility within 1–3 business days (Mon–Fri), shipping is free, and delivery takes 8–12 business days from dispatch.</p>",
       "q2_question": "What is your return policy?",
-      "q2_answer_html": "<p>You have 30 days from delivery to return any unworn item in its original condition. Email <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> first for a return authorization. There are no restocking fees.</p>",
+      "q2_answer_html": "<p>You have 30 days from delivery to return any unworn item in its original condition. Contact us first for a return authorization. There are no restocking fees.</p>",
       "q3_question": "How do I find my size?",
-      "q3_answer_html": "<p>Every product page has a size chart with the measurements for that specific style, since fit can vary between styles. Check the chart before you order, and email <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> if you're between sizes and want a hand picking one.</p>",
+      "q3_answer_html": "<p>Every product page has a size chart with the measurements for that specific style, since fit can vary between styles. Check the chart before you order, and get in touch if you're between sizes and want a hand picking one.</p>",
       "q4_question": "Where does my order ship from?",
-      "q4_answer_html": "<p>We work with a small group of specialty suppliers, and your order ships directly from their fulfillment facility rather than a BRAND warehouse — that's how we keep prices fair without extra handling markup. Every order still arrives within the processing and delivery window above.</p>",
+      "q4_answer_html": "<p>Your order ships directly from our fulfillment facility. Every order arrives within the processing and delivery window above.</p>",
       "q5_question": "How can I track my order?",
-      "q5_answer_html": "<p>As soon as your order ships, we'll email you a tracking number and link so you can follow it the whole way. You can also email <a href=\"mailto:info@BRAND-DOMAIN\">info@BRAND-DOMAIN</a> with your order number for a status update any time.</p>"
+      "q5_answer_html": "<p>As soon as your order ships, we'll email you a tracking number and link so you can follow it the whole way. You can also contact us with your order number for a status update any time.</p>"
     }
   },
   "pdp_story": {
     "eyebrow": "Our approach",
     "heading": "Effortless, on purpose",
-    "text_html": "<p>BRAND is an edit, not a catalogue. A piece earns its place when it goes on without thinking and still looks considered at the end of a long day: colours that live happily next to each other, shapes that layer, nothing that waits for an occasion.</p><p>We would rather carry fewer things and stand behind each one: honest photography, sizing you can check before you buy, and prices we can explain. If something is not right, you write to us and a person writes back.</p>",
+    "text_html": "<p>This is an edit, not a catalogue. A piece earns its place when it goes on without thinking and still looks considered at the end of a long day: colours that live happily next to each other, shapes that layer, nothing that waits for an occasion.</p><p>We would rather carry fewer things and stand behind each one: honest photography, sizing you can check before you buy, and prices we can explain. If something is not right, you write to us and a person writes back.</p>",
     "link_label": "About us"
   },
   "reviews": {

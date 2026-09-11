@@ -19,12 +19,17 @@
   if p != blank and p.featured_image != blank and section.settings.use_product_image
     assign img = p.featured_image
   endif
+  comment
+    The <h2> is unguarded, so name must never end up blank: product title →
+    merchant's fallback_name → the theme's localized default. The locale key
+    used to overwrite the merchant's fallback_name on every secondary locale.
+  endcomment
   assign name = p.title
   if name == blank
     assign name = section.settings.fallback_name
-    unless request.locale.primary
+    if name == blank
       assign name = 'home.highlight.fallback_name' | t
-    endunless
+    endif
   endif
   assign descriptor = ''
   assign url = p.url | default: section.settings.link
@@ -46,14 +51,18 @@
 
     <div class="home-hl__body">
       {%- liquid
+        comment
+          Merchant copy wins in every language — the old reassign on non-primary
+          locales discarded it. Eyebrow and blurb are guarded decorations, so
+          blank stays blank; cta_label is printed inside an unguarded <a>, so it
+          falls back rather than rendering an empty link.
+        endcomment
         assign hl_eyebrow = section.settings.eyebrow
         assign hl_blurb = section.settings.blurb
         assign hl_cta = section.settings.cta_label
-        unless request.locale.primary
-          assign hl_eyebrow = 'home.highlight.eyebrow' | t
-          assign hl_blurb = 'home.highlight.blurb' | t
+        if hl_cta == blank
           assign hl_cta = 'home.highlight.cta_label' | t
-        endunless
+        endif
       -%}
       {%- if hl_eyebrow != blank -%}
         <p class="lbl-sm mute">{{ hl_eyebrow | escape }}</p>

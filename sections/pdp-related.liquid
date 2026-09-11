@@ -28,12 +28,20 @@ Two things make it honest rather than a promise the checkout breaks:
      the ladder is 2:10, 3:15, 4:20). It now shows the top tier, which is the
      one worth advertising, and it can never drift from the ladder again. {%- endcomment -%}
 {%- liquid
+  comment
+    Merchant headings win in every language; the locale keys only fill a blank
+    one. Reassigning on every non-primary locale discarded what was typed. The
+    <h2> and the section aria-label are both unguarded, so rel_heading must
+    never come out blank.
+  endcomment
   assign rel_heading = section.settings.heading
-  assign rel_offer_tpl = section.settings.offer_heading
-  unless request.locale.primary
+  if rel_heading == blank
     assign rel_heading = 'product.related.heading' | t
+  endif
+  assign rel_offer_tpl = section.settings.offer_heading
+  if rel_offer_tpl == blank
     assign rel_offer_tpl = 'product.related.offer_heading' | t
-  endunless
+  endif
   if settings.qty_tiers_enabled and settings.qty_tiers != blank
     assign rel_top_pct = 0
     assign rel_tiers = settings.qty_tiers | remove: ' ' | split: ','

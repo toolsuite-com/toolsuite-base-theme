@@ -48,12 +48,14 @@
     {%- endif -%}
     <div class="wrap home-ed__foot">
       {%- liquid
+        comment
+          Merchant copy wins in every language — the old reassign on non-primary
+          locales threw it away. Both fields keep blank-means-hidden (each is
+          guarded below), so there is no locale fallback: clearing them is how a
+          merchant runs this section as a bare image.
+        endcomment
         assign ed_caption = section.settings.caption
         assign ed_link = section.settings.link_label
-        unless request.locale.primary
-          assign ed_caption = 'home.editorial.caption' | t
-          assign ed_link = 'home.editorial.link_label' | t
-        endunless
       -%}
       {%- if ed_caption != blank -%}
         <p class="dl home-ed__say">{{ ed_caption | escape }}</p>

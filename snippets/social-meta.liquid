@@ -17,10 +17,17 @@
   {%- assign og_image_url = 'og-default.jpg' | asset_url -%}
 {%- endif -%}
 {%- unless og_image_url contains 'https:' -%}{%- assign og_image_url = og_image_url | prepend: 'https:' -%}{%- endunless -%}
+{%- comment -%} Homepage og:title mirrors the <title> in layout/theme.liquid — shop name
+plus the optional merchant tagline, never a hardcoded industry. Keep the two in sync.
+{%- endcomment -%}
 {%- assign og_title_out = page_title | default: shop.name -%}
 {%- if request.page_type == 'index' -%}
-  {%- if page_title == blank or page_title == 'BRAND-DOMAIN' -%}
-    {%- assign og_title_out = "BRAND | Women's Fashion" -%}
+  {%- comment -%} Nested, not `and (… or …)` — Liquid has no grouping parentheses. {%- endcomment -%}
+  {%- if page_title == blank or page_title == shop.name -%}
+    {%- assign og_title_out = shop.name -%}
+    {%- if settings.seo_tagline != blank -%}
+      {%- assign og_title_out = og_title_out | append: ' – ' | append: settings.seo_tagline -%}
+    {%- endif -%}
   {%- endif -%}
 {%- endif -%}
 <meta property="og:site_name" content="{{ shop.name | escape }}">

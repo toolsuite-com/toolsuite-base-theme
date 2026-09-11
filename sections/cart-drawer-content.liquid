@@ -165,11 +165,10 @@
       belong to the bag list and fade out toward the decision level — see the
       cart-drawer__items mask in the cart stylesheet. In the scroll layer the
       band scrolls with the lines, so it can never crowd the checkout button.
-      cross_heading is a market-global section setting — non-primary locales
-      fall back to the translated locale default, same pattern as empty_line
-      below. {%- endcomment -%}
+      cross_heading passes through as the merchant entered it, in every language;
+      cart-cross supplies its translated default when it is blank. Blanking it on
+      every non-primary locale discarded a merchant-typed heading. {%- endcomment -%}
       {%- assign cc_heading = section.settings.cross_heading -%}
-      {%- unless request.locale.primary -%}{%- assign cc_heading = blank -%}{%- endunless -%}
       {% render 'cart-cross', heading: cc_heading %}
 
     </div>
@@ -275,7 +274,9 @@
     <div class="cart-empty-wrap">
       <div class="cart-empty">
         <h3 class="dl">{{ 'cart.empty.heading' | t }}</h3>
-        {%- assign _empty_line = section.settings.empty_line -%}{%- unless request.locale.primary -%}{%- assign _empty_line = blank -%}{%- endunless -%}{%- if _empty_line == blank -%}{%- assign _empty_line = 'cart.empty.subtext_fallback' | t -%}{%- endif -%}<p class="prose mute">{{ _empty_line }}</p>
+        {%- comment -%} Merchant line wins in every language; the locale default fills a
+        blank one. The non-primary blanking step discarded a merchant-typed line. {%- endcomment -%}
+        {%- assign _empty_line = section.settings.empty_line -%}{%- if _empty_line == blank -%}{%- assign _empty_line = 'cart.empty.subtext_fallback' | t -%}{%- endif -%}<p class="prose mute">{{ _empty_line }}</p>
         {%- if empty_collection != blank -%}
           <a class="bar" href="{{ empty_collection.url }}">{{ 'cart.empty.shop_button' | t: title: empty_collection.title }}</a>
         {%- endif -%}

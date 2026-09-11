@@ -9,12 +9,21 @@
   <section class="sec--tight reveal">
     <div class="wrap sec-head sec-head--center">
       {%- liquid
+        comment
+          A merchant-entered value ALWAYS wins, in every language: Shopify's
+          Translate & Adapt localizes section settings, so on a secondary locale
+          this already holds the translated string. The locale file is only the
+          fallback for a BLANK heading. Overwriting the setting whenever the
+          locale was not primary silently discarded whatever the merchant typed.
+
+          link_label keeps this theme's blank-means-hidden convention — no
+          fallback, or clearing it could never hide the link again.
+        endcomment
         assign bs_heading = section.settings.heading
-        assign bs_link = section.settings.link_label
-        unless request.locale.primary
+        if bs_heading == blank
           assign bs_heading = 'home.bestsellers.heading' | t
-          assign bs_link = 'home.bestsellers.link_label' | t
-        endunless
+        endif
+        assign bs_link = section.settings.link_label
       -%}
       <h2 class="dl">{{ bs_heading | escape }}</h2>
       {%- if bs_link != blank -%}
