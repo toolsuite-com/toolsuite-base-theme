@@ -341,10 +341,22 @@ open under the buy buttons. {%- endcomment -%}
         only where Shop Pay Installments is available and eligible, and printing
         it under the button rather than near the price keeps it a payment
         detail rather than a price claim. {%- endcomment -%}
+        {%- comment -%} CAPTURED, then tested for emptiness. Both filters render
+        nothing at all on a store without accelerated checkout or without Shop
+        Pay Installments — but a wrapper div renders regardless, and an empty
+        div with a margin is 10px of phantom space pushing the payment marks
+        down on every store that has neither. Measured as 54px of drift on the
+        mobile product page before this. {%- endcomment -%}
         {%- if section.settings.show_buy_now -%}
-          <div class="pdp-accelerate">{{ form | payment_button }}</div>
+          {%- capture pdp_wallet -%}{{ form | payment_button }}{%- endcapture -%}
+          {%- if pdp_wallet != blank -%}
+            <div class="pdp-accelerate">{{ pdp_wallet }}</div>
+          {%- endif -%}
         {%- endif -%}
-        {{ form | payment_terms }}
+        {%- capture pdp_terms -%}{{ form | payment_terms }}{%- endcapture -%}
+        {%- if pdp_terms != blank -%}
+          <div class="pdp-terms">{{ pdp_terms }}</div>
+        {%- endif -%}
 
         {%- comment -%} The secure-payment trust line above the payment marks reads
         the locale key on every language — the settings value carries different

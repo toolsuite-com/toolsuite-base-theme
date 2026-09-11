@@ -3303,8 +3303,9 @@ details.acc[open] .acc__sign::after { opacity: 0; }
 .pdp-accelerate .shopify-payment-button__button { border-radius: var(--r1, 2px); }
 .pdp-accelerate .shopify-payment-button__more-options { margin-top: 8px; font-size: 13px; }
 /* Shop Pay Installments injects its own block; keep it from crowding the marks
-   below it without restyling the widget itself. */
-.shopify-payment-terms { margin-top: 10px; }
+   below it without restyling the widget itself. The wrapper only exists when
+   the filter produced something, so this margin can never be phantom space. */
+.pdp-terms { margin-top: 10px; }
 
 .pdp__unit-price { display: block; margin-top: 2px; font-variant-numeric: tabular-nums; }
 

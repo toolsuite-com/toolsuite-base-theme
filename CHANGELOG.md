@@ -4,6 +4,12 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.5.1 — 2026-09-11
+
+### What's fixed
+
+- Fixed: the one-tap checkout and instalment areas added **54px of empty space** to the buy column on any store that has neither switched on. Both are rendered by Shopify and produce nothing when unavailable, but their containers were drawn regardless — so the payment marks sat lower than they should on every store without a wallet. The containers now exist only when there is something in them.
+
 ## 1.5.0 — 2026-09-11
 
 ### What's new
