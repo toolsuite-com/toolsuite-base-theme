@@ -102,19 +102,23 @@
         -%}
         <figure class="tp__card" {{ block.shopify_attributes }}>
           {%- comment -%} Reviews and the UGC selfie band share one card
-          format — photo on top of each card, quote under it. Block image
-          wins; empty falls back to the social-proof-<position>.webp theme
-          asset (same fallback contract as the social-proof section). The
-          meta line (country · date) is not rendered. {%- endcomment -%}
+          format — customer photo on top of each card, quote under it. The
+          meta line (country · date) is not rendered.
+
+          NO PHOTO, NO <img>. This used to fall back to a
+          social-proof-<position>.webp theme asset that the theme has never
+          shipped, guarded only by an onerror that hides the element after the
+          request has already failed. The section ships with three review
+          blocks and no images, so EVERY fresh install fired three hard 404s
+          and reserved 338px of empty box per card before the handler ran. A
+          review is its stars and its words; the photograph is the optional
+          part, and an unset one is simply absent. {%- endcomment -%}
           {%- if block.settings.image != blank -%}
             <img class="tp__card-photo"
               src="{{ block.settings.image | image_url: width: 480, height: 640, crop: 'center' }}"
               srcset="{{ block.settings.image | image_url: width: 480, height: 640, crop: 'center' }} 480w, {{ block.settings.image | image_url: width: 720, height: 960, crop: 'center' }} 720w"
               sizes="(max-width: 720px) 74vw, 340px"
               width="480" height="640" loading="lazy" alt="">
-          {%- else -%}
-            {%- assign tp_asset = 'social-proof-' | append: forloop.index | append: '.webp' -%}
-            <img class="tp__card-photo" src="{{ tp_asset | asset_url }}" width="480" height="640" loading="lazy" alt="" onerror="this.hidden = true">
           {%- endif -%}
           {%- capture card_label -%}{{ block.settings.stars }} out of 5 stars{%- endcapture -%}
           {%- render 'stars', value: block.settings.stars, size: 15, label: card_label -%}
@@ -146,7 +150,7 @@
         { "type": "range", "id": "stars", "label": "Stars", "min": 1, "max": 5, "step": 1, "default": 5 },
         { "type": "textarea", "id": "quote", "label": "Review text", "info": "Paste the real review verbatim — never write reviews yourself." },
         { "type": "text", "id": "name", "label": "Reviewer name" },
-        { "type": "image_picker", "id": "image", "label": "Photo", "info": "Empty = the theme asset social-proof-<position>.webp is used, if present." },
+        { "type": "image_picker", "id": "image", "label": "Photo", "info": "Optional. Leave empty for a quote-only card." },
         { "type": "text", "id": "meta", "label": "Meta line (not rendered)", "info": "Kept for data safety; the card no longer prints it." }
       ]
     }

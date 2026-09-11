@@ -935,6 +935,20 @@ body:not(.template-password) { padding-top: var(--chrome-h); }
   }
   .home-ed__say { max-width: 15ch; }
 }
+/* NO PICTURE YET: the caption is the whole section. Absolute positioning and
+   the paper wash exist to keep type readable ON a photograph; with no
+   photograph the frame is 0px tall and both land on the section ABOVE —
+   measured 354px of paper veil over the category tiles, which took their
+   labels to 1.4:1 and read as a rendering fault rather than as a missing
+   image. An unset image is a supported state (the merchant has not uploaded
+   yet), so it lays out as copy in normal flow on its own paper. Declared
+   after the desktop block so it overrides that padding and wash at every
+   width. */
+.home-ed__frame--bare .home-ed__foot {
+  position: static;
+  background: none;
+  padding: var(--band-tight) var(--gutter);
+}
 
 /* ---------- section head (bestsellers, search suggestions) ----------
    THE VERTICAL SCALE, used here and by every eyebrow/heading/content stack in

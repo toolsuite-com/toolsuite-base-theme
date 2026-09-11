@@ -4,6 +4,14 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.3.1 — 2026-09-11
+
+### What's fixed
+
+- Fixed: **the homepage editorial band no longer prints itself over the section above it.** Its caption is laid over the photograph behind a paper wash, and until you had uploaded a picture there was nothing under that wash to hold it up — so the caption and 354px of pale veil landed on whatever sat above, which on the shipped homepage is the category tiles. Measured on a fresh install: the four tile labels fell to 1.4:1 against their own photographs, well under the 3:1 minimum, and read as a rendering fault rather than as a missing image. An unset image is now what it should always have been — the caption set as copy on its own paper, in normal flow. Upload a picture and the band is unchanged.
+- Fixed: **customer reviews no longer request three images that do not exist.** Each review card fell back to a `social-proof-<n>.webp` theme asset that the theme has never shipped, hidden after the fact by an `onerror` — so every fresh install fired three hard 404s and held 338px of empty box per card until the handler ran. A review is its stars and its words; a card with no photo is now simply a quote. The same fallback is gone from the Social proof band, where a block with no image is not rendered at all and the section waits for its first real photograph before appearing. **The homepage now loads with no failed requests.**
+- Fixed: review photos and social-proof photos are optional and are described that way in the editor, instead of promising a fallback that was never there.
+
 ## 1.3.0 — 2026-09-11
 
 ### What's new

@@ -6,12 +6,19 @@
   section makes NO review/statistics claim — it is a mood band, and the
   heading stays a brand line, never a fabricated count.
 
-  Images: image_picker blocks (Theme-Editor-curated Files) with a theme-asset
-  fallback per block index (social-proof-<n>.webp) so the band renders out of
-  the box on a fresh store before Files are wired. Mobile: scroll-snap row;
+  Images: image_picker blocks (Theme-Editor-curated Files). A block with no
+  image is not rendered, and the section itself is not rendered until at least
+  one block has one — this band is its photographs. Mobile: scroll-snap row;
   desktop: single row, gentle overflow scroll.
 {%- endcomment -%}
-{%- if section.blocks.size > 0 -%}
+{%- comment -%} Blocks alone are not enough: with every image unset the section
+would print its heading over an empty row. This band is its photographs, so
+one real photograph is the condition for it existing. {%- endcomment -%}
+{%- assign sp_photos = 0 -%}
+{%- for block in section.blocks -%}
+  {%- if block.settings.image != blank -%}{%- assign sp_photos = sp_photos | plus: 1 -%}{%- endif -%}
+{%- endfor -%}
+{%- if sp_photos > 0 -%}
 <section class="sec social-proof reveal">
   {%- comment -%} Heading falls back to the locale key when the setting is blank —
   JSON-template settings cannot localize, so a blank setting + locale default keeps
@@ -25,9 +32,14 @@
     <p class="social-proof__sub stmt-sm mute">{{ section.settings.subline | escape }}</p>
   {%- endif -%}
   <div class="social-proof__row" tabindex="0" aria-label="{{ section.settings.heading | default: shop.name | escape }}">
+    {%- comment -%} A block here IS its photograph — there is no text to fall
+    back to — so a block without one renders nothing at all. It used to render
+    a social-proof-<n>.webp theme asset that has never shipped, hidden after
+    the fact by an onerror, which cost a hard 404 per empty block on every
+    store that had not wired its Files yet. {%- endcomment -%}
     {%- for block in section.blocks -%}
-      <figure class="social-proof__item" {{ block.shopify_attributes }}>
-        {%- if block.settings.image != blank -%}
+      {%- if block.settings.image != blank -%}
+        <figure class="social-proof__item" {{ block.shopify_attributes }}>
           <img
             src="{{ block.settings.image | image_url: width: 480, height: 640, crop: 'center' }}"
             srcset="{{ block.settings.image | image_url: width: 480, height: 640, crop: 'center' }} 480w, {{ block.settings.image | image_url: width: 720, height: 960, crop: 'center' }} 720w"
@@ -35,11 +47,8 @@
             width="480" height="640" loading="lazy"
             alt="{{ block.settings.alt | default: shop.name | escape }}"
           >
-        {%- else -%}
-          {%- assign sp_asset = 'social-proof-' | append: forloop.index | append: '.webp' -%}
-          <img src="{{ sp_asset | asset_url }}" width="480" height="640" loading="lazy" alt="{{ block.settings.alt | default: shop.name | escape }}" onerror="this.closest('figure').hidden = true">
-        {%- endif -%}
-      </figure>
+        </figure>
+      {%- endif -%}
     {%- endfor -%}
   </div>
 </section>
@@ -58,7 +67,7 @@
       "type": "photo",
       "name": "Photo",
       "settings": [
-        { "type": "image_picker", "id": "image", "label": "Image", "info": "Empty = the theme asset social-proof-<position>.webp is used, if present." },
+        { "type": "image_picker", "id": "image", "label": "Image", "info": "Required — a block with no image is not shown." },
         { "type": "text", "id": "alt", "label": "Alt text" }
       ]
     }

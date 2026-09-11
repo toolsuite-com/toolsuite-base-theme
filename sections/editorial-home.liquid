@@ -14,24 +14,41 @@
   if url == blank and col != blank
     assign url = col.url
   endif
+
+  comment
+    The product picker wins over the atmosphere image — shows a model
+    actually wearing a catalog piece (featured image).
+  endcomment
+  assign ed_img = section.settings.image
+  if section.settings.image_product != blank and section.settings.image_product.featured_image != blank
+    assign ed_img = section.settings.image_product.featured_image
+  endif
+  comment
+    asset_image: landscape model shot shipped as a theme asset. A product
+    featured image is 2:3 portrait and crops badly in this 3:2 slot —
+    prefer a real landscape.
+  endcomment
+
+  comment
+    Whether there is a picture at all decides the WHOLE layout, so it is
+    resolved here, before the frame opens, rather than inside it.
+
+    The caption is absolutely positioned against the frame and paints a
+    full-width paper wash to stay readable over the photograph. With no
+    picture the frame is 0px tall, so that wash and the copy both land on
+    whatever section happens to sit above — measured: 354px of paper veil
+    over the bottom of the category tiles, which dropped their labels to
+    1.4:1 and read as a rendering fault. An unset image is a supported
+    state (the merchant has not uploaded yet), so it must lay out as
+    copy in normal flow, not as an overlay with nothing under it.
+  endcomment
+  assign ed_has_art = false
+  if section.settings.asset_image != blank or ed_img != blank
+    assign ed_has_art = true
+  endif
 -%}
 <section class="home-ed bleed reveal">
-  <div class="home-ed__frame">
-    {%- liquid
-      comment
-        The product picker wins over the atmosphere image — shows a model
-        actually wearing a catalog piece (featured image).
-      endcomment
-      assign ed_img = section.settings.image
-      if section.settings.image_product != blank and section.settings.image_product.featured_image != blank
-        assign ed_img = section.settings.image_product.featured_image
-      endif
-      comment
-        asset_image: landscape model shot shipped as a theme asset. A product
-        featured image is 2:3 portrait and crops badly in this 3:2 slot —
-        prefer a real landscape.
-      endcomment
-    -%}
+  <div class="home-ed__frame{% unless ed_has_art %} home-ed__frame--bare{% endunless %}">
     {%- if section.settings.asset_image != blank -%}
       <a class="home-ed__art" href="{{ url | default: routes.all_products_collection_url }}" tabindex="-1" aria-hidden="true">
         <img src="{{ section.settings.asset_image | asset_url }}" sizes="100vw" width="1536" height="1024" alt="" loading="lazy" decoding="async">
