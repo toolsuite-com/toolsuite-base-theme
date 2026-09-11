@@ -4,6 +4,20 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.4.0 — 2026-09-11
+
+### What's new
+
+- Added: a **Custom Liquid** section. Most apps hand you a snippet of code to paste somewhere in your theme — a star rating under the product title, a badge above the add-to-bag, a promo block on the homepage. Until now there was nowhere to paste it, so installing an app and then being unable to place it was a dead end you could only get out of by editing theme files. Add the section anywhere, paste the code, and choose whether it sits flush against the section above it or takes the page's own spacing. Your code is rendered exactly as written — nothing is rewritten or escaped, because a snippet that has been altered is a snippet that does not work.
+
+### What's fixed
+
+- Fixed: **Documentation and Support in your theme settings pointed at `example.com`.** Every store carried them. They now open your theme's page in Obsidian and ToolSuite support.
+
+### What you may need to do
+
+- Nothing. The Custom Liquid section does nothing until you add it, and shows nothing to shoppers until you paste something into it.
+
 ## 1.3.1 — 2026-09-11
 
 ### What's fixed

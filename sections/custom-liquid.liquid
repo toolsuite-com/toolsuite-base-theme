@@ -1,0 +1,97 @@
+{%- comment -%}
+  Custom Liquid — the escape hatch.
+
+  WHY THIS EXISTS. The theme has no `@app` blocks, so a merchant who installs
+  the first app any Shopify store installs — a reviews app — has nowhere to put
+  it. Every one of those apps ships a manual embed snippet as its fallback, and
+  without a section that will render arbitrary Liquid, that fallback is closed
+  too: the merchant is simply stuck until we build a block for their specific
+  app. This section is the general answer, and it costs nothing to ship.
+
+  It renders the merchant's own Liquid, so the settings panel is the trust
+  boundary — only the shop's own staff can reach it, exactly like Shopify's own
+  Custom Liquid section. It is deliberately NOT sanitized: a snippet that has
+  been rewritten is a snippet that does not work, and half-escaping someone's
+  embed code is worse than refusing it.
+
+  The wrapper is opt-out. An app embed usually wants to sit flush against the
+  section above it (a star rating under a product title), while a custom
+  promo block wants the page's own frame — so padding and width are settings
+  rather than assumptions.
+{%- endcomment -%}
+
+{%- liquid
+  assign cl_width = section.settings.width | default: 'page'
+  assign cl_pad = section.settings.padding | default: 'default'
+-%}
+
+{%- if section.settings.code != blank -%}
+  <section
+    class="custom-liquid custom-liquid--{{ cl_width }} custom-liquid--pad-{{ cl_pad }}{% if section.settings.band %} custom-liquid--band{% endif %}"
+    {{ section.shopify_attributes }}
+  >
+    {%- if cl_width == 'page' -%}
+      <div class="wrap">{{ section.settings.code }}</div>
+    {%- else -%}
+      {{ section.settings.code }}
+    {%- endif -%}
+  </section>
+{%- elsif request.design_mode -%}
+  {%- comment -%} Visible only in the editor: an empty section that renders
+  nothing at all looks broken to the merchant who just added it. {%- endcomment -%}
+  <section class="custom-liquid custom-liquid--pad-default" {{ section.shopify_attributes }}>
+    <div class="wrap">
+      <p class="stmt-sm mute">Paste your app's embed code or your own Liquid into this section's <strong>Code</strong> field. Nothing is shown to shoppers until you do.</p>
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Custom Liquid",
+  "tag": "div",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "For an app's embed code, or your own Liquid and HTML. Most apps give you a snippet to paste — this is where it goes. Your code is rendered exactly as written."
+    },
+    {
+      "type": "liquid",
+      "id": "code",
+      "label": "Code",
+      "info": "Liquid, HTML and Shopify objects all work. A syntax error here will show as an error on the storefront, so preview before you publish."
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "Width",
+      "options": [
+        { "value": "page", "label": "Page width (aligned with the rest of the store)" },
+        { "value": "full", "label": "Full bleed (edge to edge)" }
+      ],
+      "default": "page",
+      "info": "Full bleed hands your code the whole viewport width and does not wrap it — use it when the app supplies its own container."
+    },
+    {
+      "type": "select",
+      "id": "padding",
+      "label": "Spacing",
+      "options": [
+        { "value": "none", "label": "None (flush against the section above)" },
+        { "value": "tight", "label": "Tight" },
+        { "value": "default", "label": "Default" },
+        { "value": "airy", "label": "Airy" }
+      ],
+      "default": "default",
+      "info": "None is usually right for a star rating or a badge that belongs to the block above it."
+    },
+    {
+      "type": "checkbox",
+      "id": "band",
+      "label": "Show on the alternating band colour",
+      "default": false
+    }
+  ],
+  "presets": [{ "name": "Custom Liquid" }]
+}
+{% endschema %}

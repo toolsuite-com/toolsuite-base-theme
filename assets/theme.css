@@ -214,6 +214,26 @@ input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appe
    dedicated band token, and --cream stays what it has always been, the plate
    behind a photograph that has not loaded yet. */
 .sec--cream, .sec--limestone { background: var(--limestone); padding-block: var(--band); }
+
+/* ---------- Custom Liquid ----------
+   The merchant's own code, so this styles the BOX and never the contents.
+   Spacing is a setting rather than an assumption because the two uses pull
+   opposite ways: an app's star rating wants to sit flush under the title above
+   it, a promo block wants the page's own chapter break. `none` has to be a real
+   zero — an app embed with inherited padding reads as a misalignment the
+   merchant cannot find the cause of. */
+.custom-liquid { width: 100%; }
+.custom-liquid--pad-none { padding-block: 0; }
+.custom-liquid--pad-tight { padding-block: calc(var(--band-tight) * .5); }
+.custom-liquid--pad-default { padding-block: calc(var(--band) * .5); }
+.custom-liquid--pad-airy { padding-block: var(--band); }
+.custom-liquid--band { background: var(--limestone); }
+/* Whatever the merchant pastes must not be able to scroll the page sideways —
+   a wide iframe or table is the usual culprit and it is our frame that breaks,
+   not their code. */
+.custom-liquid > .wrap > *, .custom-liquid--full > * { max-width: 100%; }
+.custom-liquid table { display: block; overflow-x: auto; max-width: 100%; }
+.custom-liquid img, .custom-liquid iframe, .custom-liquid video { max-width: 100%; }
 /* …and because that band owns the whole break, the section AFTER it must not
    add a second half on top — that stacked pair is the double-height empty
    band the audit measured under the highlight section. Written against the
