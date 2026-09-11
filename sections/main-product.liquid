@@ -204,6 +204,21 @@ open under the buy buttons. {%- endcomment -%}
         {%- comment -%} Sibling by contract: theme.js replaces every [data-price]
         innerHTML on a size click, so the real percentage badge must live outside it. {%- endcomment -%}
         <span data-price-badge{% if pdp_price_pct <= 0 %} hidden{% endif %}>{%- if pdp_price_pct > 0 -%}&minus;{{ pdp_price_pct }}%{%- endif -%}</span>
+        {%- comment -%} UNIT PRICE — "£12.50 / 100 ml". Required in the EU for
+        anything sold by measure, and this theme is EU-targeted: it ships a GPSR
+        snippet and a right-of-withdrawal page. It was absent entirely, so a
+        merchant selling a 250ml bottle was non-compliant with no way to tell.
+        Shopify sets unit_price only on variants that declare a unit, so this
+        renders on exactly the products that need it and nothing else. {%- endcomment -%}
+        {%- if v.unit_price_measurement -%}
+          <span class="pdp__unit-price stmt-sm mute" data-unit-price>
+            {%- render 'price', amount: v.unit_price -%} /
+            {%- if v.unit_price_measurement.reference_value != 1 -%}
+              {{ v.unit_price_measurement.reference_value }}
+            {%- endif -%}
+            {{ v.unit_price_measurement.reference_unit }}
+          </span>
+        {%- endif -%}
       </div>
 
       {%- comment -%} The three-line USP stack under the price is gone. Its
@@ -277,6 +292,29 @@ open under the buy buttons. {%- endcomment -%}
         decision actually is. The PDP used to post no quantity at all. {%- endcomment -%}
         {%- render 'pdp-quantity', section_id: section.id -%}
 
+        {%- comment -%} A gift card is bought FOR someone. Without these fields
+        Shopify emails the code to whoever paid, silently. {%- endcomment -%}
+        {%- render 'pdp-gift-card', product: product -%}
+
+        {%- comment -%} APPS GO HERE. This is the one placement a merchant cannot
+        reach any other way: template-level app blocks already work as their own
+        sections, so a reviews widget or an upsell band can live further down the
+        page — but a subscription selector MUST post inside the product form to
+        send a selling plan at all, and a trust badge or payment message is
+        worthless anywhere except next to the button. Rendering the zone above the
+        add button rather than below it means a subscription widget's radio
+        buttons are read and answered before the shopper commits.
+
+        `{% render block %}` is the required form for an @app block; it is not a
+        snippet include. Apps own their own markup, so nothing here styles them. {%- endcomment -%}
+        {%- if section.blocks.size > 0 -%}
+          <div class="pdp-apps">
+            {%- for block in section.blocks -%}
+              {%- if block.type == '@app' -%}{% render block %}{%- endif -%}
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+
         {%- comment -%} THE in-column add button — the primary action on every
         viewport, and now a real submit. It carries [data-atc] like the phone bar
         and the rich bar so theme.js paints all three from the one render() pass;
@@ -291,6 +329,22 @@ open under the buy buttons. {%- endcomment -%}
           <span data-atc-label>{% if needs_size %}{{ 'product.atc.select_size' | t }}{% elsif v.available %}{{ 'product.atc.add_to_bag' | t }}{% else %}{{ 'product.atc.sold_out' | t }}{% endif %}</span>
           <span data-atc-price>{% if v.available and needs_size == false %}{% render 'price', amount: v.price %}{% endif %}</span>
         </button>
+
+        {%- comment -%} ACCELERATED CHECKOUT. `payment_button` is Shop Pay /
+        Apple Pay / Google Pay — one tap, no address typing, and the single
+        highest-leverage thing missing from this page: it was absent entirely, so
+        every shopper on this theme typed their address even when their browser
+        already held it. Shopify renders nothing here unless the shop has
+        accelerated checkout enabled, so it is safe on every store.
+
+        `payment_terms` is the instalment line ("4 payments of £60"). It renders
+        only where Shop Pay Installments is available and eligible, and printing
+        it under the button rather than near the price keeps it a payment
+        detail rather than a price claim. {%- endcomment -%}
+        {%- if section.settings.show_buy_now -%}
+          <div class="pdp-accelerate">{{ form | payment_button }}</div>
+        {%- endif -%}
+        {{ form | payment_terms }}
 
         {%- comment -%} The secure-payment trust line above the payment marks reads
         the locale key on every language — the settings value carries different
@@ -622,7 +676,20 @@ the Product block here as well would duplicate it. {%- endcomment -%}
 {% schema %}
 {
   "name": "Product page",
+  "blocks": [{ "type": "@app" }],
+  "max_blocks": 8,
   "settings": [
+    {
+      "type": "paragraph",
+      "content": "Apps you add to this section appear in the buy column, just above the add-to-bag button. That is the one place an app cannot otherwise reach: a subscription selector has to sit inside the product form to work at all, and a trust badge only does its job next to the button. Reviews and upsell widgets can also be added further down the page as their own sections."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_buy_now",
+      "label": "Show the one-tap checkout button",
+      "default": true,
+      "info": "Shop Pay, Apple Pay and Google Pay, under add-to-bag. Nothing is shown unless your store has accelerated checkout switched on. Turning it off sends every shopper through the full address form."
+    },
     { "type": "text", "id": "benefit_fallback", "label": "Fallback fact line", "info": "Second fact line under the description when the product has no custom.benefit_line." },
     { "type": "text", "id": "complete_look_collections", "label": "Complete-the-look category collections", "default": "womens-dresses,womens-knitwear,womens-coats-jackets,womens-tops-blouses", "info": "Comma-separated collection handles. The widget shows one piece from each category the current product is NOT in — the Recommendations API alone tends to repeat the same handful of bestsellers storewide." },
     { "type": "checkbox", "id": "enable_size_recommendation", "label": "Size recommendation widget", "default": true, "info": "Height/weight → suggested size, under the size row. Only appears when the product has a size chart (custom.size_table) that parses to a Bust or Hip column." },

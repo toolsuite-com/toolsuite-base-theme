@@ -4,6 +4,26 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.5.0 — 2026-09-11
+
+### What's new
+
+- Added: **apps can go in the buy box.** The theme accepted no app blocks anywhere, so the first app most stores install — reviews — could be added further down a page but never next to the button, and a subscription app could not work at all, because a subscription selector has to sit inside the product form to send a selling plan. The Product page section now takes app blocks and renders them in the buy column, directly above add-to-bag.
+- Added: **one-tap checkout.** Shop Pay, Apple Pay and Google Pay now appear under the add-to-bag button, so a returning shopper can buy without typing an address. This was missing entirely — every shopper on this theme filled in the full form even when their browser already held their details. Nothing appears unless your store has accelerated checkout switched on, and there is a setting to turn it off. **Instalment messaging** ("4 payments of £60") shows wherever Shop Pay Installments is available.
+- Added: **gift cards can be sent to the person they are for.** There was no gift-card handling at all, so Shopify emailed the code to whoever paid — someone buying a present received it themselves and had to forward a code, with nothing on the page warning them. The product page now offers a recipient email, name, message and send date. Leave the switch off and nothing changes.
+- Added: **unit pricing** — "£12.50 / 100 ml" under the price, on products sold by measure. Required in the EU, and this theme ships a GPSR notice and a right-of-withdrawal page, so a store selling anything by volume or weight was non-compliant with no way to tell from the theme.
+
+### What's fixed
+
+- Fixed: **the cart told tax-inclusive stores the wrong thing.** It printed "Taxes calculated at checkout" to everybody because the theme never read whether your prices already include tax. A UK or EU store was stating the opposite of the truth on the page where it matters most. It now reads "Taxes included" when they are.
+- Fixed: **a store selling in more than one currency printed "$240" to everybody**, so a shopper in Toronto could not tell Canadian dollars from US or Australian ones — on the one number they most need certainty about. Multi-currency stores now print the currency with the amount ("$240.00 CAD"), in the shopper's own locale, on both the server-rendered prices and the ones JavaScript repaints. Single-currency stores are unchanged.
+
+### What you may need to do
+
+- **Put your apps in the buy box.** Open the product page in the theme editor, and add your reviews or subscription app as a block on the Product page section. Anything you had placed as its own section still works where it is.
+- If you have a gift-card product, check it: the recipient switch is off by default, which is the same behaviour as before.
+- Multi-currency stores will see prices gain their currency code and their cents. That is deliberate — it is the ambiguity it removes that matters.
+
 ## 1.4.0 — 2026-09-11
 
 ### What's new

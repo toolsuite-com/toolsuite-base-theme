@@ -28,12 +28,27 @@
   Renders nothing at all for a nil amount: `compare_at_price` is nil on most
   products and `nil | money` prints "$0.00", which on a strike-through line
   would advertise a fictional original price of zero.
+
+  CURRENCY. A store selling in more than one currency printed "$240" to
+  everybody, so a shopper in Toronto could not tell CAD from USD from AUD — on
+  the one number they most need to be certain about. When the shop has several
+  currencies enabled we switch to `money_with_currency`, which prints "$240.00
+  CAD" in the shopper's own locale. That format always carries decimals, so the
+  cents setting gives way to it: an ambiguous currency is a worse problem than
+  two digits the merchant did not ask for. A single-currency store is
+  untouched — it has nothing to disambiguate.
 {%- endcomment -%}
 {%- liquid
   assign price_show_cents = settings.price_show_cents | default: false
+  assign price_multi_currency = false
+  if shop.enabled_currencies.size > 1
+    assign price_multi_currency = true
+  endif
   assign price_out = ''
   unless amount == nil
-    if price_show_cents
+    if price_multi_currency
+      assign price_out = amount | money_with_currency
+    elsif price_show_cents
       assign price_out = amount | money
     else
       assign price_out = amount | money_without_trailing_zeros

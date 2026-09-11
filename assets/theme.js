@@ -1689,9 +1689,31 @@ function initNewsletterPopup() {
 S.addToCart = addToCart;
 S.refreshCart = refreshCartSurfaces;
 
+/* ---------- gift-card recipient ----------
+   The fieldset ships `disabled`, which is what makes opting out work: a disabled
+   field is not submitted, so a card bought for yourself posts no recipient and
+   behaves exactly as it did before the fields existed. All this does is flip
+   that on when the shopper says it is a gift — with no JavaScript the fieldset
+   stays disabled and the card still sells, it just cannot be sent to someone
+   else, which is a degraded feature rather than a broken page. */
+function initGiftCard() {
+  document.querySelectorAll('[data-gift-card]').forEach((root) => {
+    const toggle = root.querySelector('[data-gift-card-toggle]');
+    const fields = root.querySelector('[data-gift-card-fields]');
+    if (!toggle || !fields) return;
+    const sync = () => {
+      fields.disabled = !toggle.checked;
+      if (toggle.checked) fields.querySelector('input, textarea')?.focus({ preventScroll: true });
+    };
+    toggle.addEventListener('change', sync);
+    sync();
+  });
+}
+
 paintSwatches();
 initAccordions();
 initPDP();
+initGiftCard();
 placeCartExpress(); /* initial move, before the wallet script has painted */
 initSearch();
 loadCartCross().catch(() => {}); /* fill the drawer's recommendation shell on first paint */

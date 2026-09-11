@@ -408,8 +408,22 @@ having to remember to pass the option through. {%- endcomment -%}
        JavaScript (or with theme.js blocked) never gets a blank page. Set here,
        in the head, so the class is present before first paint. */
     document.documentElement.classList.add('js');
+    {%- comment -%} Resolved HERE, once, because snippets/price.liquid makes the
+    same decision on the server and the two must not disagree — a price the
+    server renders as "$240.00 CAD" and JavaScript repaints as "$240" is the
+    split that 1.3.0 existed to close, reopened on a multi-currency store. A shop
+    selling in several currencies gets the currency-qualified format, and cents
+    come with it because that format always carries them. {%- endcomment -%}
+    {%- liquid
+      assign js_money_format = shop.money_format
+      assign js_show_cents = settings.price_show_cents | default: false
+      if shop.enabled_currencies.size > 1
+        assign js_money_format = shop.money_with_currency_format
+        assign js_show_cents = true
+      endif
+    -%}
     window.Theme = {
-      moneyFormat: {{ shop.money_format | json }},
+      moneyFormat: {{ js_money_format | json }},
       /* shop.money_format always carries decimals, so every JS-repainted price
          (variant switch, cart drawer, mini view, ATC bar) printed "$240.00"
          while the server-rendered price beside it printed "$240" — the exact
@@ -417,7 +431,7 @@ having to remember to pass the option through. {%- endcomment -%}
          and cart-extras.js both read this flag and drop a trailing ".00" when
          it is false, which is what Liquid's money_without_trailing_zeros does.
          One switch, both halves of the store. */
-      showCents: {{ settings.price_show_cents | default: false | json }},
+      showCents: {{ js_show_cents | json }},
       cartAddUrl: '{{ routes.cart_add_url }}.js',
       cartChangeUrl: '{{ routes.cart_change_url }}.js',
       cartUrl: '{{ routes.cart_url }}.js',

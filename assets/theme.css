@@ -3290,6 +3290,47 @@ details.acc[open] .acc__sign::after { opacity: 0; }
 /* bigger price in the add button, so it reads clearly */
 .pdp__atc [data-atc-price] { font-size: 17px; font-weight: 600; letter-spacing: .04em; }
 
+/* ---------- buy-column additions (v1.4.1) ----------
+   App blocks, accelerated checkout, unit price and the gift-card recipient.
+   The app zone styles its OWN spacing only — apps ship their own markup and
+   their own CSS, so anything more here fights them. */
+.pdp-apps { display: grid; gap: 12px; margin-block: 4px 14px; }
+.pdp-apps:empty { display: none; }
+
+/* Shopify renders the accelerated buttons itself; all we own is the gap and
+   the "or" separator the platform does not draw. */
+.pdp-accelerate { margin-top: 10px; }
+.pdp-accelerate .shopify-payment-button__button { border-radius: var(--r1, 2px); }
+.pdp-accelerate .shopify-payment-button__more-options { margin-top: 8px; font-size: 13px; }
+/* Shop Pay Installments injects its own block; keep it from crowding the marks
+   below it without restyling the widget itself. */
+.shopify-payment-terms { margin-top: 10px; }
+
+.pdp__unit-price { display: block; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+/* Gift card. The switch reuses the toggle already in the theme rather than
+   introducing a second control that means the same thing. */
+.gc { margin-block: 14px; padding: 14px; border: 1px solid var(--hairline); }
+.gc__toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.gc__switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; border-radius: 999px; background: var(--hairline); transition: background-color var(--dur, .2s) var(--ease, ease); }
+.gc__switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 999px; background: var(--paper); transition: left var(--dur, .2s) var(--ease, ease); }
+.gc__on:checked + .gc__switch { background: var(--ink); }
+.gc__on:checked + .gc__switch::after { left: 18px; }
+.gc__on:focus-visible + .gc__switch { outline: 2px solid var(--ink); outline-offset: 3px; }
+.gc__toggle-label { font-size: 14px; }
+/* A disabled fieldset posts nothing, which is exactly how opting out works —
+   so it is hidden rather than greyed: a form the shopper can see but not use
+   reads as broken. */
+.gc__fields { display: none; border: 0; padding: 14px 0 0; margin: 0; }
+.gc__fields:enabled { display: grid; gap: 12px; }
+.gc__legend { padding: 0; }
+.gc__row { display: grid; gap: 4px; }
+.gc__row input, .gc__row textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--hairline); background: var(--paper); color: var(--ink); font: inherit; font-size: 15px; }
+.gc__row textarea { resize: vertical; }
+.gc__note { margin: 2px 0 0; }
+.gc__fields:enabled ~ .gc__fallback { display: none; }
+.gc__fallback { margin: 8px 0 0; }
+
 .pdp__bundle .pdp__bundle-pct {
   color: #b3261e;
   font-weight: 600;

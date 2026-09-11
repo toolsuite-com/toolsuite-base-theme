@@ -128,7 +128,17 @@
           {%- comment %} disabled: unverified social proof {% endcomment -%}
           {%- if false and settings.rating_value != blank and settings.rating_count != blank -%}<p class="cart-rating lbl-sm" aria-label="Rated {{ settings.rating_value }} out of 5 from {{ settings.rating_count }} reviews">{%- render 'stars', value: settings.rating_value, size: 13 -%} {{ settings.rating_value }} / 5 &middot; {{ settings.rating_count }} reviews</p>{%- endif -%}
           {%- if additional_checkout_buttons -%}<div class="additional-checkout-buttons">{{ content_for_additional_checkout_buttons }}</div>{%- endif -%}
-          <p class="cart-tax lbl-sm mute">{{ 'cart.page.tax_note' | t }}</p>
+          {%- comment -%} The line said "Taxes calculated at checkout" to
+          everybody, because `cart.taxes_included` was never read. On a UK or EU
+          store — which this theme targets, it ships a GPSR snippet and a
+          right-of-withdrawal page — prices ARE tax-inclusive, so the cart was
+          telling every shopper the opposite of the truth about what they were
+          about to pay. {%- endcomment -%}
+          {%- if cart.taxes_included -%}
+            <p class="cart-tax lbl-sm mute">{{ 'cart.page.tax_note_included' | t }}</p>
+          {%- else -%}
+            <p class="cart-tax lbl-sm mute">{{ 'cart.page.tax_note' | t }}</p>
+          {%- endif -%}
         </aside>
       </div>
     {%- else -%}

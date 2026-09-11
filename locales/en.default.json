@@ -110,6 +110,16 @@
       "measure_note": "Please measure before you order. It saves you an exchange.",
       "converted_note": "All measurements converted from centimeters to inches (1 decimal). Slight variations of 0.5–1 in may occur."
     },
+    "gift_card": {
+      "heading": "Send it to someone",
+      "toggle": "This is a gift \u2014 email it to the recipient",
+      "email": "Recipient email",
+      "name": "Recipient name",
+      "message": "Message (optional)",
+      "send_on": "Send on",
+      "send_on_note": "Leave empty to send as soon as the order is paid.",
+      "note": "Without a recipient, the gift card code is emailed to you."
+    },
     "atc": {
       "select_size": "Select a size",
       "add_to_bag": "Add to bag",
@@ -297,7 +307,8 @@
     },
     "page": {
       "estimated_total": "Estimated total",
-      "tax_note": "Taxes calculated at checkout"
+      "tax_note": "Taxes calculated at checkout",
+      "tax_note_included": "Taxes included"
     },
     "checkout": {
       "secure": "Secure checkout",

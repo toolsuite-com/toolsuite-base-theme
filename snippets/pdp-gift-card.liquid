@@ -1,0 +1,59 @@
+{%- comment -%}
+  Gift-card recipient — who the card is actually for.
+
+  WHY THIS EXISTS. The theme had no `product.gift_card?` branch anywhere, so
+  selling a gift card behaved like selling a jumper: Shopify emails the code to
+  whoever paid. A shopper buying a present for someone else got the present
+  themselves and had to forward a code, and nothing on the page warned them
+  that was going to happen. Shopify's recipient fields are the supported fix,
+  and they only work if the theme renders them inside the product form.
+
+  The fields are named exactly as Shopify's cart expects — `properties[...]` —
+  and are wrapped in a disabled fieldset until the shopper opts in, because a
+  disabled control posts nothing at all. That is the whole mechanism: opt out
+  and the card behaves as before; opt in and Shopify handles the delivery, the
+  message and the send date itself.
+
+  Usage: {%- render 'pdp-gift-card', product: product -%}   (inside the form)
+{%- endcomment -%}
+
+{%- if product.gift_card? -%}
+  {%- assign gc_id = 'gc-' | append: product.id -%}
+  <div class="gc" data-gift-card>
+    <label class="gc__toggle" for="{{ gc_id }}-on">
+      <input class="obs-sr gc__on" id="{{ gc_id }}-on" type="checkbox" data-gift-card-toggle>
+      <span class="gc__switch" aria-hidden="true"></span>
+      <span class="gc__toggle-label">{{ 'product.gift_card.toggle' | t }}</span>
+    </label>
+
+    {%- comment -%} `disabled` is load-bearing: a disabled field is not
+    submitted, so an un-opted-in card posts no recipient and behaves exactly as
+    it did before this snippet existed. {%- endcomment -%}
+    <fieldset class="gc__fields" data-gift-card-fields disabled>
+      <legend class="gc__legend lbl-sm">{{ 'product.gift_card.heading' | t }}</legend>
+
+      <div class="gc__row">
+        <label class="lbl-sm" for="{{ gc_id }}-email">{{ 'product.gift_card.email' | t }}</label>
+        <input id="{{ gc_id }}-email" type="email" name="properties[Recipient email]" autocomplete="off" required>
+      </div>
+
+      <div class="gc__row">
+        <label class="lbl-sm" for="{{ gc_id }}-name">{{ 'product.gift_card.name' | t }}</label>
+        <input id="{{ gc_id }}-name" type="text" name="properties[Recipient name]" autocomplete="off">
+      </div>
+
+      <div class="gc__row">
+        <label class="lbl-sm" for="{{ gc_id }}-message">{{ 'product.gift_card.message' | t }}</label>
+        <textarea id="{{ gc_id }}-message" name="properties[Message]" rows="3" maxlength="200"></textarea>
+      </div>
+
+      <div class="gc__row">
+        <label class="lbl-sm" for="{{ gc_id }}-send">{{ 'product.gift_card.send_on' | t }}</label>
+        <input id="{{ gc_id }}-send" type="date" name="properties[Send on]">
+        <p class="gc__note stmt-sm mute">{{ 'product.gift_card.send_on_note' | t }}</p>
+      </div>
+    </fieldset>
+
+    <p class="gc__fallback stmt-sm mute" data-gift-card-fallback>{{ 'product.gift_card.note' | t }}</p>
+  </div>
+{%- endif -%}
