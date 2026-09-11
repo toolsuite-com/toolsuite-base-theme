@@ -4,6 +4,12 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.5.2 — 2026-09-11
+
+### What's fixed
+
+- Fixed: the **one-tap checkout button arrived bright blue.** Shopify styles the generic "Buy it now" button itself, and its default is a saturated blue pill — in a store whose only colour is meant to come from photography. It now wears the theme's quiet outlined treatment, which is also the more honest hierarchy: add to bag is the action, one-tap checkout is the shortcut. Branded wallet buttons (Shop Pay, Apple Pay, Google Pay) are deliberately left in their own colours — that recognition is the point of them.
+
 ## 1.5.1 — 2026-09-11
 
 ### What's fixed

@@ -3297,11 +3297,31 @@ details.acc[open] .acc__sign::after { opacity: 0; }
 .pdp-apps { display: grid; gap: 12px; margin-block: 4px 14px; }
 .pdp-apps:empty { display: none; }
 
-/* Shopify renders the accelerated buttons itself; all we own is the gap and
-   the "or" separator the platform does not draw. */
+/* Shopify renders the accelerated buttons itself, and by default the unbranded
+   "Buy it now" arrives as a BRIGHT BLUE pill — in a theme whose own settings
+   panel says "All color in the store comes from photography; there is no accent
+   color in the UI". Visual regression caught it: 54px of blue in the buy column.
+   So the unbranded button wears .bar--quiet, the theme's existing secondary
+   treatment, which is also the honest hierarchy — add-to-bag is the primary
+   action and one-tap checkout is the shortcut.
+
+   The BRANDED buttons (Shop Pay purple, Apple Pay black, Google Pay) are
+   deliberately left alone: their colour is trademarked, restyling them breaks
+   the recognition that makes them worth having, and Shopify's own guidelines
+   forbid it. */
 .pdp-accelerate { margin-top: 10px; }
-.pdp-accelerate .shopify-payment-button__button { border-radius: var(--r1, 2px); }
-.pdp-accelerate .shopify-payment-button__more-options { margin-top: 8px; font-size: 13px; }
+.pdp-accelerate .shopify-payment-button__button--unbranded {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 52px; padding: 16px 20px;
+  background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 0;
+  font-family: inherit; font-size: var(--lbl-size); text-transform: uppercase; letter-spacing: var(--lbl-track);
+  font-weight: 500;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.pdp-accelerate .shopify-payment-button__button--unbranded:hover:not([disabled]) { background: transparent; opacity: .72; }
+.pdp-accelerate .shopify-payment-button__more-options {
+  margin-top: 8px; font-size: 13px; color: var(--mute); text-decoration: underline; background: none; border: 0;
+}
 /* Shop Pay Installments injects its own block; keep it from crowding the marks
    below it without restyling the widget itself. The wrapper only exists when
    the filter produced something, so this margin can never be phantom space. */
