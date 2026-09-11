@@ -4,6 +4,12 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.5.3 — 2026-09-12
+
+### What's fixed
+
+- Fixed: category tiles with no photograph yet all drew the **same** placeholder illustration, so a row of four read as a rendering fault rather than as four categories waiting for pictures. Each tile now draws a different one, the way product cards already did.
+
 ## 1.5.2 — 2026-09-11
 
 ### What's fixed

@@ -73,7 +73,14 @@
                 alt="" loading="{% if forloop.index <= 2 %}eager{% else %}lazy{% endif %}" decoding="async">
             </picture>
           {%- else -%}
-            {{ 'collection-1' | placeholder_svg_tag }}
+            {%- comment -%} Vary the placeholder per tile. Four tiles all drawing
+            the SAME line illustration reads as a rendering fault rather than as
+            four categories waiting for photographs — which is exactly the
+            impression a merchant forms in the first minute after choosing a
+            layout. Shopify ships collection-1..6; product-card.liquid already
+            cycles its own the same way. {%- endcomment -%}
+            {%- assign ph_n = forloop.index0 | modulo: 6 | plus: 1 -%}
+            {{ 'collection-' | append: ph_n | placeholder_svg_tag }}
           {%- endif -%}
 
           {%- comment -%} Bottom scrim, only under an overlay label — a tile whose
