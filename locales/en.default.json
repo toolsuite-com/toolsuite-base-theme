@@ -47,6 +47,10 @@
       "faq": "FAQ",
       "track_order": "Track your order"
     },
+    "account": {
+      "sign_in": "Sign in",
+      "signed_in": "Your account"
+    },
     "cart": {
       "open_bag": {
         "one": "Open bag (1 item)",

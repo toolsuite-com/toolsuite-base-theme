@@ -478,7 +478,11 @@ function qvSwatch(val) {
 /* PLP card swatches (blueprint): Liquid ships them colorless so the hex table stays
    in exactly one place. Re-run after any injection of fresh cards (related row). */
 function paintSwatches(ctx = document) {
-  $$('[data-swatch]', ctx).forEach((el) => { el.style.backgroundColor = qvSwatch(el.dataset.swatch); });
+  /* [data-swatch-set] carries a colour the MERCHANT configured in Shopify
+     admin, which Liquid has already painted. Skipping those is the whole point:
+     without it this table would overwrite the merchant's own choice with a
+     guess made from the colour's English name. */
+  $$('[data-swatch]:not([data-swatch-set])', ctx).forEach((el) => { el.style.backgroundColor = qvSwatch(el.dataset.swatch); });
 }
 function initQuickView() {
   const dlg = $('#quick-view');

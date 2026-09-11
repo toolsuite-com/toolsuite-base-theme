@@ -174,7 +174,18 @@ turned off, so there is no locale fallback. {%- endcomment -%}
         <a class="hdr__icon" href="{{ routes.search_url }}" aria-label="{{ 'header.nav.search' | t }}">
           {% render 'icon', name: 'search', size: 20 %}
         </a>
-        <button type="button" class="hdr__icon hdr__cart" data-open-cart aria-label="{{ 'header.cart.open_bag' | t: count: cart.item_count }}">
+{%- comment -%} A way into the customer's own account, which this theme had
+        nowhere at all — its own header comment said "no account icon" as a design
+        decision, but a shopper who HAS an account and cannot reach their orders
+        reads that as the store being broken, not as restraint. Rendered only
+        when the shop has customer accounts switched on, so a store that does not
+        use them is unchanged. {%- endcomment -%}
+        {%- if shop.customer_accounts_enabled -%}
+          <a class="hdr__icon" href="{{ routes.account_url }}" aria-label="{% if customer %}{{ 'header.account.signed_in' | t }}{% else %}{{ 'header.account.sign_in' | t }}{% endif %}">
+            {% render 'icon', name: 'user', size: 20 %}
+          </a>
+        {%- endif -%}
+                <button type="button" class="hdr__icon hdr__cart" data-open-cart aria-label="{{ 'header.cart.open_bag' | t: count: cart.item_count }}">
           {% render 'icon', name: 'cart', size: 20 %}
           <span class="cart-count" {% if cart.item_count == 0 %}hidden{% endif %}>{{ cart.item_count }}</span>
         </button>
@@ -269,7 +280,18 @@ turned off, so there is no locale fallback. {%- endcomment -%}
           {%- endif -%}
         </nav>
         {%- render 'loc-switcher', style: 'header' -%}
-        <button type="button" class="hdr__icon hdr__cart" data-open-cart aria-label="{{ 'header.cart.open_bag' | t: count: cart.item_count }}">
+{%- comment -%} A way into the customer's own account, which this theme had
+        nowhere at all — its own header comment said "no account icon" as a design
+        decision, but a shopper who HAS an account and cannot reach their orders
+        reads that as the store being broken, not as restraint. Rendered only
+        when the shop has customer accounts switched on, so a store that does not
+        use them is unchanged. {%- endcomment -%}
+        {%- if shop.customer_accounts_enabled -%}
+          <a class="hdr__icon" href="{{ routes.account_url }}" aria-label="{% if customer %}{{ 'header.account.signed_in' | t }}{% else %}{{ 'header.account.sign_in' | t }}{% endif %}">
+            {% render 'icon', name: 'user', size: 20 %}
+          </a>
+        {%- endif -%}
+                <button type="button" class="hdr__icon hdr__cart" data-open-cart aria-label="{{ 'header.cart.open_bag' | t: count: cart.item_count }}">
           {% render 'icon', name: 'cart', size: 20 %}
           <span class="cart-count" {% if cart.item_count == 0 %}hidden{% endif %}>{{ cart.item_count }}</span>
         </button>

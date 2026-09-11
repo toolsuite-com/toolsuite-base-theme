@@ -4,6 +4,18 @@ All notable changes to the ToolSuite Base Theme. Versioning is semantic
 (MAJOR.MINOR.PATCH) and lives in `config/settings_schema.json` → `theme_version`.
 Bump it here and there in the same commit; pushing to `main` cuts the release.
 
+## 1.6.0 — 2026-09-12
+
+### What's new
+
+- Added: **your colour swatches now come from your own settings.** Shopify lets you set a colour or an image for each option value, and the theme never read either — swatches were matched against a built-in list of English fashion colour names, so a store selling "Sage", "Petrol" or anything in another language configured its swatches, saw nothing change, and had no way to find out why. What you set in admin now wins everywhere: the product page, the product cards and the quick view. The old name-matching stays as the fallback for values you have not set.
+- Added: **a way into a customer account** from the header, when your store has customer accounts switched on. There was no entry point at all, so a shopper with an account could not reach their orders.
+- Added: **"In stock only" and other yes/no filters now appear.** Shopify's boolean filter type was not handled, so a filter you configured in Search & Discovery rendered nothing at all — no group, no error, nothing to explain it.
+
+### What you may need to do
+
+- Nothing. If you have set swatches in Shopify admin they will start showing; if you have not, everything looks exactly as it did.
+
 ## 1.5.3 — 2026-09-12
 
 ### What's fixed

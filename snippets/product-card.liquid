@@ -321,12 +321,18 @@
             </label>
           {%- endif -%}
 
+          {%- comment -%} A swatch the merchant configured in Shopify admin is a
+          FACT; the alt-text convention below and the colour-name table in
+          theme.js are guesses. A guess must never beat a fact — and until now
+          neither was even read, so a store that set its swatches saw nothing
+          change and had no way to find out why. {%- endcomment -%}
+          {%- assign sw_img = value.swatch.image -%}
           {%- assign sw_down = value | downcase -%}
           {%- assign sw_needle = ' in ' | append: sw_down | append: ',' -%}
           {%- assign sw_needle2 = ' in ' | append: sw_down | append: '-' -%}
           {%- assign sw_needle3 = ' i ' | append: sw_down | append: ',' -%}
           {%- assign sw_needle4 = ' i ' | append: sw_down | append: '-' -%}
-          {%- assign sw_img = nil -%}
+          {%- unless sw_img -%}
           {%- for m in product.media -%}
             {%- if m.media_type != 'image' -%}{%- continue -%}{%- endif -%}
             {%- assign sw_alt = m.alt | default: '' | downcase -%}
@@ -343,6 +349,7 @@
               {%- endif -%}
             {%- endfor -%}
           {%- endif -%}
+          {%- endunless -%}
 
           {%- comment -%} SELECT IN PLACE, NAVIGATE FROM THE IMAGE: tapping a
           swatch shows that colour inline on the card image; tapping the image
@@ -373,7 +380,11 @@
             {%- else -%}
               {%- comment -%} no photograph tagged for this colour yet — fall back to
               the old dot so the row never shows a hole {%- endcomment -%}
-              <span class="card__swatch-dot" data-swatch="{{ value | escape }}"></span>
+              {%- if value.swatch.color -%}
+                <span class="card__swatch-dot" data-swatch="{{ value | escape }}" data-swatch-set style="background-color: {{ value.swatch.color }};"></span>
+              {%- else -%}
+                <span class="card__swatch-dot" data-swatch="{{ value | escape }}"></span>
+              {%- endif -%}
             {%- endif -%}
           </a>
         {%- endfor -%}

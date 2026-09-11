@@ -106,7 +106,22 @@
                 {%- endif -%}
               {%- endfor -%}
             {%- endunless -%}
-            {%- if cv_media -%}
+            {%- comment -%} THE MERCHANT'S OWN SWATCH WINS.
+            Shopify lets a merchant set a colour or an image per option value in
+            admin, and this theme never read either: swatches came from matching
+            the colour NAME against a 60-entry English fashion-colour table in
+            theme.js. So a store selling "Sage", "Petrol" or anything in French
+            configured its swatches, saw nothing change, and had no way to find
+            out why. A value the merchant has set is a fact; the table is a
+            guess, and a guess must never beat a fact. {%- endcomment -%}
+            {%- if value.swatch.image -%}
+              <button type="button" class="swatch swatch--img" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}" aria-label="{{ value | escape }}" title="{{ value | escape }}"><img src="{{ value.swatch.image | image_url: width: 96, height: 144, crop: 'center' }}" srcset="{{ value.swatch.image | image_url: width: 96, height: 144, crop: 'center' }} 2x, {{ value.swatch.image | image_url: width: 144, height: 216, crop: 'center' }} 3x" width="48" height="72" alt="" loading="lazy"></button>
+            {%- elsif value.swatch.color -%}
+              {%- comment -%} data-swatch-set tells theme.js's paintSwatches to
+              leave this one alone — without it the table would paint over the
+              colour the merchant actually chose. {%- endcomment -%}
+              <button type="button" class="swatch" data-swatch="{{ value | escape }}" data-swatch-set style="background-color: {{ value.swatch.color }};" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}" aria-label="{{ value | escape }}" title="{{ value | escape }}"></button>
+            {%- elsif cv_media -%}
               <button type="button" class="swatch swatch--img" data-opt-btn data-opt-index="{{ opt_index }}" data-opt-value="{{ value | escape }}" aria-pressed="{% if v.options[opt_index] == value %}true{% else %}false{% endif %}" aria-label="{{ value | escape }}" title="{{ value | escape }}"><img src="{{ cv_media | image_url: width: 96, height: 144, crop: 'center' }}" srcset="{{ cv_media | image_url: width: 96, height: 144, crop: 'center' }} 2x, {{ cv_media | image_url: width: 144, height: 216, crop: 'center' }} 3x" width="48" height="72" alt="" loading="lazy"></button>
             {%- else -%}
               {%- comment -%} Colourless in Liquid on purpose: theme.js paintSwatches()

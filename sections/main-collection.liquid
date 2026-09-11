@@ -104,6 +104,20 @@
                     </label>
                   {%- endfor -%}
                 </div>
+              {%- elsif filter.type == 'boolean' -%}
+                {%- comment -%} Shopify's boolean filter — how "In stock only" is
+                configured in Search & Discovery — fell through this chain and
+                rendered NOTHING. A merchant set it up in admin, saw no group
+                appear, and had nothing to tell them why. One checkbox: ticked
+                applies true_value, unticked submits nothing and the filter is
+                simply absent from the query. {%- endcomment -%}
+                <div class="filter-group">
+                  <h2>{{ f_label | escape }}</h2>
+                  <label>
+                    <input type="checkbox" name="{{ filter.true_value.param_name }}" value="{{ filter.true_value.value }}" {% if filter.true_value.active %}checked{% endif %}>
+                    {{ filter.true_value.label | default: f_label | escape }}{% if filter.true_value.count %} ({{ filter.true_value.count }}){% endif %}
+                  </label>
+                </div>
               {%- elsif filter.type == 'price_range' -%}
                 <div class="filter-group">
                   <h2>{{ f_label | escape }}</h2>
