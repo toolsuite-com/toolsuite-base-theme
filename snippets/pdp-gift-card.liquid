@@ -14,6 +14,21 @@
   and the card behaves as before; opt in and Shopify handles the delivery, the
   message and the send date itself.
 
+  THE FOUR VISIBLE FIELDS ARE NOT ENOUGH, and shipping them alone reproduced the
+  exact bug this snippet was written to fix. Recipient delivery is switched on by
+  a CONTROL property, `__shopify_send_gift_card_to_recipient`; without it Shopify
+  treats "Recipient email" as an ordinary line-item property — decorative text on
+  the order — and still emails the code to the buyer. The shopper fills in a date
+  picker and a message, sees them confirmed on the order, and the present goes to
+  the wrong person anyway, which is worse than not offering the fields at all.
+
+  `__shopify_offset` is the second half: "Send on" is a bare date, so without the
+  browser's UTC offset Shopify reads it in the SHOP's timezone and a card can
+  arrive a day early or late. Both are hidden inputs inside the same fieldset, so
+  the disabled-means-not-submitted mechanism still governs them exactly as it
+  governs the visible fields. Properties prefixed `__` are hidden from the
+  shopper and from the order page by Shopify's own convention.
+
   Usage: {%- render 'pdp-gift-card', product: product -%}   (inside the form)
 {%- endcomment -%}
 
@@ -31,6 +46,17 @@
     it did before this snippet existed. {%- endcomment -%}
     <fieldset class="gc__fields" data-gift-card-fields disabled>
       <legend class="gc__legend lbl-sm">{{ 'product.gift_card.heading' | t }}</legend>
+
+      {%- comment -%} The control property. Everything below is inert without it:
+      Shopify only switches a gift card into recipient delivery when this is
+      present, and `if_present` is the literal value it looks for. {%- endcomment -%}
+      <input type="hidden" name="properties[__shopify_send_gift_card_to_recipient]" value="if_present">
+
+      {%- comment -%} Filled in by theme.js with the browser's UTC offset so the
+      send date is read in the SHOPPER's timezone rather than the shop's. Empty
+      is safe — Shopify falls back to the shop's — so no-JS degrades to the old
+      behaviour instead of breaking the form. {%- endcomment -%}
+      <input type="hidden" name="properties[__shopify_offset]" value="" data-gift-card-offset>
 
       <div class="gc__row">
         <label class="lbl-sm" for="{{ gc_id }}-email">{{ 'product.gift_card.email' | t }}</label>

@@ -1705,9 +1705,15 @@ function initGiftCard() {
     const toggle = root.querySelector('[data-gift-card-toggle]');
     const fields = root.querySelector('[data-gift-card-fields]');
     if (!toggle || !fields) return;
+    /* "Send on" is a bare date. Without the shopper's UTC offset Shopify reads
+       it in the SHOP's timezone, so a card scheduled for a birthday can arrive
+       the day before or after. Set once — the offset does not change while the
+       page is open. */
+    const offset = root.querySelector('[data-gift-card-offset]');
+    if (offset) offset.value = new Date().getTimezoneOffset();
     const sync = () => {
       fields.disabled = !toggle.checked;
-      if (toggle.checked) fields.querySelector('input, textarea')?.focus({ preventScroll: true });
+      if (toggle.checked) fields.querySelector('input:not([type="hidden"]), textarea')?.focus({ preventScroll: true });
     };
     toggle.addEventListener('change', sync);
     sync();
